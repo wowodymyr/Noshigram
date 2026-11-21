@@ -74,7 +74,6 @@
     unsigned _failures;
     uint64_t _retryAt;
     BOOL _wantLink;
-    NoshiShiro *_shiro;
     NSMutableDictionary *_handlers;
     NSMutableArray *_waiting;
     BOOL _authorizing;
@@ -85,7 +84,6 @@
 @implementation NoshiMediaLink
 
 @synthesize dc = _dc;
-@synthesize shiro = _shiro;
 
 static uint64_t NoshiMediaNowMs(void) {
     return noshi_system_clock.monotonic_ms(NULL);
@@ -489,7 +487,7 @@ static void NoshiMediaError(void *ctx, noshi_status status, const char *boundary
 }
 
 - (void)openLink {
-    noshi_status status = NoshiProxyConnect(_shiro, &_socket, noshi_dc_host(_dc), noshi_dc_port(), CONNECT_TIMEOUT_MS, &_client.config, NULL);
+    noshi_status status = NoshiProxyConnect(&_socket, noshi_dc_host(_dc), noshi_dc_port(), CONNECT_TIMEOUT_MS, &_client.config);
     if (status == NOSHI_OK) {
         _client.mt.config.transport = _client.config.transport;
         _client.mt.config.obfuscation = _client.config.obfuscation;

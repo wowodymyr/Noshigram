@@ -18,9 +18,6 @@
 #include "../../logging.h"
 #include "../../VoIPController.h"
 #include "../../Buffers.h"
-// local patch for noshigram: the sockets go through the VPN of the app when it is wanted, see noshi_shiro_network.h
-#include "noshi_shiro_network.h"
-#include "noshi_udp.h"
 
 #ifdef __ANDROID__
 #include <jni.h>
@@ -40,7 +37,6 @@ NetworkSocketPosix::NetworkSocketPosix(NetworkProtocol protocol) : NetworkSocket
     fd=-1;
 	useTCP=false;
 	closing=false;
-	tunneled=false;
 
 	tcpConnectedAddress=NULL;
 	tcpConnectedPort=0;
@@ -80,24 +76,6 @@ void NetworkSocketPosix::Send(NetworkPacket *packet){
 		return;
 	}
 	int res;
-	if(protocol==PROTO_UDP && tunneled){
-		// the tunnel is IPv4 only and has no NAT64, so a v6 peer cannot be reached through it
-		IPv4Address *tunnelAddr=dynamic_cast<IPv4Address *>(packet->address);
-		unsigned char frame[NOSHI_UDP_FRAME_HEADER+NOSHI_UDP_MAX_PAYLOAD];
-		size_t frameLen=0;
-		if(!tunnelAddr){
-			LOGW("dropping a packet for an IPv6 peer: the VPN carries IPv4 only");
-			return;
-		}
-		if(noshi_udp_frame_encode(ntohl(tunnelAddr->GetAddress()), packet->port, packet->data, packet->length, frame, sizeof(frame), &frameLen)!=NOSHI_OK){
-			LOGW("dropping a packet the VPN cannot carry, %u bytes", (unsigned int)packet->length);
-			return;
-		}
-		res=send(fd, frame, frameLen, 0);
-		if(res<0)
-			LOGE("error sending through the VPN: %d / %s", errno, strerror(errno));
-		return;
-	}
 	if(protocol==PROTO_UDP){
 		sockaddr_in6 addr;
 		IPv4Address *v4addr=dynamic_cast<IPv4Address *>(packet->address);
@@ -168,27 +146,6 @@ void NetworkSocketPosix::Send(NetworkPacket *packet){
 }
 
 void NetworkSocketPosix::Receive(NetworkPacket *packet){
-	if(protocol==PROTO_UDP && tunneled){
-		unsigned char frame[NOSHI_UDP_FRAME_HEADER+NOSHI_UDP_MAX_PAYLOAD+1];
-		const unsigned char *payload=NULL;
-		size_t payloadLen=0;
-		uint32_t peerIp=0;
-		uint16_t peerPort=0;
-		ssize_t got=recv(fd, frame, sizeof(frame), 0);
-		// an empty datagram is the tunnel checking that the socket is open
-		if(got<=0 || noshi_udp_frame_decode(frame, (size_t)got, &peerIp, &peerPort, &payload, &payloadLen)!=NOSHI_OK || payloadLen>packet->length){
-			packet->length=0;
-			return;
-		}
-		memcpy(packet->data, payload, payloadLen);
-		packet->length=payloadLen;
-		isV4Available=true;
-		lastRecvdV4=IPv4Address(htonl(peerIp));
-		packet->address=&lastRecvdV4;
-		packet->port=peerPort;
-		packet->protocol=PROTO_UDP;
-		return;
-	}
 	if(protocol==PROTO_UDP){
 		int addrLen=sizeof(sockaddr_in6);
 		sockaddr_in6 srcAddr;
@@ -232,25 +189,6 @@ void NetworkSocketPosix::Receive(NetworkPacket *packet){
 void NetworkSocketPosix::Open(){
 	if(protocol!=PROTO_UDP)
 		return;
-	// a VPN that is wanted and not up carries nothing, and the call does not fall back to the direct path
-	int route=NoshiShiroNetworkRoute();
-	if(route==2){
-		LOGE("the VPN is on and not up, not opening a UDP socket");
-		failed=true;
-		return;
-	}
-	if(route==1){
-		int tunnelFd=-1;
-		if(NoshiShiroNetworkOpenDatagram(&tunnelFd)!=0){
-			LOGE("the VPN did not give a UDP socket");
-			failed=true;
-			return;
-		}
-		fd=tunnelFd;
-		tunneled=true;
-		isV4Available=true;
-		return;
-	}
 	fd=socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 	if(fd<0){
 		LOGE("error creating socket: %d / %s", errno, strerror(errno));
@@ -339,42 +277,21 @@ void NetworkSocketPosix::Connect(NetworkAddress *address, uint16_t port){
 		failed=true;
 		return;
 	}
-	int route=NoshiShiroNetworkRoute();
-	if(route==2 || (route==1 && !v4addr)){
-		LOGE("the VPN cannot carry this TCP connection");
+	fd=socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
+	if(fd<0){
+		LOGE("Error creating TCP socket: %d / %s", errno, strerror(errno));
 		failed=true;
 		return;
 	}
-	int res=0;
-	if(route==1){
-		// the stream of the tunnel is a local socket that the rest of this class reads and writes with blocking calls
-		int tunnelFd=-1;
-		res=NoshiShiroNetworkOpenStream(ntohl(v4addr->GetAddress()), port, 5000, &tunnelFd);
-		if(res==0){
-			fd=tunnelFd;
-			tunneled=true;
-			fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) & ~O_NONBLOCK);
-		}
-	}else{
-		fd=socket(addr->sa_family, SOCK_STREAM, IPPROTO_TCP);
-		if(fd<0){
-			LOGE("Error creating TCP socket: %d / %s", errno, strerror(errno));
-			failed=true;
-			return;
-		}
-		int opt=1;
-		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
-	}
-	if(fd>=0){
-		timeval timeout;
-		timeout.tv_sec=5;
-		timeout.tv_usec=0;
-		setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
-		timeout.tv_sec=60;
-		setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	}
-	if(route!=1)
-		res=connect(fd, (const sockaddr*) addr, addrLen);
+	int opt=1;
+	setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
+	timeval timeout;
+	timeout.tv_sec=5;
+	timeout.tv_usec=0;
+	setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+	timeout.tv_sec=60;
+	setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	int res=connect(fd, (const sockaddr*) addr, addrLen);
 	if(res!=0){
 		LOGW("error connecting TCP socket to %s:%u: %d / %s; %d / %s", address->ToString().c_str(), port, res, strerror(res), errno, strerror(errno));
 		close(fd);

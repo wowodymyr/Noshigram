@@ -7,7 +7,7 @@
 - (void)cancel;
 @end
 
-/* ios 6 cannot complete telegra.ph TLS, and UIWebView cannot follow the app's tunnel route */
+/* ios 6 cannot complete telegra.ph TLS, so the pages go through the https client of the app */
 @interface NoshiTunnelURLProtocol : NSURLProtocol
 + (void)install;
 @end

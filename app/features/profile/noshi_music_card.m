@@ -8,7 +8,6 @@
 #import "noshi_music_player.h"
 #import "noshi_music_style.h"
 #import "noshi_platform.h"
-#import "noshi_shiro_style.h"
 #import "noshi_symbol.h"
 #import "noshi_wave_progress.h"
 #import "noshi_theme.h"
@@ -123,17 +122,17 @@ static NoshiMusicKey *NoshiCardKey(UIColor *fill, CGFloat radius, id target, SEL
 
     _title = [[NoshiEmojiLabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
-    _title.font = NoshiShiroFontBody(18, YES);
+    _title.font = NoshiFontMedium(18);
     _title.textColor = NoshiColorTitle();
     [self addSubview:_title];
     _performer = [[NoshiEmojiLabel alloc] init];
     _performer.backgroundColor = [UIColor clearColor];
-    _performer.font = NoshiShiroFontBody(14, NO);
+    _performer.font = NoshiFontRegular(14);
     _performer.textColor = NoshiColorSecondary();
     [self addSubview:_performer];
 
     _speed = NoshiCardKey(tonal, 14, self, @selector(speedTapped));
-    _speed.titleLabel.font = NoshiShiroFontBody(13, YES);
+    _speed.titleLabel.font = NoshiFontMedium(13);
     [_speed setTitleColor:accent forState:UIControlStateNormal];
     _speed.accessibilityLabel = NSLocalizedString(@"music.speed", nil);
     [self addSubview:_speed];
@@ -144,9 +143,9 @@ static NoshiMusicKey *NoshiCardKey(UIColor *fill, CGFloat radius, id target, SEL
     [_progress addTarget:self action:@selector(scrubMoved) forControlEvents:UIControlEventValueChanged];
     [_progress addTarget:self action:@selector(scrubEnded) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
     [self addSubview:_progress];
-    _elapsed = NoshiCardLabel(NoshiColorSecondary(), NoshiShiroFontBody(12, NO), NoshiTextAlignmentLeft);
+    _elapsed = NoshiCardLabel(NoshiColorSecondary(), NoshiFontRegular(12), NoshiTextAlignmentLeft);
     [self addSubview:_elapsed];
-    _remaining = NoshiCardLabel(NoshiColorSecondary(), NoshiShiroFontBody(12, NO), NoshiTextAlignmentRight);
+    _remaining = NoshiCardLabel(NoshiColorSecondary(), NoshiFontRegular(12), NoshiTextAlignmentRight);
     [self addSubview:_remaining];
 
     _previous = NoshiCardKey(tonal, KEY_HEIGHT / 2, self, @selector(previousTapped));

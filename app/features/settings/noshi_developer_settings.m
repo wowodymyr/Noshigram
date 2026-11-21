@@ -10,8 +10,6 @@
 #import "noshi_popup_menu.h"
 #import "noshi_release_check.h"
 #import "noshi_senko_popup.h"
-#import "noshi_shiro.h"
-#import "noshi_shiro_failure_prompt.h"
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
 #import "noshi_welcome_toast.h"
@@ -189,11 +187,6 @@ static UIView *NoshiDeveloperHost(void) {
     NSArray *popups = [NSArray arrayWithObjects:
         POPUP(NoshiSymbolReport, @"developer.popup.crash", @"developer.popup.crash.info", {
             if (!NoshiAskCrashReport(^(BOOL send) { (void)send; })) NoshiShowNotice(nil, NSLocalizedString(@"developer.popup.busy", nil));
-        }),
-        POPUP(NoshiSymbolGlobe, @"developer.popup.shiro", @"developer.popup.shiro.info", {
-            NoshiShiro *shiro = NoshiShiroActive();
-            if (shiro) NoshiShowShiroFailure(shiro);
-            else NoshiShowNotice(nil, NSLocalizedString(@"developer.popup.noshiro", nil));
         }),
         POPUP(NoshiSymbolHeart, @"developer.popup.senko", @"developer.popup.senko.info", { [ME showSenko]; }),
         POPUP(NoshiSymbolExternalLink, @"developer.popup.release", @"developer.popup.release.info", { NoshiShowReleasePreview(NoshiDeveloperHost()); }),

@@ -179,10 +179,6 @@
         NoshiChatFlagSet(NoshiChatFlagHideSearchBar, on);
         [(NoshiAppearanceSettingsController *)weak.target apply];
     }]];
-    [rows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"look.hidevpn", nil) subtitle:nil on:NoshiChatFlagGet(NoshiChatFlagHideVpnButton) toggle:^(BOOL on) {
-        NoshiChatFlagSet(NoshiChatFlagHideVpnButton, on);
-        [(NoshiAppearanceSettingsController *)weak.target apply];
-    }]];
     [rows addObject:[NoshiSettingsRow rowWithTitle:NSLocalizedString(@"look.title", nil) value:NSLocalizedString(titleKeys[NoshiChatListTitleStored()], nil) tap:^{
         [(NoshiAppearanceSettingsController *)weak.target chooseTitle];
     }]];

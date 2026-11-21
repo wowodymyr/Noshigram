@@ -1,6 +1,5 @@
 #import "noshi_tunnel_protocol.h"
 
-#import "noshi_shiro_network.h"
 #include "noshi_https.h"
 #include "noshi_article.h"
 
@@ -114,7 +113,6 @@ static int NoshiArticleCancelled(void *context) {
             request.roots_len = roots.length;
             request.timeout_ms = TIMEOUT_MS;
             request.max_response = NOSHI_HTTPS_MAX_RESPONSE_LIMIT;
-            request.connect_socket = NoshiShiroNetworkConnectSocket;
             request.is_cancelled = NoshiArticleCancelled;
             request.cancel_ctx = self;
             noshi_status status = noshi_https_get(&request, &response);
@@ -231,7 +229,6 @@ static int NoshiArticleCancelled(void *context) {
             request.max_response = NOSHI_HTTPS_MAX_RESPONSE_LIMIT;
             request.is_cancelled = NoshiTunnelCancelled;
             request.cancel_ctx = job;
-            request.connect_socket = NoshiShiroNetworkConnectSocket;
             status = noshi_https_get(&request, &response);
         }
         NSDictionary *reply = status == NOSHI_OK ? NoshiTunnelHeaders(response.headers) : nil;

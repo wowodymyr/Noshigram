@@ -8,6 +8,8 @@
 #include <unistd.h>
 #include "noshi_clock.h"
 #include "noshi_bytes.h"
+#include "noshi_mt_traffic.h"
+#import "noshi_traffic_store.h"
 
 NSString *const NoshiProxyDidChangeNotification = @"NoshiProxyDidChange";
 static NSString *const NoshiProxyEnabledKey = @"noshigram.proxy.enabled";
@@ -278,8 +280,13 @@ NSString *NoshiProxyDisplay(void) {
     return text;
 }
 
-noshi_status NoshiProxyConnect(NoshiShiro *shiro, noshi_mt_socket *socket, const char *host, uint16_t port,
-                                   int timeout, noshi_mt_client_config *config, BOOL *tunneled) {
+static noshi_status NoshiConnectDirect(noshi_mt_socket *socket, const char *host, uint16_t port, int timeout) {
+    /* what the new connection carries is counted for the network it was opened on */
+    noshi_traffic_set_cellular(NoshiNetworkOnCellular());
+    return noshi_mt_socket_connect(socket, host, port, timeout);
+}
+
+noshi_status NoshiProxyConnect(noshi_mt_socket *socket, const char *host, uint16_t port, int timeout, noshi_mt_client_config *config) {
     noshi_proxy proxy;
     BOOL enabled = NO;
     noshi_status status = NoshiProxyRead(&proxy, &enabled);
@@ -287,9 +294,9 @@ noshi_status NoshiProxyConnect(NoshiShiro *shiro, noshi_mt_socket *socket, const
     config->transport = NOSHI_MT_INTERMEDIATE;
     config->obfuscation.has_secret = 0;
     memset(config->obfuscation.secret, 0, sizeof(config->obfuscation.secret));
-    if (!enabled) return NoshiShiroConnectSocket(shiro, socket, host, port, timeout, tunneled);
+    if (!enabled) return NoshiConnectDirect(socket, host, port, timeout);
     uint64_t deadline = noshi_system_clock.monotonic_ms(NULL) + (uint64_t)timeout;
-    status = NoshiShiroConnectSocket(shiro, socket, proxy.server, proxy.port, timeout, tunneled);
+    status = NoshiConnectDirect(socket, proxy.server, proxy.port, timeout);
     uint64_t now = noshi_system_clock.monotonic_ms(NULL);
     int left = now < deadline ? (int)(deadline - now) : 0;
     if (status == NOSHI_OK && !left) { noshi_mt_socket_close(socket); status = NOSHI_E_TIMEOUT; }

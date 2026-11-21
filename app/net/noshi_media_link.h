@@ -1,7 +1,6 @@
 #import <Foundation/Foundation.h>
 
 #import "noshi_remote_file.h"
-#import "noshi_shiro.h"
 
 #include "noshi_mt_client.h"
 #include "noshi_tl.h"
@@ -19,8 +18,6 @@ typedef void (^NoshiDownloadCompletion)(NSData *data, NSString *errorName);
 }
 
 @property (nonatomic, readonly) int32_t dc;
-/* the VPN the connection goes through when it is wanted; set before the first download */
-@property (nonatomic, assign) NoshiShiro *shiro;
 
 - (id)initWithDc:(int32_t)dc directory:(NSString *)directory deviceModel:(NSString *)deviceModel
    systemVersion:(NSString *)systemVersion appVersion:(NSString *)appVersion langCode:(NSString *)langCode;

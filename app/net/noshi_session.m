@@ -151,7 +151,6 @@
     BOOL _started;
     BOOL _stopping;
     BOOL _connected;
-    BOOL _tunneled;
 
     /* everything below belongs to the worker thread */
     noshi_client _client;
@@ -183,7 +182,6 @@
     /* who put the observer there, compared by address and never used: a screen that is gone must not remove the observer of the one that took its place */
     void (^_changeHook)(void);
     void *_voip;
-    NoshiShiro *_shiro;
     NoshiTypingBoard *_typing;
     NoshiForumSummaries *_forumSummaries;
     NSMutableDictionary *_readOutbox;
@@ -220,12 +218,10 @@ NSString *const NoshiSessionDialogsUpdatedNotification = @"NoshiSessionDialogsUp
 
 @synthesize delegate = _delegate;
 @synthesize connected = _connected;
-@synthesize tunneled = _tunneled;
 @synthesize callDelegate = _callDelegate;
 @synthesize groupCallDelegate = _groupCallDelegate;
 @synthesize groupCalls = _groupCalls;
 @synthesize directory = _directory;
-@synthesize shiro = _shiro;
 @synthesize typing = _typing;
 @synthesize drafts = _drafts;
 
@@ -1343,7 +1339,6 @@ static BOOL NoshiDialogIsPageCursor(NoshiDialog *item) {
     if (!link && noshi_dc_host(dc)) {
         link = [[[NoshiMediaLink alloc] initWithDc:dc directory:_directory deviceModel:_deviceModel
                                        systemVersion:_systemVersion appVersion:_appVersion langCode:_langCode] autorelease];
-        link.shiro = _shiro;
         [_links setObject:link forKey:key];
     }
     return link;
@@ -1742,12 +1737,6 @@ static void NoshiAuthChanged(void *ctx, noshi_auth_state state, noshi_status sta
         [self dropSessionKey];
         return;
     }
-    /* a tunnel that is still being made lets nothing out, and every dial fails at once: those do not count toward the limit, or a login gave up and dropped its code request
-       within seconds, before the tunnel came up, and nothing asked for the link again */
-    if (reason == NOSHI_E_STATE && _shiro && _shiro.route == NoshiShiroRouteBlocked) {
-        _retryAt = NoshiNowMs() + 1000;
-        return;
-    }
     if (_failures < UINT_MAX) ++_failures;
     if (_failures >= RETRY_LIMIT && _account <= 0) {
         _wantLink = NO;
@@ -1801,16 +1790,13 @@ static void NoshiAuthChanged(void *ctx, noshi_auth_state state, noshi_status sta
 
 - (void)openLink {
     const char *host = noshi_dc_host(_dc);
-    BOOL tunneled = NO;
-    noshi_status status = NoshiProxyConnect(_shiro, &_socket, host, noshi_dc_port(), CONNECT_TIMEOUT_MS, &_client.config, &tunneled);
-    _tunneled = status == NOSHI_OK && tunneled;
+    noshi_status status = NoshiProxyConnect(&_socket, host, noshi_dc_port(), CONNECT_TIMEOUT_MS, &_client.config);
     if (status == NOSHI_OK) {
         _client.mt.config.transport = _client.config.transport;
         _client.mt.config.obfuscation = _client.config.obfuscation;
     }
-    /* a signed in link that should keep working while the app sleeps is made a voip socket; a stream of the tunnel
-       is a local socket pair, which the system cannot keep alive for the network, so it stays an ordinary socket */
-    if (status == NOSHI_OK && !tunneled && _account > 0 && NoshiBackgroundLinkWanted()) _voip = NoshiVoipSocketAttach(_socket.fd);
+    /* a signed in link that should keep working while the app sleeps is made a voip socket */
+    if (status == NOSHI_OK && _account > 0 && NoshiBackgroundLinkWanted()) _voip = NoshiVoipSocketAttach(_socket.fd);
     if (status == NOSHI_OK) status = noshi_client_connect(&_client);
     if (status != NOSHI_OK) [self linkLost:status];
 }

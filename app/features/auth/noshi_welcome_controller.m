@@ -7,9 +7,6 @@
 #import "noshi_network_probe.h"
 #import "noshi_page_dots_view.h"
 #import "noshi_platform.h"
-#import "noshi_senko.h"
-#import "noshi_senko_popup.h"
-#import "noshi_shiro_button.h"
 #import "noshi_theme.h"
 #import "noshi_wave_background_view.h"
 #import "noshi_wave_button.h"
@@ -21,22 +18,13 @@
 #define NOSHI_WELCOME_PAGES 6
 /* the sticker of the network card: the duck with the phone and the cloud, from the welcome pages */
 #define NETWORK_STICKER @"welcome_cloud"
-#define SENKO_GREETING_DELAY 1.2
-#define PROBE_RETRY_DELAY 0.5
 
 /* what the card on screen says, which decides what its buttons do */
 typedef enum {
     NoshiWelcomeToastNone = 0,
-    /* the network is bad and the VPN is off: the card offers to turn it on */
-    NoshiWelcomeToastOffer,
-    /* the VPN is on and Telegram still does not answer */
-    NoshiWelcomeToastNoLink,
-    /* the VPN is being made */
-    NoshiWelcomeToastDialing
+    /* Telegram does not answer: the card offers to ask again */
+    NoshiWelcomeToastNoLink
 } NoshiWelcomeToastKind;
-
-/* the Senko card shows once for a run of the app, not each time the login screen comes back */
-static BOOL NoshiSenkoGreeted;
 
 /* page 0 is the animated icon, the others each carry one sticker */
 static NSString *const NoshiWelcomeStickers[NOSHI_WELCOME_PAGES] = {
@@ -103,8 +91,6 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     NoshiWaveButton *_button;
     UIButton *_qr;
     UIButton *_proxy;
-    NoshiSenkoPopup *_senkoPopup;
-    NoshiShiroButton *_vpn;
     NSInteger _page;
     CGFloat _laidOutWidth;
     BOOL _visible;
@@ -121,7 +107,6 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
 @implementation NoshiWelcomeController
 
 @synthesize delegate = _delegate;
-@synthesize shiro = _shiro;
 
 - (void)loadView {
     UIView *root = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
@@ -182,11 +167,6 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     _proxy.titleLabel.font = NoshiFontMedium(14);
     [_proxy addTarget:self action:@selector(proxyTapped) forControlEvents:UIControlEventTouchUpInside];
     [root addSubview:_proxy];
-
-    if (_shiro) {
-        _vpn = [[NoshiShiroButton alloc] initWithShiro:_shiro host:self];
-        [root addSubview:_vpn];
-    }
 }
 
 - (void)dealloc {
@@ -201,10 +181,6 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     [_button release];
     [_qr release];
     [_proxy release];
-    _senkoPopup.dismissHandler = nil;
-    [_senkoPopup dismiss];
-    [_senkoPopup release];
-    [_vpn release];
     [super dealloc];
 }
 
@@ -241,10 +217,8 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     _scroll.frame = self.view.bounds;
     _toast.inset = insets.top;
     [_toast refresh];
-    CGSize pill = [_vpn preferredSize];
-    _vpn.frame = CGRectMake(size.width - insets.right - 16 - pill.width, insets.top + 10, pill.width, pill.height);
     /* both buttons stand on one line: the proxy is a taller touch area, so it is centered on the pill and not top aligned with it */
-    _proxy.frame = CGRectMake(insets.left + 12, _vpn ? CGRectGetMidY(_vpn.frame) - 20 : insets.top + 10, 88, 40);
+    _proxy.frame = CGRectMake(insets.left + 12, insets.top + 10, 88, 40);
     _scroll.contentSize = CGSizeMake(size.width * NOSHI_WELCOME_PAGES, size.height);
     for (NSInteger i = 0; i < NOSHI_WELCOME_PAGES; ++i) {
         NoshiWelcomePage *page = [_pages objectAtIndex:i];
@@ -310,11 +284,9 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
                    name:UIApplicationDidBecomeActiveNotification object:nil];
     NSString *motion = NoshiReduceMotionChangedNotification();
     if (motion) [center addObserver:self selector:@selector(refreshPlayback) name:motion object:nil];
-    if (_shiro) [center addObserver:self selector:@selector(shiroChanged) name:NoshiShiroStateDidChangeNotification object:_shiro];
     [center addObserver:self selector:@selector(probeNetwork) name:UIApplicationDidBecomeActiveNotification object:nil];
     [self refreshPlayback];
     [self probeNetwork];
-    [self performSelector:@selector(greetSenko) withObject:nil afterDelay:SENKO_GREETING_DELAY];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -395,78 +367,22 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
         BOOL recovered = me->_leftForRecovery;
         me->_leftForRecovery = NO;
         [me releaseToast];
-        if (left >= NoshiWelcomeToastOffer && !recovered) me->_networkDismissed = YES;
+        if (left >= NoshiWelcomeToastNoLink && !recovered) me->_networkDismissed = YES;
     };
     [toast showInView:self.view inset:NoshiLayoutInsets(self).top];
 }
 
-- (void)greetSenko {
-    if (!_visible || NoshiSenkoGreeted || _toast || _senkoPopup || !NoshiSenkoInstalled()) return;
-    NoshiSenkoGreeted = YES;
-    _senkoPopup = [[NoshiSenkoPopup alloc] init];
-    _senkoPopup.titleText = NSLocalizedString(@"welcome.senko.title", nil);
-    _senkoPopup.messageText = NSLocalizedString(@"welcome.senko.message", nil);
-    _senkoPopup.buttonTitle = NSLocalizedString(@"welcome.senko.ok", nil);
-    NoshiWeakReference *weak = [NoshiWeakReference referenceTo:self];
-    _senkoPopup.dismissHandler = ^{
-        NoshiWelcomeController *me = weak.target;
-        if (!me) return;
-        [me->_senkoPopup release];
-        me->_senkoPopup = nil;
-    };
-    [_senkoPopup showInView:NoshiOverlayHost() ? NoshiOverlayHost() : self.view];
-}
-
-/* the texts and buttons of the network card for what the VPN is doing now */
-- (NoshiWelcomeToastKind)networkKind {
-    switch (_shiro.state) {
-    case NoshiShiroStateRegistering:
-    case NoshiShiroStateConnecting: return NoshiWelcomeToastDialing;
-    case NoshiShiroStateUp: return NoshiWelcomeToastNoLink;
-    case NoshiShiroStateFailed:
-    case NoshiShiroStateOff: break;
-    }
-    return NoshiWelcomeToastOffer;
-}
-
-- (void)fillNetworkToast:(NoshiWelcomeToast *)toast kind:(NoshiWelcomeToastKind)kind {
+- (void)fillNetworkToast:(NoshiWelcomeToast *)toast {
     toast.busyTitle = nil;
-    switch (kind) {
-    case NoshiWelcomeToastOffer:
-        toast.titleText = NSLocalizedString(@"welcome.network.title", nil);
-        toast.messageText = NSLocalizedString(@"welcome.network.message", nil);
-        toast.primaryTitle = _shiro ? NSLocalizedString(@"welcome.network.enable", nil) : nil;
-        toast.secondaryTitle = NSLocalizedString(@"welcome.network.later", nil);
-        break;
-    case NoshiWelcomeToastNoLink:
-        toast.titleText = NSLocalizedString(@"welcome.network.nolink.title", nil);
-        toast.messageText = NSLocalizedString(@"welcome.network.nolink.message", nil);
-        toast.primaryTitle = NSLocalizedString(@"welcome.network.retry", nil);
-        toast.secondaryTitle = NSLocalizedString(@"welcome.network.close", nil);
-        break;
-    case NoshiWelcomeToastDialing:
-        toast.titleText = NSLocalizedString(@"welcome.network.dialing.title", nil);
-        toast.messageText = NSLocalizedString(@"welcome.network.dialing.message", nil);
-        toast.primaryTitle = NSLocalizedString(@"welcome.network.retry", nil);
-        toast.busyTitle = NSLocalizedString(@"welcome.network.dialing.busy", nil);
-        toast.secondaryTitle = NSLocalizedString(@"welcome.network.close", nil);
-        break;
-    default: break;
-    }
+    toast.titleText = NSLocalizedString(@"welcome.network.nolink.title", nil);
+    toast.messageText = NSLocalizedString(@"welcome.network.nolink.message", nil);
+    toast.primaryTitle = NSLocalizedString(@"welcome.network.retry", nil);
+    toast.secondaryTitle = NSLocalizedString(@"welcome.network.close", nil);
 }
 
 - (void)networkPrimaryTapped {
-    switch (_toastKind) {
-    case NoshiWelcomeToastOffer:
-        [_shiro setEnabled:YES];
-        break;
-    default:
-        /* the VPN is up or being made; what is left is to ask the network again */
-        [self probeNetwork];
-        break;
-    }
-    [self syncNetworkToast];
-    if (_toast && _toastKind != NoshiWelcomeToastDialing && _toastKind != NoshiWelcomeToastOffer) {
+    [self probeNetwork];
+    if (_toast) {
         _toast.busyTitle = NSLocalizedString(@"welcome.network.checking", nil);
         [_toast refresh];
     }
@@ -476,18 +392,16 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     [_toast dismiss];
 }
 
-/* the card follows the VPN: its kind changes with the state, and a card is made new only when there is none */
+/* a card already on screen says it again, with the busy words of a retry taken away */
 - (void)syncNetworkToast {
-    if (!_toast || _toastKind < NoshiWelcomeToastOffer) return;
-    NoshiWelcomeToastKind kind = [self networkKind];
-    _toastKind = kind;
-    [self fillNetworkToast:_toast kind:kind];
+    if (!_toast || _toastKind != NoshiWelcomeToastNoLink) return;
+    [self fillNetworkToast:_toast];
     [_toast refresh];
 }
 
 - (void)showNetworkToast {
     if (!_visible || _networkDismissed) return;
-    if (_toast && _toastKind >= NoshiWelcomeToastOffer) {
+    if (_toast && _toastKind == NoshiWelcomeToastNoLink) {
         [self syncNetworkToast];
         return;
     }
@@ -500,12 +414,11 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     NoshiWelcomeToast *toast = [[[NoshiWelcomeToast alloc] init] autorelease];
     NoshiLottieView *sticker = [[[NoshiLottieView alloc] initWithAnimationNamed:NETWORK_STICKER] autorelease];
     toast.sticker = sticker;
-    NoshiWelcomeToastKind kind = [self networkKind];
-    [self fillNetworkToast:toast kind:kind];
+    [self fillNetworkToast:toast];
     NoshiWeakReference *weak = [NoshiWeakReference referenceTo:self];
     toast.primaryHandler = ^{ [(NoshiWelcomeController *)weak.target networkPrimaryTapped]; };
     toast.secondaryHandler = ^{ [(NoshiWelcomeController *)weak.target networkSecondaryTapped]; };
-    [self presentToast:toast kind:kind];
+    [self presentToast:toast kind:NoshiWelcomeToastNoLink];
 }
 
 #pragma mark network
@@ -515,7 +428,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     if (_probing || !_visible) return;
     _probing = YES;
     NoshiWeakReference *weak = [NoshiWeakReference referenceTo:self];
-    [NoshiNetworkProbe probeWithShiro:_shiro completion:^(NoshiProbeResult result) {
+    [NoshiNetworkProbe probeWithCompletion:^(NoshiProbeResult result) {
         NoshiWelcomeController *me = weak.target;
         if (!me) return;
         me->_probing = NO;
@@ -528,7 +441,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     switch (result) {
     case NoshiProbeReachable:
         _networkDismissed = NO;
-        if (_toast && _toastKind >= NoshiWelcomeToastOffer) {
+        if (_toast && _toastKind == NoshiWelcomeToastNoLink) {
             _leftForRecovery = YES;
             [_toast dismiss];
         }
@@ -536,25 +449,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     case NoshiProbeUnreachable:
         [self showNetworkToast];
         break;
-    case NoshiProbeBlocked:
-        /* the VPN is wanted and not up: the app opens no connection, so there is no verdict on the network */
-        [self syncNetworkToast];
-        break;
     }
-}
-
-/* a settled VPN changes what the network can do, so it is asked again after a moment; while it is being made only the card moves */
-- (void)shiroChanged {
-    NoshiShiroState state = _shiro.state;
-    if (state == NoshiShiroStateFailed) {
-        /* the failure card of the app speaks for the tunnel, and a card of this screen under it would only repeat it */
-        if (_toast && _toastKind >= NoshiWelcomeToastOffer) [_toast dismiss];
-        return;
-    }
-    [self syncNetworkToast];
-    if (state == NoshiShiroStateRegistering || state == NoshiShiroStateConnecting) return;
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(probeNetwork) object:nil];
-    [self performSelector:@selector(probeNetwork) withObject:nil afterDelay:PROBE_RETRY_DELAY];
 }
 
 @end

@@ -391,7 +391,6 @@ static const struct { NSString *key; BOOL fallback; } NoshiChatFlagTable[NoshiCh
     [NoshiChatFlagHideStories] = {@"noshigram.chat.hidestories", NO},
     [NoshiChatFlagHideAllChatsTab] = {@"noshigram.chat.hidealltab", NO},
     [NoshiChatFlagNoUnarchiveSwipe] = {@"noshigram.chat.nounarchiveswipe", NO},
-    [NoshiChatFlagHideVpnButton] = {@"noshigram.chat.hidevpn", NO},
     [NoshiChatFlagBlurWallpaper] = {@"noshigram.chat.blurwallpaper", YES},
 };
 

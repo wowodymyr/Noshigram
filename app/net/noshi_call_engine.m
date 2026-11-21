@@ -7,8 +7,6 @@
 #import "noshi_rpc.h"
 #import "noshi_session.h"
 #import "noshi_session_internal.h"
-#import "noshi_shiro.h"
-#import "noshi_shiro_network.h"
 #import "noshi_voip_bridge.h"
 #import "noshi_weak_reference.h"
 
@@ -306,10 +304,8 @@ static void NoshiCallMediaBars(void *context, int bars);
     }];
 }
 
-/* media may go straight to the other phone only when the VPN of the app is off: through it every packet must pass the tunnel, and a direct path would leave it
-   and show the real address of this phone */
 - (BOOL)directPathAllowed {
-    return NoshiShiroNetworkRoute() == (int)NoshiShiroRouteDirect;
+    return YES;
 }
 
 - (void)sendRequest {

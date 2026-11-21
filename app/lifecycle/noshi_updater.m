@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#import "noshi_shiro_network.h"
 #import "noshi_system_notifications.h"
 #include "noshi_crypto.h"
 #include "noshi_https.h"
@@ -94,7 +93,6 @@ static noshi_status fetch(NSString *url, NSData *roots, int timeout_ms, size_t m
         request.cancel_ctx = state;
         memset(&head, 0, sizeof(head));
         state->length = &head.content_length;
-        request.connect_socket = NoshiShiroNetworkConnectSocket;
         status = noshi_https_get_stream(&request, &head, fetch_take, state);
         if (status != NOSHI_OK) {
             NSLog(@"noshigram: update request to %s failed: %s, received %llu bytes", host, noshi_status_name(status), (unsigned long long)state->received);

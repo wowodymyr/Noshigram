@@ -11,11 +11,8 @@
 
 #import "noshi_audio_session.h"
 #import "noshi_group_audio.h"
-#import "noshi_shiro.h"
-#import "noshi_shiro_network.h"
 
 #include "noshi_bytes.h"
-#include "noshi_udp.h"
 
 #define TICK_MS 20
 #define RECEIVE_BUFFER 2048
@@ -27,8 +24,6 @@
 typedef struct {
     int fd;
     dispatch_source_t source;
-    /* a socket of the tunnel speaks frames and is not connected, so it remembers the endpoint it stands for */
-    BOOL tunneled;
     uint32_t ip;
     uint16_t port;
 } NoshiGroupSocket;
@@ -71,14 +66,7 @@ static void NoshiGroupSend(void *context, unsigned index, const uint8_t *data, s
     ssize_t sent;
     if (index >= runtime->_socketCount || runtime->_sockets[index].fd < 0) return;
     /* a datagram the socket will not take now is lost, which the path does to datagrams as well; the protocols above resend what matters */
-    if (runtime->_sockets[index].tunneled) {
-        uint8_t frame[NOSHI_UDP_FRAME_HEADER + NOSHI_UDP_MAX_PAYLOAD];
-        size_t frame_len = 0;
-        if (noshi_udp_frame_encode(runtime->_sockets[index].ip, runtime->_sockets[index].port, data, len, frame, sizeof(frame), &frame_len) != NOSHI_OK) return;
-        sent = send(runtime->_sockets[index].fd, frame, frame_len, 0);
-    } else {
-        sent = send(runtime->_sockets[index].fd, data, len, 0);
-    }
+    sent = send(runtime->_sockets[index].fd, data, len, 0);
     if (sent < 0) {
         ++runtime->_txFailed;
         runtime->_txErrno = errno;
@@ -150,21 +138,12 @@ static void NoshiGroupAudioIn(void *context, uint32_t ssrc, const uint8_t *opus,
     return YES;
 }
 
-/* the socket of endpoint number index: connected UDP, or a datagram socket of the tunnel when the app's VPN is the route */
+/* the socket of endpoint number index: connected UDP */
 - (BOOL)openSocketFor:(size_t)index ip:(uint32_t)ip port:(uint16_t)port {
     struct sockaddr_in address;
     int fd, flags, on = 1;
-    int route = NoshiShiroNetworkRoute();
-    /* a VPN that is wanted and not up carries nothing; neither it nor a direct path stands in for the other */
-    if (route == (int)NoshiShiroRouteBlocked) return NO;
-    if (route == (int)NoshiShiroRouteTunnel) {
-        fd = -1;
-        if (NoshiShiroNetworkOpenDatagram(&fd) != NOSHI_OK) return NO;
-        _sockets[index].tunneled = YES;
-        _sockets[index].ip = ip;
-        _sockets[index].port = port;
-        return [self watchSocket:index descriptor:fd];
-    }
+    _sockets[index].ip = ip;
+    _sockets[index].port = port;
     memset(&address, 0, sizeof(address));
     address.sin_len = sizeof(address);
     address.sin_family = AF_INET;
@@ -178,7 +157,6 @@ static void NoshiGroupAudioIn(void *context, uint32_t ssrc, const uint8_t *opus,
         close(fd);
         return NO;
     }
-    _sockets[index].tunneled = NO;
     return [self watchSocket:index descriptor:fd];
 }
 
@@ -228,16 +206,6 @@ static void NoshiGroupAudioIn(void *context, uint32_t ssrc, const uint8_t *opus,
         size_t payload_len = (size_t)n;
         if (n <= 0) break;
         ++_rxCount;
-        if (_sockets[index].tunneled) {
-            uint32_t ip = 0;
-            uint16_t port = 0;
-            /* a socket of the tunnel hears every peer; the call talks to one endpoint, and a datagram from anyone else is not for it */
-            if (noshi_udp_frame_decode(buffer, (size_t)n, &ip, &port, &payload, &payload_len) != NOSHI_OK) continue;
-            if (ip != _sockets[index].ip || port != _sockets[index].port) {
-                ++_rxRefused;
-                continue;
-            }
-        }
         noshi_tgc_group_datagram(_group, (unsigned)index, payload, payload_len, NoshiGroupNowMs());
     }
 }

@@ -1,6 +1,5 @@
 #import "noshi_map_tiles.h"
 #import "noshi_image_decoder.h"
-#import "noshi_shiro_network.h"
 #include "noshi_https.h"
 
 #define DISK_LIMIT (32u * 1024u * 1024u)
@@ -234,7 +233,6 @@ static NSDate *NoshiTileExpiry(NSDictionary *headers, BOOL *store) {
             request.host = host.UTF8String; request.path = urlPath.UTF8String; request.port = 443;
             request.headers = lines; request.roots_pem = _roots.bytes; request.roots_len = _roots.length;
             request.timeout_ms = 12000; request.is_cancelled = NoshiMapCancelled; request.cancel_ctx = work;
-            request.connect_socket = NoshiShiroNetworkConnectSocket;
             memset(&response,0,sizeof(response));
             noshi_status status = [[_cooldowns objectForKey:source] timeIntervalSinceNow]>0 ? NOSHI_E_TIMEOUT : noshi_https_get(&request,&response);
             if (status == NOSHI_OK) {

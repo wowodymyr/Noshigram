@@ -20,7 +20,7 @@ noshi_status noshi_mt_socket_adopt(noshi_mt_socket *s, int fd);
 noshi_status noshi_mt_socket_connect_socks5(noshi_mt_socket *s, const char *proxy_host, uint16_t proxy_port,
                                                 const char *user, const char *pass,
                                                 const char *dest_host, uint16_t dest_port, int timeout_ms);
-/* negotiates on an already connected stream, including one opened through shiro; closes it on failure */
+/* negotiates on an already connected stream, closes it on failure */
 noshi_status noshi_mt_socket_negotiate_socks5(noshi_mt_socket *s, const char *user, const char *pass,
                                                   const char *dest_host, uint16_t dest_port, int timeout_ms);
 /* the fake TLS handshake of an "ee" proxy, on a socket that is connected to it (directly, through the tunnel or through a SOCKS5 proxy): the hello that proves

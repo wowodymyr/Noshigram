@@ -63,7 +63,6 @@ private:
 	bool isV4Available;
 	bool useTCP;
 	bool closing;
-	bool tunneled;
 	IPv4Address lastRecvdV4;
 	IPv6Address lastRecvdV6;
 	NetworkAddress* tcpConnectedAddress;

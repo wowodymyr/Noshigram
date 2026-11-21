@@ -5,7 +5,6 @@
 #import "noshi_lottie.h"
 #import "noshi_lottie_view.h"
 #import "noshi_platform.h"
-#import "noshi_shiro_style.h"
 #import "noshi_string_drawing.h"
 #import "noshi_theme.h"
 
@@ -59,7 +58,7 @@
     _label.backgroundColor = [UIColor clearColor];
     _label.textColor = [UIColor whiteColor];
     _label.textAlignment = NoshiTextAlignmentCenter;
-    _label.font = NoshiShiroFontBody(17, YES);
+    _label.font = NoshiFontMedium(17);
     _label.numberOfLines = 2;
     _label.text = NSLocalizedString(@"theme.applying", nil);
     [self addSubview:_label];

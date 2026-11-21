@@ -6,7 +6,7 @@
 
 #include "noshi_status.h"
 
-/* cuts the first TLS record in two records inside the server name, the tlsrec strategy of byebyedpi; the registration of Shiro uses it against a network that reads the
+/* cuts the first TLS record in two records inside the server name, the tlsrec strategy of byebyedpi; it helps against a network that reads the
    name of the server from one record or one segment. a filter that reads the SNI of one record or one segment never sees the whole name. the bytes after the two record headers are the original bytes, so the handshake transcript stays intact
 
    midpoint 0 cuts one byte into the name, 1 cuts at its middle. *record_cut is the offset of the second record header in output, where the caller also

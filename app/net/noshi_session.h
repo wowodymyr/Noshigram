@@ -3,7 +3,6 @@
 #import "noshi_dialog.h"
 #import "noshi_message.h"
 #import "noshi_media_link.h"
-#import "noshi_shiro.h"
 #import "noshi_typing_board.h"
 
 #include "noshi_stories.h"
@@ -192,9 +191,6 @@ extern NSString *const NoshiOwnProfileDidChangeNotification;
 /* main thread only: whether the link is up and the server has answered on it since it was opened; screens show
    a connecting title while it is NO */
 @property (nonatomic, readonly) BOOL connected;
-/* any thread: whether the last link was opened through the Shiro tunnel. a stream of the tunnel is a local socket pair, which the system cannot keep alive for the
-   network, so ios 5 and 6 let the app sleep with nothing to wake it unless the notifier plays its silence */
-@property (atomic, readonly) BOOL tunneled;
 
 /* directory holds the session keys, the account file and the database; it is created when missing */
 - (id)initWithDirectory:(NSString *)directory;
@@ -203,9 +199,6 @@ extern NSString *const NoshiOwnProfileDidChangeNotification;
 + (long long)accountIdInDirectory:(NSString *)directory;
 /* where the keys, the account file, the database and the other files of the account are kept */
 @property (nonatomic, readonly, copy) NSString *directory;
-
-/* the VPN the connections go through when it is wanted; set before start */
-@property (nonatomic, assign) NoshiShiro *shiro;
 
 - (void)start;
 - (void)stop;

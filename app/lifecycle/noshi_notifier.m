@@ -58,7 +58,7 @@ static void NoshiNotifySetFlag(NSString *key, BOOL on) {
 BOOL NoshiNotifyEnabled(void) { return NoshiNotifyFlag(KEY_ENABLED, YES); }
 void NoshiNotifySetEnabled(BOOL on) { NoshiNotifySetFlag(KEY_ENABLED, on); }
 /* the silence keeps the app awake where no voip socket can: ios 7 and later, and ios 5 and 6 while the link runs through the tunnel, whose streams are not sockets of the network */
-static BOOL NoshiKeeperNeeded(NoshiSession *session) { return [NoshiBackgroundKeeper needed] || session.tunneled; }
+static BOOL NoshiKeeperNeeded(NoshiSession *session) { (void)session; return [NoshiBackgroundKeeper needed]; }
 BOOL NoshiNotifySavingAvailable(NoshiSession *session) { return NoshiKeeperNeeded(session); }
 BOOL NoshiNotifySaving(void) { return NoshiNotifyFlag(KEY_SAVING, NO); }
 void NoshiNotifySetSaving(BOOL on) { NoshiNotifySetFlag(KEY_SAVING, on); }

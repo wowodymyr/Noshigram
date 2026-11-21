@@ -28,7 +28,6 @@
 #import "noshi_table_update.h"
 #import "noshi_platform.h"
 #import "noshi_session_channels.h"
-#import "noshi_shiro_button.h"
 #import "noshi_splash_view.h"
 #import "noshi_story_strip.h"
 #import "noshi_theme.h"
@@ -641,19 +640,15 @@
     [_chatsMenu showInView:host anchor:CGPointMake(CGRectGetMaxX(bar) - 10, CGRectGetMaxY(bar) - 4)];
 }
 
-/* the main list takes three choices of the appearance page: the VPN button, the field of search, and the words of the title; the archive list keeps its own */
+/* the main list takes two choices of the appearance page: the field of search and the words of the title; the archive list keeps its own */
 - (void)syncChromeWithSettings {
     if (_folderId != 0 || _selection) return;
-    BOOL hideVpn = NoshiChatFlagGet(NoshiChatFlagHideVpnButton);
-    /* the three dots stand at the right edge and the VPN button left of them, where the modern list has them; the first item of the array is the one at the edge */
-    NSArray *items = self.navigationItem.rightBarButtonItems;
-    BOOL hasVpn = items.count > 1;
-    if (!items.count || hasVpn == hideVpn) {
+    /* the three dots stand at the right edge */
+    if (!self.navigationItem.rightBarButtonItems.count) {
         UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor]) style:UIBarButtonItemStyleBordered
                                                                  target:self action:@selector(showChatsMenu)] autorelease];
         dots.accessibilityLabel = NSLocalizedString(@"chats.menu", nil);
-        if (hideVpn) self.navigationItem.rightBarButtonItems = [NSArray arrayWithObject:dots];
-        else self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:dots, [[[NoshiShiroBarItem alloc] initWithShiro:_session.shiro host:self] autorelease], nil];
+        self.navigationItem.rightBarButtonItems = [NSArray arrayWithObject:dots];
     }
     BOOL hideSearch = NoshiChatFlagGet(NoshiChatFlagHideSearchBar);
     _search.hidden = hideSearch;

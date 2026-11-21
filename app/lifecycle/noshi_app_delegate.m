@@ -33,8 +33,6 @@
 #import "noshi_proxy_settings.h"
 #import "noshi_session_data.h"
 #import "noshi_platform.h"
-#import "noshi_shiro.h"
-#import "noshi_shiro_failure_prompt.h"
 #import "noshi_traffic_store.h"
 #import "noshi_splash_view.h"
 #import "noshi_split_controller.h"
@@ -67,8 +65,6 @@
     NoshiCall *_pendingCall;
     NoshiAvatarCache *_callAvatars;
     NoshiMediaCache *_callMedia;
-    NoshiShiro *_shiro;
-    NoshiShiroRoute _shiroRoute;
     /* a link that arrived before anyone was signed in, opened once the main screen exists */
     NSString *_pendingLink;
     /* the account that has the connection now; the first one is named "" */
@@ -110,7 +106,6 @@ static NSString *NoshiSupportDirectory(void) {
     NoshiNightCheck(NO);
     /* and before the splash, the window and the tab bar, which draw with the colors of the tone that is current, light until it is applied */
     NoshiThemeApplyStored();
-    NSString *directory = NoshiSupportDirectory();
     _activeAccount = [NoshiAccountActive() copy];
     NSString *accountDirectory = NoshiAccountDirectory(_activeAccount);
     BOOL signedIn = [NoshiSession hasAccountInDirectory:accountDirectory];
@@ -119,14 +114,6 @@ static NSString *NoshiSupportDirectory(void) {
     _session.callDelegate = self;
     _groupPresenter = [[NoshiGroupCallPresenter alloc] initWithTopController:^UIViewController *{ return _navigation; } host:^UIView *{ return _navigation.view; }];
     _session.groupCallDelegate = _groupPresenter;
-    /* the tunnel is wanted before the first connection, so a start with the VPN on never sends anything in the clear */
-    _shiro = [[NoshiShiro alloc] initWithDirectory:directory];
-    _session.shiro = _shiro;
-    NoshiShiroSetActive(_shiro);
-    _shiroRoute = _shiro.route;
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shiroChanged:)
-                                                 name:NoshiShiroStateDidChangeNotification object:_shiro];
-    [_shiro resume];
     [_session start];
     _notifier = [[NoshiNotifier alloc] initWithSession:_session];
     if (signedIn) [_notifier start];
@@ -263,18 +250,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     NoshiReleaseCheckStart(self.window);
 }
 
-/* the links follow the route: a tunnel that came up or dropped moves them to the other path */
-- (void)shiroChanged:(NSNotification *)note {
-    (void)note;
-    /* a tunnel that did not open says so on a card of its own, wherever the person is: the app sends nothing while the tunnel is wanted and down */
-    if (_shiro.state == NoshiShiroStateFailed && _shiro.enabled) NoshiShowShiroFailure(_shiro);
-    if (_shiro.route == _shiroRoute) return;
-    _shiroRoute = _shiro.route;
-    [_session routeChanged];
-    /* the session of a login of another account dialed meanwhile too, and waits on the old path */
-    [_addSession routeChanged];
-}
-
 - (void)proxyChanged:(NSNotification *)note {
     (void)note;
     [_session routeChanged];
@@ -408,9 +383,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     _session.delegate = nil;
     _session.callDelegate = nil;
     _session.groupCallDelegate = nil;
-    _session.shiro = nil;
-    NoshiShiroSetActive(nil);
-    [_shiro release];
     [_callScreen release];
     [_groupPresenter release];
     [_pendingCall release];
@@ -437,7 +409,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     }
     NoshiWelcomeController *welcome = [[[NoshiWelcomeController alloc] init] autorelease];
     welcome.delegate = self;
-    welcome.shiro = _shiro;
     return welcome;
 }
 
@@ -527,7 +498,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
             [self cancelAddAccount];
             [_navigation popToViewController:anchor animated:YES];
             duplicate.delegate = nil;
-            duplicate.shiro = nil;
             [duplicate signOut:^(NSString *errorName) {
                 if (errorName) NSLog(@"noshigram: the duplicate login was not ended on the server: %@", errorName);
                 [duplicate stop];
@@ -598,7 +568,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     session.delegate = self;
     session.callDelegate = self;
     session.groupCallDelegate = _groupPresenter;
-    session.shiro = _shiro;
 }
 
 /* the connection of an account that is no longer the active one is closed, so only one account is online */
@@ -606,7 +575,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     session.delegate = nil;
     session.callDelegate = nil;
     session.groupCallDelegate = nil;
-    session.shiro = nil;
     [session stop];
 }
 
@@ -669,7 +637,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     }
     _addName = [name copy];
     _addSession = [[NoshiSession alloc] initWithDirectory:NoshiAccountDirectory(name)];
-    _addSession.shiro = _shiro;
     [_addSession start];
     if (![self prepareLoginWithSession:_addSession]) {
         [self cancelAddAccount];
@@ -686,7 +653,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     [_login release];
     _login = nil;
     if (_addSession) {
-        _addSession.shiro = nil;
         [_addSession stop];
         [_addSession release];
         _addSession = nil;

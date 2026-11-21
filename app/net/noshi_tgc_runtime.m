@@ -11,11 +11,8 @@
 
 #import "noshi_call_audio.h"
 #import "noshi_call_video.h"
-#import "noshi_shiro.h"
-#import "noshi_shiro_network.h"
 
 #include "noshi_bytes.h"
-#include "noshi_udp.h"
 
 #define TICK_MS 20
 /* a key frame this often even when nobody asked: the other side's decoder starts from one, and the clients seen so far send no request when the first
@@ -32,8 +29,6 @@
 typedef struct {
     int fd;
     dispatch_source_t source;
-    /* a socket of the tunnel speaks frames and is not connected, so it remembers the reflector it stands for */
-    BOOL tunneled;
     uint32_t ip;
     uint16_t port;
 } NoshiTgcSocket;
@@ -97,18 +92,6 @@ static void NoshiTgcSendDatagram(void *context, unsigned index, const uint8_t *d
     NoshiTgcRuntime *runtime = (NoshiTgcRuntime *)context;
     if (index >= runtime->_socketCount || runtime->_sockets[index].fd < 0) return;
     /* a datagram the socket will not take now is lost, which the path does to datagrams as well; the protocols above resend what matters */
-    if (runtime->_sockets[index].tunneled) {
-        uint8_t frame[NOSHI_UDP_FRAME_HEADER + NOSHI_UDP_MAX_PAYLOAD];
-        size_t frame_len = 0;
-        if (noshi_udp_frame_encode(runtime->_sockets[index].ip, runtime->_sockets[index].port, data, len, frame, sizeof(frame), &frame_len) != NOSHI_OK) return;
-        if (send(runtime->_sockets[index].fd, frame, frame_len, 0) < 0) {
-            ++runtime->_txFailed;
-            runtime->_txErrno = errno;
-        } else {
-            ++runtime->_txCount;
-        }
-        return;
-    }
     if (send(runtime->_sockets[index].fd, data, len, 0) < 0) {
         ++runtime->_txFailed;
         runtime->_txErrno = errno;
@@ -250,7 +233,6 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
     _queue = dispatch_queue_create("noshigram.tgcalls", DISPATCH_QUEUE_SERIAL);
     for (i = 0; i < MAX_ENDPOINTS; ++i) {
         _sockets[i].fd = -1;
-        _sockets[i].tunneled = NO;
     }
     {
         NoshiTgcRuntime *runtime = self;
@@ -295,7 +277,6 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
     struct sockaddr_storage storage;
     socklen_t length;
     int fd, flags, on = 1;
-    int route = NoshiShiroNetworkRoute();
     if (index >= _config.reflector_count) {
         const noshi_tgc_call_turn *turn = &_config.turns[index - _config.reflector_count];
         memset(&turnAddress, 0, sizeof(turnAddress));
@@ -304,17 +285,6 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
         turnAddress.address[2] = (uint8_t)(turn->ip >> 8);
         turnAddress.address[3] = (uint8_t)turn->ip;
         turnAddress.port = turn->port;
-    }
-    /* a VPN that is wanted and not up carries nothing, and one that is up carries IPv4 only; neither falls back to the direct path */
-    if (route == (int)NoshiShiroRouteBlocked) return NO;
-    if (route == (int)NoshiShiroRouteTunnel) {
-        if (r->ipv6) return NO;
-        fd = -1;
-        if (NoshiShiroNetworkOpenDatagram(&fd) != NOSHI_OK) return NO;
-        _sockets[index].tunneled = YES;
-        _sockets[index].ip = noshi_get_u32be(r->address);
-        _sockets[index].port = r->port;
-        return [self watchSocket:index descriptor:fd];
     }
     memset(&storage, 0, sizeof(storage));
     if (r->ipv6) {
@@ -340,7 +310,6 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
         close(fd);
         return NO;
     }
-    _sockets[index].tunneled = NO;
     return [self watchSocket:index descriptor:fd];
 }
 
@@ -386,16 +355,6 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
         size_t payload_len = (size_t)n;
         if (n <= 0) break;
         ++_rxCount;
-        if (_sockets[index].tunneled) {
-            uint32_t ip = 0;
-            uint16_t port = 0;
-            /* a socket of the tunnel hears every peer; the call talks to one reflector, and a datagram from anyone else is not for it */
-            if (noshi_udp_frame_decode(buffer, (size_t)n, &ip, &port, &payload, &payload_len) != NOSHI_OK) continue;
-            if (ip != _sockets[index].ip || port != _sockets[index].port) {
-                ++_rxRefused;
-                continue;
-            }
-        }
         noshi_tgc_call_datagram(_call, (unsigned)index, payload, payload_len, NoshiTgcNowMs());
     }
 }
@@ -409,10 +368,8 @@ static BOOL NoshiTgcReflector(const noshi_call_connection *connection, uint8_t s
         unsigned in = 0, out = 0;
         _lastDiagnostic = now;
         noshi_tgc_call_diagnostics(_call, &ice, &dtls, &sctp, &in, &out);
-        unsigned long long tunnelIn = 0, tunnelOut = 0;
-        (void)NoshiShiroNetworkTransferred(&tunnelIn, &tunnelOut);
-        NSString *line = [NSString stringWithFormat:@"ice %d dtls %d sctp %d, signals in %u out %u, %llus, sockets rx %u refused %u tx %u failed %u (errno %d), tunnel in %llu out %llu",
-                          ice, dtls, sctp, in, out, (unsigned long long)((now - _startedAt) / 1000), _rxCount, _rxRefused, _txCount, _txFailed, _txErrno, tunnelIn, tunnelOut];
+        NSString *line = [NSString stringWithFormat:@"ice %d dtls %d sctp %d, signals in %u out %u, %llus, sockets rx %u refused %u tx %u failed %u (errno %d)",
+                          ice, dtls, sctp, in, out, (unsigned long long)((now - _startedAt) / 1000), _rxCount, _rxRefused, _txCount, _txFailed, _txErrno];
         @synchronized (self) {
             [_diagnostics release];
             _diagnostics = [line copy];

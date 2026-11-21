@@ -12,7 +12,7 @@ files=(resources/icons/*.png resources/launch/*.png resources/animations/*.tgs
     resources/phone/*.png resources/phone/*.txt resources/popup/*.jpg resources/popup/*.png
     resources/fonts/*.ttf resources/fonts/*.otf resources/fonts/*.txt
     resources/chat/*.jpg resources/chat/*.png resources/emoji/*.pack resources/emoji/*.txt
-    resources/licenses/*.txt resources/shiro/*.pem resources/maps/*.pem resources/web/*.pem
+    resources/licenses/*.txt resources/maps/*.pem resources/web/*.pem
     resources/sounds/*.caf resources/sounds/*.mp3)
 cp "${files[@]}" "${dest}/"
 cp resources/icons/Icon*.png "${dest}/noshigram-original-icons/"

@@ -1,6 +1,5 @@
 #import <UIKit/UIKit.h>
 
-#import "noshi_shiro.h"
 
 @class NoshiWelcomeController;
 
@@ -13,8 +12,5 @@
 @interface NoshiWelcomeController : UIViewController <UIScrollViewDelegate>
 
 @property (nonatomic, assign) id<NoshiWelcomeControllerDelegate> delegate;
-/* the VPN, whose button stands at the top right: a phone that cannot reach Telegram has to be able to turn it on
-   before it signs in */
-@property (nonatomic, assign) NoshiShiro *shiro;
 
 @end

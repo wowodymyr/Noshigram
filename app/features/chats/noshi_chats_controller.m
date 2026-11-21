@@ -30,7 +30,6 @@
 #import "noshi_animation.h"
 #import "noshi_platform.h"
 #import "noshi_popup_menu.h"
-#import "noshi_shiro_button.h"
 #import "noshi_story_strip.h"
 #import "noshi_symbol.h"
 #import "noshi_chat_settings.h"
@@ -67,7 +66,6 @@ static CGFloat NoshiChatsHeaderTop(void) {
     BOOL _archiveHidden;
     /* the channels the feed of unread channels has shown since the person opened one from this list */
     NSMutableSet *_feedSeen;
-    BOOL _vpnHidden;
     NoshiChatsMenu *_chatsMenu;
     NoshiDialogCell *_openCell;
     NoshiChatListStyle _listStyle;
@@ -239,7 +237,6 @@ static CGFloat NoshiChatsHeaderTop(void) {
     if (![heading isEqualToString:self.heading]) self.heading = heading;
     [self loadOwnTitle];
     [self syncStoriesWithSettings];
-    if (!_folderId && !self.showsBack && _vpnHidden != NoshiChatFlagGet(NoshiChatFlagHideVpnButton)) [self syncVpnButtonWithSettings];
     BOOL archiveChanged = _archiveHidden != NoshiArchiveHidden();
     _archiveHidden = NoshiArchiveHidden();
     if (archiveChanged) {
@@ -438,26 +435,14 @@ static CGFloat NoshiChatsHeaderTop(void) {
     [super dealloc];
 }
 
-/* the menu of the main list, with the VPN button left of it unless the settings hide it; the list gives the pair the width of both */
+/* the menu of the main list */
 - (void)syncVpnButtonWithSettings {
-    _vpnHidden = NoshiChatFlagGet(NoshiChatFlagHideVpnButton);
     UIButton *dots = [UIButton buttonWithType:UIButtonTypeCustom];
     [dots setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, NoshiColorTitle()) forState:UIControlStateNormal];
     [dots addTarget:self action:@selector(showMenu:) forControlEvents:UIControlEventTouchUpInside];
     dots.accessibilityLabel = NSLocalizedString(@"chats.menu", nil);
-    UIView *pair;
-    if (_vpnHidden) {
-        pair = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 52, 44)] autorelease];
-        dots.frame = CGRectMake(0, 0, 52, 44);
-    } else {
-        NoshiShiroButton *vpn = [[[NoshiShiroButton alloc] initWithShiro:self.session.shiro host:self] autorelease];
-        CGSize pill = [vpn preferredSize];
-        pair = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, pill.width + 4 + 52, 44)] autorelease];
-        vpn.frame = CGRectMake(0, (44 - pill.height) / 2, pill.width, pill.height);
-        vpn.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
-        dots.frame = CGRectMake(pill.width + 4, 0, 52, 44);
-        [pair addSubview:vpn];
-    }
+    UIView *pair = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 52, 44)] autorelease];
+    dots.frame = CGRectMake(0, 0, 52, 44);
     dots.autoresizingMask = UIViewAutoresizingFlexibleHeight;
     [pair addSubview:dots];
     self.barAccessory = pair;

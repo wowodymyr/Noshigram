@@ -245,7 +245,6 @@ typedef enum {
     NoshiChatFlagHideStories,                 /* the chat list has no strip of stories */
     NoshiChatFlagHideAllChatsTab,             /* the folders of the chat list do not offer the tab of all chats */
     NoshiChatFlagNoUnarchiveSwipe,            /* the swipe of a chat in the archive does nothing, so a chat does not leave it by a slip of the finger */
-    NoshiChatFlagHideVpnButton,               /* the chat list has no VPN button beside its menu */
     NoshiChatFlagFoxes,                       /* foxes fall over the chat list and the background of a chat */
     NoshiChatFlagHideWaves,                   /* the modern look draws no waves in the corners of the screens */
     NoshiChatFlagShowMessageEmojiStatus,

@@ -4,7 +4,6 @@
 #import "noshi_animation.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_platform.h"
-#import "noshi_shiro_network.h"
 #import "noshi_updater.h"
 #import "noshi_wave_progress.h"
 #include "noshi_https.h"
@@ -396,10 +395,9 @@ void NoshiFetchLatestRelease(void (^completion)(NSDictionary *, NSString *)) {
         request.roots_len = roots.length;
         request.timeout_ms = RELEASE_TIMEOUT_MS;
         request.max_response = RELEASE_RESPONSE_LIMIT;
-        request.connect_socket = NoshiShiroNetworkConnectSocket;
         noshi_status status = roots.length ? noshi_https_get(&request, &response) : NOSHI_E_STATE;
         NSString *error = nil;
-        /* api.github.com answers 403 or 429 once an address has used its 60 requests an hour, and the tunnel of shiro puts many phones behind one address.
+        /* api.github.com answers 403 or 429 once an address has used its 60 requests an hour, which a shared address reaches soon.
            the release page of the web site has no such limit and names the tag in its redirect; that one answer is read and nothing is retried. a connection
            to the api host that fails or times out takes the same way, since github.com can be reachable when it is not */
         if ((status == NOSHI_OK && (response.status == 403 || response.status == 429)) || status == NOSHI_E_IO || status == NOSHI_E_TIMEOUT) {
