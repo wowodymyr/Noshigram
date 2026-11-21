@@ -110,6 +110,8 @@ APPLICATION_NAME = Noshigram
 Noshigram_FILES = $(APP_FILES) $(CORE_FILES) $(WEBP_FILES) $(OPUS_FILES) $(ZBAR_FILES) $(RLOTTIE_FILES) $(TGVOIP_FILES)
 Noshigram_USE_MODULES = 0
 Noshigram_CFLAGS = -O2 -g $(CORE_INCLUDES)
+# developer builds: a picture of the screen on request, see app/lifecycle/noshi_dev_screen.m
+Noshigram_CFLAGS += $(if $(NOSHI_DEV),-DNOSHI_DEV)
 Noshigram_FRAMEWORKS = UIKit Foundation Security CoreGraphics QuartzCore ImageIO CoreText AVFoundation CoreMedia \
     CoreVideo CoreAudio AudioToolbox CoreLocation Accelerate MobileCoreServices CFNetwork
 Noshigram_WEAK_FRAMEWORKS = OpenGLES CoreMotion AssetsLibrary AddressBook AddressBookUI MediaPlayer

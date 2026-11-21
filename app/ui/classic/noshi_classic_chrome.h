@@ -1,5 +1,7 @@
 #import <UIKit/UIKit.h>
 
+#import "noshi_tab_icons.h"
+
 #import "noshi_symbol.h"
 
 /* the classic style leaves the drawing to UIKit */
@@ -48,10 +50,10 @@ CGFloat NoshiClassicGroupedTextInset(CGFloat width);
 UIView *NoshiClassicGroupedHeader(NSString *text, CGFloat width, CGFloat height, UIColor *color);
 UIView *NoshiClassicGroupedFooter(NSString *text, CGFloat width, CGFloat height);
 
-/* a tab bar picture: the system tints only the shape, so it is drawn black on clear */
-UIImage *NoshiClassicTabImage(NoshiSymbol symbol);
-/* titles and glyphs that stay readable on the purple bar; the system draws a resting tab in grey, which vanishes on it */
-void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiSymbol symbol);
+/* the title and the picture of a tab in the colors of the flat bar: grey at rest, the accent when chosen */
+void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiTabIcon icon);
+/* the grey of a tab at rest */
+UIColor *NoshiTabBarRestingColor(void);
 
 /* the round record or send button of the message bar: a glossy purple dome with its glyph, drawn whole so it needs no layers */
 UIImage *NoshiClassicRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL pressed);

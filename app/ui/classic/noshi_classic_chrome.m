@@ -1,4 +1,5 @@
 #import "noshi_classic_chrome.h"
+#import "noshi_tab_icons.h"
 #import "noshi_imported_theme.h"
 #import "noshi_status_label.h"
 
@@ -401,16 +402,43 @@ CGFloat NoshiClassicTabBarHeight(void) {
     return height;
 }
 
+/* the bottom bar of telegram for ios of the 2014 to 2018 years: flat and light (dark at night), a hairline on top, grey pictures and the
+   accent on the chosen one. ios 5 and 6 draw it from a picture of their own, so the gloss and the black of the system never show */
+static UIColor *NoshiTabBarGround(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.11 green:0.11 blue:0.114 alpha:1] : [UIColor colorWithRed:0.969 green:0.969 blue:0.969 alpha:1]; }
+static UIColor *NoshiTabBarLine(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.24 green:0.24 blue:0.25 alpha:1] : [UIColor colorWithRed:0.698 green:0.698 blue:0.698 alpha:1]; }
+UIColor *NoshiTabBarRestingColor(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.5 green:0.5 blue:0.52 alpha:1] : [UIColor colorWithRed:0.573 green:0.573 blue:0.573 alpha:1]; }
+
+static UIImage *NoshiTabBarGroundImage(void) {
+    CGFloat scale = NoshiScreenScale(), hairline = 1.0f / scale;
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 49), YES, scale);
+    [NoshiTabBarGround() setFill];
+    UIRectFill(CGRectMake(0, 0, 1, 49));
+    [NoshiTabBarLine() setFill];
+    UIRectFill(CGRectMake(0, 0, 1, hairline));
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
+static UIImage *NoshiClearImage(void) {
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 1), NO, 0);
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
 void NoshiClassicStyleTabBar(UITabBar *bar) {
     if (NoshiClassicIsFlatSystem()) {
-        [bar setValue:NoshiClassicBarColor() forKey:@"barTintColor"];
-        [bar setValue:[UIColor whiteColor] forKey:@"tintColor"];
+        [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
+        [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
         [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
-    } else {
-        [bar setTintColor:NoshiClassicBarColor()];
-        /* the selected glyph glows in white on the purple bar */
-        [bar setSelectedImageTintColor:[UIColor whiteColor]];
+        return;
     }
+    [bar setBackgroundImage:NoshiTabBarGroundImage()];
+    [bar setSelectionIndicatorImage:NoshiClearImage()];
+    /* ios 6 lays a shadow of its own over the top edge, which the hairline already is */
+    if ([bar respondsToSelector:@selector(setShadowImage:)]) [bar setShadowImage:NoshiClearImage()];
+    [bar setSelectedImageTintColor:NoshiColorAccent()];
 }
 
 UITableViewCellSeparatorStyle NoshiClassicListSeparatorStyle(BOOL hasRows) {
@@ -529,23 +557,19 @@ void NoshiClassicStyleCell(UITableViewCell *cell) {
     cell.detailTextLabel.textColor = NoshiColorSecondary();
 }
 
-void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiSymbol symbol) {
-    UIColor *resting = NoshiThemeTinted([UIColor colorWithRed:0.78 green:0.87 blue:0.96 alpha:1]);
-    NSDictionary *restingText = [NSDictionary dictionaryWithObjectsAndKeys:resting, UITextAttributeTextColor,
+void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiTabIcon icon) {
+    UIColor *resting = NoshiTabBarRestingColor(), *chosen = NoshiColorAccent();
+    UIFont *font = [UIFont systemFontOfSize:10];
+    NSDictionary *restingText = [NSDictionary dictionaryWithObjectsAndKeys:resting, UITextAttributeTextColor, font, UITextAttributeFont,
                                  [UIColor clearColor], UITextAttributeTextShadowColor, nil];
-    NSDictionary *selectedText = [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor], UITextAttributeTextColor,
-                                  [UIColor clearColor], UITextAttributeTextShadowColor, nil];
+    NSDictionary *chosenText = [NSDictionary dictionaryWithObjectsAndKeys:chosen, UITextAttributeTextColor, font, UITextAttributeFont,
+                                [UIColor clearColor], UITextAttributeTextShadowColor, nil];
     [item setTitleTextAttributes:restingText forState:UIControlStateNormal];
-    [item setTitleTextAttributes:selectedText forState:UIControlStateSelected];
-    /* the resting glyph is drawn as given on ios 5, so it carries its own color; the template tint would turn it grey */
+    [item setTitleTextAttributes:chosenText forState:UIControlStateSelected];
+    /* both pictures carry their own color, so the system neither greys nor glosses them */
     if ([item respondsToSelector:@selector(setFinishedSelectedImage:withFinishedUnselectedImage:)]) {
-        [item setFinishedSelectedImage:NoshiSymbolImage(symbol, 28, [UIColor whiteColor])
-           withFinishedUnselectedImage:NoshiSymbolImage(symbol, 28, resting)];
+        [item setFinishedSelectedImage:NoshiTabIconImage(icon, chosen) withFinishedUnselectedImage:NoshiTabIconImage(icon, resting)];
     }
-}
-
-UIImage *NoshiClassicTabImage(NoshiSymbol symbol) {
-    return NoshiSymbolImage(symbol, 28, [UIColor blackColor]);
 }
 
 static UIImage *NoshiClassicRoundImageMade(NoshiSymbol symbol, CGFloat side, BOOL pressed, BOOL red);

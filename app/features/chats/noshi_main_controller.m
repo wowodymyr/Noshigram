@@ -59,9 +59,10 @@ static NSString *NoshiTabTitle(NSInteger kind) {
     return NSLocalizedString(keys[kind], nil);
 }
 
-static NoshiSymbol NoshiTabSymbol(NSInteger kind) {
-    static const NoshiSymbol symbols[] = {NoshiSymbolChats, NoshiSymbolPerson, NoshiSymbolGear, NoshiSymbolSmiley, NoshiSymbolPhone};
-    return symbols[kind];
+/* the profile tab wears the photo once it is here, and the person in the ring until then */
+static NoshiTabIcon NoshiTabIconOfKind(NSInteger kind) {
+    static const NoshiTabIcon icons[] = {NoshiTabIconChats, NoshiTabIconContacts, NoshiTabIconSettings, NoshiTabIconContacts, NoshiTabIconCalls};
+    return icons[kind];
 }
 
 #define CLASSIC_BADGE_TAG 0x4258
@@ -285,7 +286,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         [screens addObject:screen];
     }
     for (NSUInteger i = 0; i < screens.count; ++i) {
-        NoshiSymbol symbol = NoshiTabSymbol(_kinds[i]);
+        NoshiTabIcon icon = NoshiTabIconOfKind(_kinds[i]);
         UINavigationController *navigation = [[[NoshiSplitNavigationController alloc] initWithRootViewController:[screens objectAtIndex:i]] autorelease];
         [(NoshiSplitNavigationController *)navigation setDetailHost:_detailHost];
         NoshiClassicStyleNavigationBar(navigation.navigationBar);
@@ -295,8 +296,8 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         if (!_classicBackSwipes) _classicBackSwipes = [[NSMutableArray alloc] init];
         [_classicBackSwipes addObject:backSwipe];
         [backSwipe release];
-        navigation.tabBarItem = [[[UITabBarItem alloc] initWithTitle:NoshiTabTitle(_kinds[i]) image:NoshiClassicTabImage(symbol) tag:(NSInteger)i] autorelease];
-        NoshiClassicStyleTabItem(navigation.tabBarItem, symbol);
+        navigation.tabBarItem = [[[UITabBarItem alloc] initWithTitle:NoshiTabTitle(_kinds[i]) image:NoshiTabIconImage(icon, NoshiTabBarRestingColor()) tag:(NSInteger)i] autorelease];
+        NoshiClassicStyleTabItem(navigation.tabBarItem, icon);
         [navigations addObject:navigation];
     }
     _classicTabs = [[UITabBarController alloc] init];
@@ -335,8 +336,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 - (void)showClassicProfilePhoto:(UIImage *)photo onItem:(UITabBarItem *)item {
     if (![item respondsToSelector:@selector(setFinishedSelectedImage:withFinishedUnselectedImage:)]) return;
     if (!photo) {
-        /* nil takes the finished pictures away, and the plain tab picture the item was made with shows again */
-        [item setFinishedSelectedImage:nil withFinishedUnselectedImage:nil];
+        NoshiClassicStyleTabItem(item, NoshiTabIconContacts);
         return;
     }
     UIImage *tab = NoshiClassicProfileTabImage(photo);
