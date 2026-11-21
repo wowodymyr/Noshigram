@@ -1,0 +1,89 @@
+#import <Foundation/Foundation.h>
+
+#include "noshi_people.h"
+
+@class NoshiPhoto;
+
+/* a user as the contact list and the settings screen show it; no UIKit object, so it can be built off the main thread */
+/* the document of an emoji status that has not ended, by the unix time it ends (zero for never); zero for none */
+long long NoshiLiveEmojiStatus(long long document, int32_t until);
+
+@interface NoshiPerson : NSObject {
+    long long _userId;
+    long long _accessHash;
+    BOOL _bot;
+    BOOL _botInline;
+    BOOL _botInlineGeo;
+    NSString *_botPlaceholder;
+    BOOL _verified;
+    BOOL _contact;
+    BOOL _mutual;
+    BOOL _premium;
+    long long _emojiStatus;
+    long long _emojiStatusCollectible;
+    NSInteger _nameColor;
+    noshi_presence _presence;
+    int32_t _seen;
+    NSString *_name;
+    NSString *_username;
+    NSString *_phone;
+    NSString *_initials;
+    NoshiPhoto *_photo;
+    BOOL _hasProfileColor;
+    NSInteger _profileColorId;
+    long long _profileColorEmoji;
+    BOOL _hasBackdrop;
+    uint32_t _backdropCenter, _backdropEdge, _backdropPattern, _backdropText;
+    long long _backdropPatternDocument;
+    NSString *_backdropTitle;
+}
+@property (nonatomic, readonly) long long userId;
+/* what a request that names this user needs, zero when none is known */
+@property (nonatomic, readonly) long long accessHash;
+@property (nonatomic, readonly) BOOL bot;
+/* a bot that answers @name queries in any chat, and the hint it gives for the query; asks for the location with them */
+@property (nonatomic, readonly) BOOL botInline;
+@property (nonatomic, readonly) BOOL botInlineGeo;
+@property (nonatomic, readonly, copy) NSString *botPlaceholder;
+/* a bot with a main web app, and one that can be added to the attachment menu */
+@property (nonatomic, readonly) BOOL verified;
+/* in the contacts of the account */
+@property (nonatomic, readonly) BOOL contact;
+/* and the account is in the contacts of this person too, which marks with two arrows on the row */
+@property (nonatomic, readonly) BOOL mutual;
+/* Telegram Premium, which lets the person write custom emoji */
+@property (nonatomic, readonly) BOOL premium;
+/* the custom emoji document shown after the name, zero without one or once it has run out */
+@property (nonatomic, readonly) long long emojiStatus;
+/* the id of the unique gift worn as the status, zero when the status is no gift */
+@property (nonatomic, readonly) long long emojiStatusCollectible;
+/* the id of the color the person chose for their name in groups, -1 when they chose none and the id decides */
+@property (nonatomic, readonly) NSInteger nameColor;
+/* the colored ground of the profile from a collectible profile color or status; the colors as 0xRRGGBB, the emoji that tiles it, and the name of the collectible */
+/* the profile color the person picked from the server's list: its id, and the emoji that tiles it; the colors are in NoshiProfileColors */
+@property (nonatomic, readonly) BOOL hasProfileColor;
+@property (nonatomic, readonly) NSInteger profileColorId;
+@property (nonatomic, readonly) long long profileColorEmoji;
+@property (nonatomic, readonly) BOOL hasBackdrop;
+@property (nonatomic, readonly) uint32_t backdropCenter;
+@property (nonatomic, readonly) uint32_t backdropEdge;
+@property (nonatomic, readonly) uint32_t backdropPattern;
+@property (nonatomic, readonly) uint32_t backdropText;
+@property (nonatomic, readonly) long long backdropPatternDocument;
+@property (nonatomic, readonly, copy) NSString *backdropTitle;
+@property (nonatomic, readonly) noshi_presence presence;
+/* the account is gone: the avatar is the ghost and the status reads "a very long time ago" */
+@property (nonatomic, readonly) BOOL deleted;
+@property (nonatomic, readonly) int32_t seen;
+@property (nonatomic, readonly, copy) NSString *name;
+@property (nonatomic, readonly, copy) NSString *username;
+@property (nonatomic, readonly, copy) NSString *phone;
+@property (nonatomic, readonly, copy) NSString *initials;
+@property (nonatomic, readonly, retain) NoshiPhoto *photo;
+
+- (id)initWithRow:(const noshi_person_row *)row;
+
+@end
+
+/* up to two letters from the first two words, empty when the name starts with symbols only */
+NSString *NoshiInitialsOfName(NSString *name);

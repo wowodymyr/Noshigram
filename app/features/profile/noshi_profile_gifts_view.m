@@ -1,0 +1,257 @@
+#import "noshi_profile_gifts_view.h"
+
+#import <QuartzCore/QuartzCore.h>
+#import <CoreGraphics/CoreGraphics.h>
+
+#import "noshi_classic_chrome.h"
+#import "noshi_gift_backdrop_view.h"
+#import "noshi_theme.h"
+#import "noshi_platform.h"
+#import "noshi_star_gift.h"
+
+#define SLOT_COUNT 6
+#define GIFT_SIDE 34.0
+#define GLOW_SIDE 66.0
+
+/* offsets from the center of the photo, left side first, for a photo of 96 points */
+static const CGPoint NoshiGiftSlots[SLOT_COUNT] = {
+    {-72, -57}, {-148, -3}, {-95, 52}, {92, -47}, {149, -2}, {109, 55}
+};
+
+/* the soft light behind a gift: the color of its backdrop at the middle, fading to nothing at the edge, with three small sparkles round it */
+@interface NoshiGiftGlowView : UIView {
+    UIColor *_color;
+}
+@property (nonatomic, retain) UIColor *color;
+@end
+
+@implementation NoshiGiftGlowView
+
+@synthesize color = _color;
+
+- (id)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+    self.backgroundColor = [UIColor clearColor];
+    self.opaque = NO;
+    return self;
+}
+
+- (void)dealloc {
+    [_color release];
+    [super dealloc];
+}
+
+- (void)setColor:(UIColor *)color {
+    if (color == _color) return;
+    [_color release];
+    _color = [color retain];
+    [self setNeedsDisplay];
+}
+
+static void NoshiDrawSparkle(CGContextRef context, CGPoint center, CGFloat radius) {
+    CGContextMoveToPoint(context, center.x, center.y - radius);
+    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x + radius, center.y);
+    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x, center.y + radius);
+    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x - radius, center.y);
+    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x, center.y - radius);
+    CGContextFillPath(context);
+}
+
+/* the classic gift stands on a glass medallion: the color of its backdrop lit from above, a dark rim over a lit one, a gloss on the upper half and a shadow under the disc */
+- (void)drawMedallion {
+    CGFloat red = 0.45, green = 0.40, blue = 0.62, alpha = 0;
+    if (_color) [_color getRed:&red green:&green blue:&blue alpha:&alpha];
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGFloat side = self.bounds.size.width;
+    CGRect disc = CGRectMake(side * 0.12, side * 0.1, side * 0.76, side * 0.76);
+    CGContextSaveGState(context);
+    CGContextSetShadowWithColor(context, CGSizeMake(0, 2), 3, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
+    [[UIColor colorWithRed:red * 0.6 green:green * 0.6 blue:blue * 0.6 alpha:1] setFill];
+    CGContextFillEllipseInRect(context, disc);
+    CGContextRestoreGState(context);
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+    CGFloat body[] = {MIN(1, red + (1 - red) * 0.35), MIN(1, green + (1 - green) * 0.35), MIN(1, blue + (1 - blue) * 0.35), 1,
+                      red, green, blue, 1,
+                      red * 0.7, green * 0.7, blue * 0.7, 1};
+    CGFloat at[] = {0, 0.5, 1};
+    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, body, at, 3);
+    CGContextSaveGState(context);
+    CGRect face = CGRectInset(disc, 1.5, 1.5);
+    CGContextAddEllipseInRect(context, face);
+    CGContextClip(context);
+    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, face.origin.y), CGPointMake(0, CGRectGetMaxY(face)), 0);
+    CGFloat shine[] = {1, 1, 1, 0.5, 1, 1, 1, 0.06};
+    CGGradientRef gloss = CGGradientCreateWithColorComponents(space, shine, NULL, 2);
+    CGContextAddEllipseInRect(context, CGRectMake(face.origin.x + face.size.width * 0.08, face.origin.y - face.size.height * 0.1, face.size.width * 0.84, face.size.height * 0.62));
+    CGContextClip(context);
+    CGContextDrawLinearGradient(context, gloss, CGPointMake(0, face.origin.y), CGPointMake(0, face.origin.y + face.size.height * 0.52), 0);
+    CGContextRestoreGState(context);
+    CGGradientRelease(gloss);
+    CGGradientRelease(gradient);
+    CGColorSpaceRelease(space);
+    [[UIColor colorWithRed:red * 0.45 green:green * 0.45 blue:blue * 0.45 alpha:1] setStroke];
+    CGContextSetLineWidth(context, 1);
+    CGContextStrokeEllipseInRect(context, CGRectInset(disc, 0.5, 0.5));
+    [[UIColor colorWithWhite:1 alpha:0.45] setStroke];
+    CGContextStrokeEllipseInRect(context, CGRectInset(disc, 1.5, 1.5));
+}
+
+- (void)drawRect:(CGRect)rect {
+    (void)rect;
+    if (NoshiThemeIsClassic()) {
+        [self drawMedallion];
+        return;
+    }
+    if (!_color) return;
+    CGFloat red = 0, green = 0, blue = 0, alpha = 0;
+    [_color getRed:&red green:&green blue:&blue alpha:&alpha];
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
+    CGFloat components[8] = {red, green, blue, 0.62, red, green, blue, 0};
+    CGFloat locations[2] = {0, 1};
+    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, components, locations, 2);
+    CGPoint middle = CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
+    CGContextDrawRadialGradient(context, gradient, middle, 0, middle, self.bounds.size.width / 2, 0);
+    CGGradientRelease(gradient);
+    CGColorSpaceRelease(space);
+    CGContextSetRGBFillColor(context, 1, 1, 1, 0.8);
+    CGFloat unit = self.bounds.size.width / 66.0;
+    NoshiDrawSparkle(context, CGPointMake(middle.x + 22 * unit, middle.y - 24 * unit), 3.2 * unit);
+    NoshiDrawSparkle(context, CGPointMake(middle.x - 24 * unit, middle.y + 18 * unit), 2.6 * unit);
+    NoshiDrawSparkle(context, CGPointMake(middle.x - 16 * unit, middle.y - 26 * unit), 1.8 * unit);
+}
+
+@end
+
+@interface NoshiProfileGiftsView () {
+    NoshiMediaCache *_media;
+    NoshiGiftGlowView *_glows[SLOT_COUNT];
+    UIImageView *_pictures[SLOT_COUNT];
+    NSUInteger _count;
+    NSUInteger _token;
+    CGPoint _focus;
+}
+@end
+
+@implementation NoshiProfileGiftsView
+
+@synthesize focus = _focus;
+
++ (NSUInteger)capacity { return SLOT_COUNT; }
+
+- (id)initWithMedia:(NoshiMediaCache *)media {
+    self = [super initWithFrame:CGRectZero];
+    if (!self) return nil;
+    _media = [media retain];
+    self.userInteractionEnabled = NO;
+    for (NSUInteger i = 0; i < SLOT_COUNT; ++i) {
+        _glows[i] = [[NoshiGiftGlowView alloc] init];
+        _glows[i].hidden = YES;
+        [self addSubview:_glows[i]];
+        _pictures[i] = [[UIImageView alloc] init];
+        _pictures[i].contentMode = UIViewContentModeScaleAspectFit;
+        _pictures[i].hidden = YES;
+        [self addSubview:_pictures[i]];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    for (NSUInteger i = 0; i < SLOT_COUNT; ++i) {
+        [_glows[i] release];
+        [_pictures[i] release];
+    }
+    [_media release];
+    [super dealloc];
+}
+
+- (void)setGifts:(NSArray *)gifts {
+    NSUInteger token = ++_token;
+    NSUInteger slot = 0;
+    for (NoshiSavedGift *saved in gifts) {
+        if (slot >= SLOT_COUNT) break;
+        if (!saved.pinned || !saved.gift.unique || !saved.gift.sticker) continue;
+        [self showGift:saved.gift inSlot:slot token:token];
+        ++slot;
+    }
+    _count = slot;
+    for (NSUInteger i = slot; i < SLOT_COUNT; ++i) {
+        _glows[i].hidden = YES;
+        _pictures[i].hidden = YES;
+        _pictures[i].image = nil;
+    }
+    [self setNeedsLayout];
+}
+
+- (void)showGift:(NoshiStarGift *)gift inSlot:(NSUInteger)slot token:(NSUInteger)token {
+    /* the light shows with the picture, so a gift that has not loaded does not leave an empty disc */
+    _glows[slot].hidden = YES;
+    _glows[slot].color = gift.hasBackdropColors ? NoshiGiftRgb(gift.backdropCenter) : nil;
+    /* the classic gift always stands on its medallion, in the slate of the app when it has no backdrop */
+    BOOL medallion = NoshiThemeIsClassic();
+    _pictures[slot].hidden = NO;
+    _pictures[slot].image = nil;
+    NoshiMedia *sticker = gift.sticker;
+    /* an animated sticker is shown by its thumbnail, the file of a static one is its picture */
+    BOOL still = sticker.stickerFormat == NOSHI_STICKER_STATIC;
+    NoshiRemoteFile *file = still ? sticker.file : sticker.previewFile;
+    if (!file) {
+        NSLog(@"noshigram: pinned gift %lld has no picture to show round the photo", gift.giftId);
+        return;
+    }
+    CGFloat pixels = GIFT_SIDE * NoshiScreenScale();
+    UIImage *ready = [_media cachedImageForFile:file maxSide:pixels];
+    BOOL glows = gift.hasBackdropColors || medallion;
+    if (ready) {
+        _pictures[slot].image = ready;
+        _glows[slot].hidden = !glows;
+        return;
+    }
+    [_media loadImageForFile:file maxSide:pixels completion:^(UIImage *image) {
+        if (token != _token || !image) return;
+        _pictures[slot].image = image;
+        _glows[slot].hidden = !glows;
+    }];
+}
+
+/* each gift rises and sinks a couple of points on its own beat, the light and the picture together; a layer animation, so it costs no layout and stops with the window */
+- (void)startLevitating {
+    BOOL motion = self.window && !NoshiReduceMotionEnabled();
+    for (NSUInteger i = 0; i < SLOT_COUNT; ++i) {
+        for (UIView *view in [NSArray arrayWithObjects:_glows[i], _pictures[i], nil]) {
+            [view.layer removeAnimationForKey:@"noshigram.levitate"];
+            if (!motion) continue;
+            CABasicAnimation *drift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+            drift.fromValue = [NSNumber numberWithDouble:-1.8];
+            drift.toValue = [NSNumber numberWithDouble:1.8];
+            drift.duration = 2.4 + 0.35 * (double)i;
+            drift.autoreverses = YES;
+            drift.repeatCount = HUGE_VALF;
+            drift.timeOffset = 0.5 * (double)i;
+            drift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+            [view.layer addAnimation:drift forKey:@"noshigram.levitate"];
+        }
+    }
+}
+
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+    [self startLevitating];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat room = self.bounds.size.width / 2 - 8;
+    for (NSUInteger i = 0; i < SLOT_COUNT; ++i) {
+        CGPoint offset = NoshiGiftSlots[i];
+        /* a narrow screen pulls the outer gifts in so none leaves the head */
+        CGFloat limit = room - GLOW_SIDE / 2;
+        if (fabs(offset.x) > limit) offset.x = offset.x < 0 ? -limit : limit;
+        CGPoint center = CGPointMake(_focus.x + offset.x, _focus.y + offset.y);
+        _glows[i].frame = CGRectMake(center.x - GLOW_SIDE / 2, center.y - GLOW_SIDE / 2, GLOW_SIDE, GLOW_SIDE);
+        _pictures[i].frame = CGRectMake(center.x - GIFT_SIDE / 2, center.y - GIFT_SIDE / 2, GIFT_SIDE, GIFT_SIDE);
+    }
+}
+
+@end

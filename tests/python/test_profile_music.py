@@ -1,6 +1,6 @@
 """the requests a plugin may send (Saved Messages, the saved music of the profile), and an audio file sent to Saved Messages with the attributes
 a send hook sets. the app is the stand-in of fakeapp.py; the real playlist_to_profile plugin runs its own helpers over it when
-EXTERIA_PLAYLIST_PLUGIN names its file"""
+NOSHI_PLAYLIST_PLUGIN names its file"""
 
 import os
 import shutil
@@ -18,7 +18,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 from java.lang import Integer  # noqa: E402
 from org.telegram.tgnet import TLRPC, requests  # noqa: E402
@@ -62,12 +62,12 @@ class Tagger(BasePlugin):
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-music-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-music-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -266,17 +266,17 @@ class Audio(unittest.TestCase):
     def setUp(self):
         fake.saved.update(messages=[], music=[], next_id=100, calls=[], errors={}, inbox=[])
         fake.settings.clear()
-        self.cache = tempfile.mkdtemp(prefix="exteria-song-")
+        self.cache = tempfile.mkdtemp(prefix="noshigram-song-")
         self.path = os.path.join(self.cache, "song.mp3")
         with open(self.path, "wb") as handle:
             handle.write(b"x" * 321)
         path = os.path.join(PLUGINS, "tagger.plugin")
         with open(path, "w") as handle:
             handle.write(TAGGER % {"id": "tagger"})
-        self.assertTrue(exteria_host.load(path, "tagger")["ok"])
+        self.assertTrue(noshi_host.load(path, "tagger")["ok"])
 
     def tearDown(self):
-        exteria_host.unload("tagger")
+        noshi_host.unload("tagger")
         shutil.rmtree(self.cache, ignore_errors=True)
 
     def wait_sent(self):
@@ -285,7 +285,7 @@ class Audio(unittest.TestCase):
             # send_audio hands the work to the ui thread of the app, which is a token this thread runs
             due, fake.timers[:] = list(fake.timers), []
             for token, _delay in due:
-                exteria_host.run_token(token)
+                noshi_host.run_token(token)
             fake.deliver()
             if fake.saved["messages"]:
                 return fake.saved["messages"][-1]
@@ -311,7 +311,7 @@ class Audio(unittest.TestCase):
         send_audio(fake.me, stopped, caption="x")
         due, fake.timers[:] = list(fake.timers), []
         for token, _delay in due:
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         fake.deliver()
         self.assertEqual([c for c in fake.saved["calls"] if c[0] == "send_audio"], [])
 
@@ -350,7 +350,7 @@ def worked(function):
     while thread.is_alive() and time.time() < end:
         due, fake.timers[:] = list(fake.timers), []
         for token, _delay in due:
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         if not fake.deliver():
             time.sleep(0.005)
     thread.join(1)
@@ -359,23 +359,23 @@ def worked(function):
     return box["value"]
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_PLAYLIST_PLUGIN"), "set EXTERIA_PLAYLIST_PLUGIN to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_PLAYLIST_PLUGIN"), "set NOSHI_PLAYLIST_PLUGIN to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     """the helpers of playlist_to_profile over the stand-in app: find a message it sent, save and clear songs, delete a message"""
 
     def setUp(self):
         fake.saved.update(messages=[], music=[], next_id=100, calls=[], errors={}, inbox=[])
         self.path = os.path.join(PLUGINS, "playlist_to_profile.plugin")
-        shutil.copy(os.environ["EXTERIA_PLAYLIST_PLUGIN"], self.path)
-        lib = os.environ.get("EXTERIA_PYTHON_LIB")
+        shutil.copy(os.environ["NOSHI_PLAYLIST_PLUGIN"], self.path)
+        lib = os.environ.get("NOSHI_PYTHON_LIB")
         if lib:
             sys.path.insert(0, lib)
-        self.assertTrue(exteria_host.load(self.path, "playlist_to_profile")["ok"])
+        self.assertTrue(noshi_host.load(self.path, "playlist_to_profile")["ok"])
         import gc
         self.plugin = next(o for o in gc.get_objects() if not isinstance(o, type) and hasattr(type(o), "_find_new_audio") and hasattr(type(o), "_save_music"))
 
     def tearDown(self):
-        exteria_host.unload("playlist_to_profile")
+        noshi_host.unload("playlist_to_profile")
 
     def test_it_finds_the_message_it_sent_and_puts_the_song_on_the_profile(self):
         fake.saved["messages"] = [{"id": 90, "text": "old", "date": 1}]

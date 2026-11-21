@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""resolve exteria crash stacks against the executable from the same build."""
+"""resolve noshigram crash stacks against the executable from the same build."""
 
 import argparse
 import re

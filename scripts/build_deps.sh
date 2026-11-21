@@ -39,7 +39,9 @@ for slice in ${NOSHI_SLICES:-armv7 arm64}; do
             # the ios configs of openssl put their own sysroot at $CROSS_TOP/SDKs/$CROSS_SDK
             mkdir -p "$OUT/sdkroot/SDKs" && ln -sfn "$SDK" "$OUT/sdkroot/SDKs/iPhoneOS.sdk"
             export CROSS_TOP="$OUT/sdkroot" CROSS_SDK=iPhoneOS.sdk
-            CC="$TC/clang $flags" AR="$TC/llvm-ar" RANLIB="$TC/llvm-ranlib" \
+            # armv7 has no 64 bit atomics in the ios 5 runtime, openssl falls back to its locks
+            extra=""; [[ "$slice" == armv7 ]] && extra="-DBROKEN_CLANG_ATOMICS"
+            CC="$TC/clang $flags $extra" AR="$TC/llvm-ar" RANLIB="$TC/llvm-ranlib" \
             "$SRC/openssl-$OPENSSL_VER/Configure" "$ossl" no-shared no-async no-tests no-ui-console no-engine \
                 no-dso no-asm --prefix="$prefix" --openssldir=/var/mobile/Library/Noshigram/ssl
             make -j"$JOBS" build_libs

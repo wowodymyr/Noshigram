@@ -362,29 +362,29 @@ def emit(schema, outdir):
         first_field.append(total)
         total += len(c.fields)
 
-    lines = ["/* regenerate from the pinned schemas so constructor metadata stays consistent */", '#include "exteria_tl_schema.h"', ""]
-    lines.append("const uint32_t exteria_tl_layer = %d;" % schema.layer)
+    lines = ["/* regenerate from the pinned schemas so constructor metadata stays consistent */", '#include "noshi_tl_schema.h"', ""]
+    lines.append("const uint32_t noshi_tl_layer = %d;" % schema.layer)
     lines.append("")
-    lines.append("const char *const exteria_tl_type_names[] = {")
+    lines.append("const char *const noshi_tl_type_names[] = {")
     for n in schema.type_names:
         lines.append("    %s," % c_str(n))
     lines.append("};")
-    lines.append("const uint32_t exteria_tl_type_name_count = %d;" % len(schema.type_names))
+    lines.append("const uint32_t noshi_tl_type_name_count = %d;" % len(schema.type_names))
     lines.append("")
-    lines.append("const exteria_tl_type exteria_tl_types[] = {")
+    lines.append("const noshi_tl_type noshi_tl_types[] = {")
     for t, elem_ref in schema.types:
         arg = schema.type_name_id[t.name] if t.kind == "OBJECT" else elem_ref
-        lines.append("    { EXTERIA_TL_K_%s, %d, %d }," % (t.kind, 1 if t.bare else 0, arg))
+        lines.append("    { NOSHI_TL_K_%s, %d, %d }," % (t.kind, 1 if t.bare else 0, arg))
     lines.append("};")
-    lines.append("const uint32_t exteria_tl_type_count = %d;" % len(schema.types))
+    lines.append("const uint32_t noshi_tl_type_count = %d;" % len(schema.types))
     lines.append("")
-    lines.append("const int32_t exteria_tl_bare_ctor[] = {")
+    lines.append("const int32_t noshi_tl_bare_ctor[] = {")
     index_of = {id(c): i for i, c in enumerate(schema.ctors)}
     for n, c in zip(schema.type_names, schema.bare_ctor):
         lines.append("    %d," % (index_of[id(c)] if c is not None else -1))
     lines.append("};")
     lines.append("")
-    lines.append("const exteria_tl_field exteria_tl_fields[] = {")
+    lines.append("const noshi_tl_field noshi_tl_fields[] = {")
     for c in schema.ctors:
         names = [f[0] for f in c.fields]
         for f, ref in zip(c.fields, c.field_refs):
@@ -394,32 +394,32 @@ def emit(schema, outdir):
     if total == 0:
         lines.append("    { 0, 0, 0, 0 },")
     lines.append("};")
-    lines.append("const uint32_t exteria_tl_field_count = %d;" % total)
+    lines.append("const uint32_t noshi_tl_field_count = %d;" % total)
     lines.append("")
-    lines.append("const exteria_tl_ctor exteria_tl_ctors[] = {")
+    lines.append("const noshi_tl_ctor noshi_tl_ctors[] = {")
     for c, ff in zip(schema.ctors, first_field):
         tname = schema.type_name_id[c.result.name] if c.result.kind == "OBJECT" else 0
         lines.append("    { 0x%08xu, %d, %d, %du, %d, %d, %s }," %
                      (c.id, c.result_ref, tname, ff, len(c.fields), 1 if c.is_function else 0, c_str(c.name)))
     lines.append("};")
-    lines.append("const uint32_t exteria_tl_ctor_count = %d;" % len(schema.ctors))
+    lines.append("const uint32_t noshi_tl_ctor_count = %d;" % len(schema.ctors))
     lines.append("")
     by_name = sorted(range(len(schema.ctors)), key=lambda i: schema.ctors[i].name)
-    lines.append("const uint32_t exteria_tl_ctors_by_name[] = {")
+    lines.append("const uint32_t noshi_tl_ctors_by_name[] = {")
     for i in range(0, len(by_name), 12):
         lines.append("    " + ", ".join(str(x) for x in by_name[i:i + 12]) + ",")
     lines.append("};")
     lines.append("")
-    with open(os.path.join(outdir, "exteria_tl_schema_data.c"), "w", encoding="ascii", newline="\n") as f:
+    with open(os.path.join(outdir, "noshi_tl_schema_data.c"), "w", encoding="ascii", newline="\n") as f:
         f.write("\n".join(lines))
 
-    ids = ["/* regenerate from the pinned schemas so constructor metadata stays consistent */", "#ifndef EXTERIA_TL_IDS_H", "#define EXTERIA_TL_IDS_H", ""]
-    ids.append("#define EXTERIA_TL_LAYER %d" % schema.layer)
+    ids = ["/* regenerate from the pinned schemas so constructor metadata stays consistent */", "#ifndef NOSHI_TL_IDS_H", "#define NOSHI_TL_IDS_H", ""]
+    ids.append("#define NOSHI_TL_LAYER %d" % schema.layer)
     ids.append("")
     for c in sorted(schema.ctors, key=lambda c: c.name):
-        ids.append("#define EXTERIA_TL_ID_%s 0x%08xu" % (c_ident(c.name), c.id))
+        ids.append("#define NOSHI_TL_ID_%s 0x%08xu" % (c_ident(c.name), c.id))
     ids += ["", "#endif", ""]
-    with open(os.path.join(outdir, "exteria_tl_ids.h"), "w", encoding="ascii", newline="\n") as f:
+    with open(os.path.join(outdir, "noshi_tl_ids.h"), "w", encoding="ascii", newline="\n") as f:
         f.write("\n".join(ids))
 
 

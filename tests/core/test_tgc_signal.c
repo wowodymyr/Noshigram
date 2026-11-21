@@ -1,10 +1,10 @@
-#include "exteria_tgc_signal.h"
+#include "noshi_tgc_signal.h"
 #include "test_util.h"
 
-static exteria_tgc_message msg;
+static noshi_tgc_message msg;
 
-static exteria_status parse(const char *text) {
-    return exteria_tgc_message_parse(text, strlen(text), &msg);
+static noshi_status parse(const char *text) {
+    return noshi_tgc_message_parse(text, strlen(text), &msg);
 }
 
 /* shaped like the offers of the official clients: opus with transport-cc, then video with VP8, VP9, H264 and rtx */
@@ -25,12 +25,12 @@ static exteria_status parse(const char *text) {
     "\"rtpExtensions\":[{\"id\":13,\"uri\":\"urn:3gpp:video-orientation\"}]}"
 
 static void initial_setup(void) {
-    exteria_tgc_initial_setup *s;
+    noshi_tgc_initial_setup *s;
     char out[1024];
     size_t n = 0;
     CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"abcd\",\"pwd\":\"0123456789012345678901\",\"renomination\":true,"
-                       "\"fingerprints\":[{\"hash\":\"sha-256\",\"setup\":\"actpass\",\"fingerprint\":\"AA:BB:CC\"}]}"), EXTERIA_OK);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_INITIAL_SETUP);
+                       "\"fingerprints\":[{\"hash\":\"sha-256\",\"setup\":\"actpass\",\"fingerprint\":\"AA:BB:CC\"}]}"), NOSHI_OK);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_INITIAL_SETUP);
     s = &msg.u.initial_setup;
     CHECK(strcmp(s->ufrag, "abcd") == 0 && strcmp(s->pwd, "0123456789012345678901") == 0);
     CHECK_EQ_INT(s->renomination, 1);
@@ -38,41 +38,41 @@ static void initial_setup(void) {
     CHECK(strcmp(s->fingerprints[0].hash, "sha-256") == 0 && strcmp(s->fingerprints[0].setup, "actpass") == 0);
     CHECK(strcmp(s->fingerprints[0].value, "AA:BB:CC") == 0);
     /* renomination may be missing, or of the wrong kind, as in tgcalls; the fingerprint list may be empty */
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"renomination\":\"yes\",\"fingerprints\":[]}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"renomination\":\"yes\",\"fingerprints\":[]}"), NOSHI_OK);
     CHECK_EQ_INT(msg.u.initial_setup.renomination, 0);
     CHECK_EQ_INT(msg.u.initial_setup.fingerprint_count, 0);
     /* written as tgcalls writes it, and read back */
     CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"abcd\",\"pwd\":\"pw\",\"renomination\":true,"
-                       "\"fingerprints\":[{\"hash\":\"sha-256\",\"setup\":\"passive\",\"fingerprint\":\"01:02\"}]}"), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_message_write(&msg, out, sizeof(out), &n), EXTERIA_OK);
+                       "\"fingerprints\":[{\"hash\":\"sha-256\",\"setup\":\"passive\",\"fingerprint\":\"01:02\"}]}"), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_message_write(&msg, out, sizeof(out), &n), NOSHI_OK);
     CHECK(strcmp(out, "{\"@type\":\"InitialSetup\",\"ufrag\":\"abcd\",\"pwd\":\"pw\",\"renomination\":true,\"fingerprints\":"
                       "[{\"hash\":\"sha-256\",\"setup\":\"passive\",\"fingerprint\":\"01:02\"}]}") == 0);
     CHECK_EQ_INT(n, strlen(out));
     /* required members */
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"pwd\":\"p\",\"fingerprints\":[]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"fingerprints\":[]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\"}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"fingerprints\":[{\"hash\":\"h\",\"setup\":\"s\"}]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"fingerprints\":[5]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":7,\"pwd\":\"p\",\"fingerprints\":[]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_NONE);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"pwd\":\"p\",\"fingerprints\":[]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"fingerprints\":[]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\"}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"fingerprints\":[{\"hash\":\"h\",\"setup\":\"s\"}]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"p\",\"fingerprints\":[5]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"InitialSetup\",\"ufrag\":7,\"pwd\":\"p\",\"fingerprints\":[]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_NONE);
     /* a field too long for its storage refuses the message */
     {
         char text[600], longpw[200];
         memset(longpw, 'p', sizeof(longpw) - 1);
         longpw[sizeof(longpw) - 1] = '\0';
         snprintf(text, sizeof(text), "{\"@type\":\"InitialSetup\",\"ufrag\":\"u\",\"pwd\":\"%s\",\"fingerprints\":[]}", longpw);
-        CHECK_EQ_INT(parse(text), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(parse(text), NOSHI_E_MALFORMED);
     }
 }
 
 static void negotiate_channels(void) {
     char text[4096], out[4096];
-    const exteria_tgc_content *a, *v;
+    const noshi_tgc_content *a, *v;
     size_t n = 0;
     snprintf(text, sizeof(text), "{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"3735928559\",\"contents\":[%s,%s]}", AUDIO, VIDEO);
-    CHECK_EQ_INT(parse(text), EXTERIA_OK);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_NEGOTIATE_CHANNELS);
+    CHECK_EQ_INT(parse(text), NOSHI_OK);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_NEGOTIATE_CHANNELS);
     CHECK(msg.u.negotiate.exchange_id == 3735928559u);
     CHECK_EQ_INT(msg.u.negotiate.content_count, 2);
     a = &msg.u.negotiate.contents[0];
@@ -108,30 +108,30 @@ static void negotiate_channels(void) {
     CHECK_EQ_INT(v->extension_count, 1);
 
     /* what is written is what tgcalls reads: parse it again and compare field by field */
-    CHECK_EQ_INT(exteria_tgc_message_write(&msg, out, sizeof(out), &n), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_message_write(&msg, out, sizeof(out), &n), NOSHI_OK);
     CHECK_EQ_INT(n, strlen(out));
     {
-        exteria_tgc_message again;
-        CHECK_EQ_INT(exteria_tgc_message_parse(out, n, &again), EXTERIA_OK);
+        noshi_tgc_message again;
+        CHECK_EQ_INT(noshi_tgc_message_parse(out, n, &again), NOSHI_OK);
         CHECK(again.u.negotiate.exchange_id == msg.u.negotiate.exchange_id);
         CHECK_EQ_INT(again.u.negotiate.content_count, 2);
-        CHECK(memcmp(&again.u.negotiate.contents[0], &msg.u.negotiate.contents[0], sizeof(exteria_tgc_content)) == 0);
-        CHECK(memcmp(&again.u.negotiate.contents[1], &msg.u.negotiate.contents[1], sizeof(exteria_tgc_content)) == 0);
+        CHECK(memcmp(&again.u.negotiate.contents[0], &msg.u.negotiate.contents[0], sizeof(noshi_tgc_content)) == 0);
+        CHECK(memcmp(&again.u.negotiate.contents[1], &msg.u.negotiate.contents[1], sizeof(noshi_tgc_content)) == 0);
     }
     CHECK(strstr(out, "\"exchangeId\":\"3735928559\"") != NULL);
     CHECK(strstr(out, "\"ssrc\":\"2851830345\"") != NULL);
     CHECK(strstr(out, "\"ssrcs\":[\"4100\",\"4101\"]") != NULL);
     /* ssrc and exchange id as plain numbers are read too */
-    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":77,\"contents\":[{\"type\":\"audio\",\"ssrc\":88}]}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":77,\"contents\":[{\"type\":\"audio\",\"ssrc\":88}]}"), NOSHI_OK);
     CHECK(msg.u.negotiate.exchange_id == 77 && msg.u.negotiate.contents[0].ssrc == 88);
     CHECK_EQ_INT(msg.u.negotiate.contents[0].payload_count, 0);
     /* an answer that accepts nothing has no contents at all */
-    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"5\"}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"5\"}"), NOSHI_OK);
     CHECK_EQ_INT(msg.u.negotiate.content_count, 0);
-    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"5\",\"contents\":[]}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"5\",\"contents\":[]}"), NOSHI_OK);
     /* the codec name is matched without case */
     CHECK_EQ_INT(parse("{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"5\",\"contents\":[{\"type\":\"audio\",\"ssrc\":\"9\","
-                       "\"payloadTypes\":[{\"id\":96,\"name\":\"OPUS\",\"clockrate\":48000},{\"id\":97,\"name\":\"vp8\",\"clockrate\":90000}]}]}"), EXTERIA_OK);
+                       "\"payloadTypes\":[{\"id\":96,\"name\":\"OPUS\",\"clockrate\":48000},{\"id\":97,\"name\":\"vp8\",\"clockrate\":90000}]}]}"), NOSHI_OK);
     CHECK_EQ_INT(msg.u.negotiate.contents[0].payload_count, 2);
     CHECK_EQ_INT(msg.u.negotiate.contents[0].payloads[0].channels, 0);
 }
@@ -173,10 +173,10 @@ static void negotiate_rejections(void) {
     };
     size_t i;
     for (i = 0; i < sizeof(bad) / sizeof(bad[0]); ++i) {
-        exteria_status s = parse(bad[i]);
-        if (s != EXTERIA_E_MALFORMED) fprintf(stderr, "  input: %s\n", bad[i]);
-        CHECK_EQ_INT(s, EXTERIA_E_MALFORMED);
-        CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_NONE);
+        noshi_status s = parse(bad[i]);
+        if (s != NOSHI_E_MALFORMED) fprintf(stderr, "  input: %s\n", bad[i]);
+        CHECK_EQ_INT(s, NOSHI_E_MALFORMED);
+        CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_NONE);
     }
 }
 
@@ -187,8 +187,8 @@ static void caps(void) {
     n = (size_t)snprintf(text, sizeof(text), "{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"1\",\"contents\":[");
     for (i = 0; i < 5; ++i) n += (size_t)snprintf(text + n, sizeof(text) - n, "%s{\"type\":\"audio\",\"ssrc\":\"%u\"}", i ? "," : "", (unsigned)(10 + i));
     snprintf(text + n, sizeof(text) - n, "]}");
-    CHECK_EQ_INT(parse(text), EXTERIA_OK);
-    CHECK_EQ_INT(msg.u.negotiate.content_count, EXTERIA_TGC_MAX_CONTENTS);
+    CHECK_EQ_INT(parse(text), NOSHI_OK);
+    CHECK_EQ_INT(msg.u.negotiate.content_count, NOSHI_TGC_MAX_CONTENTS);
     CHECK(msg.u.negotiate.contents[3].ssrc == 13);
     /* more payloads, feedback entries, params, extensions and groups than the caps */
     n = (size_t)snprintf(text, sizeof(text), "{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"1\",\"contents\":[{\"type\":\"video\",\"ssrc\":\"5\",\"payloadTypes\":[");
@@ -205,15 +205,15 @@ static void caps(void) {
     n += (size_t)snprintf(text + n, sizeof(text) - n, "],\"ssrcGroups\":[");
     for (i = 0; i < 5; ++i) n += (size_t)snprintf(text + n, sizeof(text) - n, "%s{\"semantics\":\"G%u\",\"ssrcs\":[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\"]}", i ? "," : "", (unsigned)i);
     snprintf(text + n, sizeof(text) - n, "]}]}");
-    CHECK_EQ_INT(parse(text), EXTERIA_OK);
+    CHECK_EQ_INT(parse(text), NOSHI_OK);
     {
-        const exteria_tgc_content *c = &msg.u.negotiate.contents[0];
-        CHECK_EQ_INT(c->payload_count, EXTERIA_TGC_MAX_PAYLOADS);
-        CHECK_EQ_INT(c->payloads[0].feedback_count, EXTERIA_TGC_MAX_FEEDBACK);
-        CHECK_EQ_INT(c->payloads[0].param_count, EXTERIA_TGC_MAX_PARAMS);
-        CHECK_EQ_INT(c->extension_count, EXTERIA_TGC_MAX_EXTENSIONS);
-        CHECK_EQ_INT(c->group_count, EXTERIA_TGC_MAX_GROUPS);
-        CHECK_EQ_INT(c->groups[0].count, EXTERIA_TGC_MAX_GROUP_SSRCS);
+        const noshi_tgc_content *c = &msg.u.negotiate.contents[0];
+        CHECK_EQ_INT(c->payload_count, NOSHI_TGC_MAX_PAYLOADS);
+        CHECK_EQ_INT(c->payloads[0].feedback_count, NOSHI_TGC_MAX_FEEDBACK);
+        CHECK_EQ_INT(c->payloads[0].param_count, NOSHI_TGC_MAX_PARAMS);
+        CHECK_EQ_INT(c->extension_count, NOSHI_TGC_MAX_EXTENSIONS);
+        CHECK_EQ_INT(c->group_count, NOSHI_TGC_MAX_GROUPS);
+        CHECK_EQ_INT(c->groups[0].count, NOSHI_TGC_MAX_GROUP_SSRCS);
     }
 }
 
@@ -221,116 +221,116 @@ static void candidates(void) {
     char text[8192], out[8192];
     size_t n = 0, i;
     CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[{\"sdpString\":\"candidate:1 1 udp 2122260223 192.168.0.5 53333 typ host generation 0\"},"
-                       "{\"sdpString\":\"candidate:2 1 udp 1686052607 5.6.7.8 61000 typ srflx raddr 192.168.0.5 rport 53333 generation 0\"}]}"), EXTERIA_OK);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_CANDIDATES);
+                       "{\"sdpString\":\"candidate:2 1 udp 1686052607 5.6.7.8 61000 typ srflx raddr 192.168.0.5 rport 53333 generation 0\"}]}"), NOSHI_OK);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_CANDIDATES);
     CHECK_EQ_INT(msg.u.candidates.count, 2);
     CHECK(strstr(msg.u.candidates.sdp[1], "typ srflx") != NULL);
-    CHECK_EQ_INT(exteria_tgc_message_write(&msg, out, sizeof(out), &n), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_message_write(&msg, out, sizeof(out), &n), NOSHI_OK);
     CHECK(strcmp(out, "{\"@type\":\"Candidates\",\"candidates\":[{\"sdpString\":\"candidate:1 1 udp 2122260223 192.168.0.5 53333 typ host generation 0\"},"
                       "{\"sdpString\":\"candidate:2 1 udp 1686052607 5.6.7.8 61000 typ srflx raddr 192.168.0.5 rport 53333 generation 0\"}]}") == 0);
-    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[]}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[]}"), NOSHI_OK);
     CHECK_EQ_INT(msg.u.candidates.count, 0);
-    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\"}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[1]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[{\"sdp\":\"x\"}]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[{\"sdpString\":5}]}"), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\"}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[1]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[{\"sdp\":\"x\"}]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"Candidates\",\"candidates\":[{\"sdpString\":5}]}"), NOSHI_E_MALFORMED);
     /* an overlong candidate is skipped, the ones around it stay; the cap keeps the first 24 */
     {
         char longone[500];
         memset(longone, 'x', sizeof(longone) - 1);
         longone[sizeof(longone) - 1] = '\0';
         snprintf(text, sizeof(text), "{\"@type\":\"Candidates\",\"candidates\":[{\"sdpString\":\"a\"},{\"sdpString\":\"%s\"},{\"sdpString\":\"b\"}]}", longone);
-        CHECK_EQ_INT(parse(text), EXTERIA_OK);
+        CHECK_EQ_INT(parse(text), NOSHI_OK);
         CHECK_EQ_INT(msg.u.candidates.count, 2);
         CHECK(strcmp(msg.u.candidates.sdp[1], "b") == 0);
     }
     n = (size_t)snprintf(text, sizeof(text), "{\"@type\":\"Candidates\",\"candidates\":[");
     for (i = 0; i < 30; ++i) n += (size_t)snprintf(text + n, sizeof(text) - n, "%s{\"sdpString\":\"c%u\"}", i ? "," : "", (unsigned)i);
     snprintf(text + n, sizeof(text) - n, "]}");
-    CHECK_EQ_INT(parse(text), EXTERIA_OK);
-    CHECK_EQ_INT(msg.u.candidates.count, EXTERIA_TGC_MAX_CANDIDATES);
+    CHECK_EQ_INT(parse(text), NOSHI_OK);
+    CHECK_EQ_INT(msg.u.candidates.count, NOSHI_TGC_MAX_CANDIDATES);
     CHECK(strcmp(msg.u.candidates.sdp[23], "c23") == 0);
 }
 
 static void media_state(void) {
     char out[512];
     size_t n = 0;
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"muted\":true,\"lowBattery\":true,\"videoState\":\"active\",\"videoRotation\":90,\"screencastState\":\"suspended\"}"), EXTERIA_OK);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_MEDIA_STATE);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"muted\":true,\"lowBattery\":true,\"videoState\":\"active\",\"videoRotation\":90,\"screencastState\":\"suspended\"}"), NOSHI_OK);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_MEDIA_STATE);
     CHECK_EQ_INT(msg.u.media_state.muted, 1);
     CHECK_EQ_INT(msg.u.media_state.low_battery, 1);
-    CHECK_EQ_INT(msg.u.media_state.video_state, EXTERIA_TGC_VIDEO_ACTIVE);
+    CHECK_EQ_INT(msg.u.media_state.video_state, NOSHI_TGC_VIDEO_ACTIVE);
     CHECK_EQ_INT(msg.u.media_state.video_rotation, 90);
-    CHECK_EQ_INT(msg.u.media_state.screencast_state, EXTERIA_TGC_VIDEO_SUSPENDED);
-    CHECK_EQ_INT(exteria_tgc_message_write(&msg, out, sizeof(out), &n), EXTERIA_OK);
+    CHECK_EQ_INT(msg.u.media_state.screencast_state, NOSHI_TGC_VIDEO_SUSPENDED);
+    CHECK_EQ_INT(noshi_tgc_message_write(&msg, out, sizeof(out), &n), NOSHI_OK);
     CHECK(strcmp(out, "{\"@type\":\"MediaState\",\"muted\":true,\"lowBattery\":true,\"videoState\":\"active\",\"videoRotation\":90,"
                       "\"screencastState\":\"suspended\"}") == 0);
     /* everything is optional */
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\"}"), EXTERIA_OK);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\"}"), NOSHI_OK);
     CHECK_EQ_INT(msg.u.media_state.muted, 0);
-    CHECK_EQ_INT(msg.u.media_state.video_state, EXTERIA_TGC_VIDEO_INACTIVE);
+    CHECK_EQ_INT(msg.u.media_state.video_state, NOSHI_TGC_VIDEO_INACTIVE);
     CHECK_EQ_INT(msg.u.media_state.video_rotation, 0);
     /* an unknown state word or rotation falls back, as in tgcalls; a wrong kind refuses the message */
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoState\":\"paused\",\"videoRotation\":45}"), EXTERIA_OK);
-    CHECK_EQ_INT(msg.u.media_state.video_state, EXTERIA_TGC_VIDEO_INACTIVE);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoState\":\"paused\",\"videoRotation\":45}"), NOSHI_OK);
+    CHECK_EQ_INT(msg.u.media_state.video_state, NOSHI_TGC_VIDEO_INACTIVE);
     CHECK_EQ_INT(msg.u.media_state.video_rotation, 0);
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"muted\":\"no\"}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"lowBattery\":1}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoState\":1}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"screencastState\":[]}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoRotation\":\"90\"}"), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"muted\":\"no\"}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"lowBattery\":1}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoState\":1}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"screencastState\":[]}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":\"MediaState\",\"videoRotation\":\"90\"}"), NOSHI_E_MALFORMED);
 }
 
 static void envelope(void) {
-    CHECK_EQ_INT(parse("{\"@type\":\"Ping\"}"), EXTERIA_E_UNSUPPORTED);
-    CHECK_EQ_INT(msg.type, EXTERIA_TGC_MESSAGE_NONE);
-    CHECK_EQ_INT(parse("{\"type\":\"InitialSetup\"}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("{\"@type\":5}"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("[]"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("\"InitialSetup\""), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse("not json"), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(parse(""), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_tgc_message_parse(NULL, 5, &msg), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_message_parse("{}", 2, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(parse("{\"@type\":\"Ping\"}"), NOSHI_E_UNSUPPORTED);
+    CHECK_EQ_INT(msg.type, NOSHI_TGC_MESSAGE_NONE);
+    CHECK_EQ_INT(parse("{\"type\":\"InitialSetup\"}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("{\"@type\":5}"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("[]"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("\"InitialSetup\""), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse("not json"), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(parse(""), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_message_parse(NULL, 5, &msg), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_parse("{}", 2, NULL), NOSHI_E_ARG);
     {
         static char big[70000];
         memset(big, ' ', sizeof(big));
-        CHECK_EQ_INT(exteria_tgc_message_parse(big, sizeof(big), &msg), EXTERIA_E_LIMIT);
+        CHECK_EQ_INT(noshi_tgc_message_parse(big, sizeof(big), &msg), NOSHI_E_LIMIT);
     }
 }
 
 static void write_errors(void) {
-    exteria_tgc_message m;
+    noshi_tgc_message m;
     char out[64], big[4096];
     size_t n = 5;
     memset(&m, 0, sizeof(m));
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     CHECK_EQ_INT(n, 0);
-    m.type = EXTERIA_TGC_MESSAGE_INITIAL_SETUP;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    m.type = NOSHI_TGC_MESSAGE_INITIAL_SETUP;
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     snprintf(m.u.initial_setup.ufrag, sizeof(m.u.initial_setup.ufrag), "u");
     snprintf(m.u.initial_setup.pwd, sizeof(m.u.initial_setup.pwd), "p");
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, out, 20, &n), EXTERIA_E_LIMIT);
-    m.u.initial_setup.fingerprint_count = EXTERIA_TGC_MAX_FINGERPRINTS + 1;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, out, 20, &n), NOSHI_E_LIMIT);
+    m.u.initial_setup.fingerprint_count = NOSHI_TGC_MAX_FINGERPRINTS + 1;
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     memset(&m, 0, sizeof(m));
-    m.type = EXTERIA_TGC_MESSAGE_NEGOTIATE_CHANNELS;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    m.type = NOSHI_TGC_MESSAGE_NEGOTIATE_CHANNELS;
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     m.u.negotiate.exchange_id = 4;
     m.u.negotiate.content_count = 1;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     m.u.negotiate.contents[0].ssrc = 6;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_OK);
     CHECK(strcmp(big, "{\"@type\":\"NegotiateChannels\",\"exchangeId\":\"4\",\"contents\":[{\"type\":\"audio\",\"ssrc\":\"6\",\"rtpExtensions\":[]}]}") == 0);
-    m.u.negotiate.content_count = EXTERIA_TGC_MAX_CONTENTS + 1;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
+    m.u.negotiate.content_count = NOSHI_TGC_MAX_CONTENTS + 1;
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
     memset(&m, 0, sizeof(m));
-    m.type = EXTERIA_TGC_MESSAGE_CANDIDATES;
-    m.u.candidates.count = EXTERIA_TGC_MAX_CANDIDATES + 1;
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, big, sizeof(big), &n), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_message_write(NULL, big, sizeof(big), &n), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_message_write(&m, NULL, sizeof(big), &n), EXTERIA_E_ARG);
+    m.type = NOSHI_TGC_MESSAGE_CANDIDATES;
+    m.u.candidates.count = NOSHI_TGC_MAX_CANDIDATES + 1;
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, big, sizeof(big), &n), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_write(NULL, big, sizeof(big), &n), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_message_write(&m, NULL, sizeof(big), &n), NOSHI_E_ARG);
 }
 
 int main(void) {

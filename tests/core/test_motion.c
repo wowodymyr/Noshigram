@@ -1,4 +1,4 @@
-#include "exteria_motion.h"
+#include "noshi_motion.h"
 #include "test_util.h"
 
 #include <math.h>
@@ -9,23 +9,23 @@ static int near(double a, double b) {
 
 static void reference_curves(void) {
     /* bezier parameter 0.5 gives these exact x and y coordinates */
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_ENTER, 0.33125), 0.875));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_EXIT, 0.6575), 0.5));
-    for (int curve = EXTERIA_MOTION_ENTER; curve <= EXTERIA_MOTION_POPUP_CLASSIC_EXIT; ++curve) {
-        exteria_motion_curve kind = (exteria_motion_curve)curve;
-        CHECK(near(exteria_motion_progress(kind, -1), 0));
-        CHECK(near(exteria_motion_progress(kind, 0), 0));
-        CHECK(near(exteria_motion_progress(kind, 1), 1));
-        CHECK(near(exteria_motion_progress(kind, 2), 1));
-        CHECK(near(exteria_motion_progress(kind, NAN), 0));
-        CHECK(near(exteria_motion_progress(kind, INFINITY), 0));
-        CHECK(near(exteria_motion_progress(kind, -INFINITY), 0));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_ENTER, 0.33125), 0.875));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_EXIT, 0.6575), 0.5));
+    for (int curve = NOSHI_MOTION_ENTER; curve <= NOSHI_MOTION_POPUP_CLASSIC_EXIT; ++curve) {
+        noshi_motion_curve kind = (noshi_motion_curve)curve;
+        CHECK(near(noshi_motion_progress(kind, -1), 0));
+        CHECK(near(noshi_motion_progress(kind, 0), 0));
+        CHECK(near(noshi_motion_progress(kind, 1), 1));
+        CHECK(near(noshi_motion_progress(kind, 2), 1));
+        CHECK(near(noshi_motion_progress(kind, NAN), 0));
+        CHECK(near(noshi_motion_progress(kind, INFINITY), 0));
+        CHECK(near(noshi_motion_progress(kind, -INFINITY), 0));
         double previous = 0;
         for (int sample = 1; sample <= 1000; ++sample) {
-            double progress = exteria_motion_progress(kind, sample / 1000.0);
+            double progress = noshi_motion_progress(kind, sample / 1000.0);
             CHECK(isfinite(progress));
             CHECK(progress >= 0 && progress < 1.1);
-            if (kind != EXTERIA_MOTION_SPRING) {
+            if (kind != NOSHI_MOTION_SPRING) {
                 CHECK(progress >= previous);
                 CHECK(progress <= 1);
             }
@@ -37,87 +37,87 @@ static void reference_curves(void) {
 /* the popup curves: bezier parameter 0.5 gives these exact points, and the modern one decelerates in and accelerates out where the classic ones are the plain
    ease out and ease in */
 static void popup_curves(void) {
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_POPUP_MODERN_ENTER), 0.34));
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_POPUP_MODERN_EXIT), 0.2));
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_POPUP_CLASSIC_ENTER), 0.25));
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_POPUP_CLASSIC_EXIT), 0.2));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_POPUP_MODERN_ENTER, 0.18125), 0.7625));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_POPUP_MODERN_EXIT, 0.5375), 0.18125));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_POPUP_CLASSIC_ENTER, 0.3425), 0.5));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_POPUP_CLASSIC_EXIT, 0.6575), 0.5));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_POPUP_MODERN_ENTER), 0.34));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_POPUP_MODERN_EXIT), 0.2));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_POPUP_CLASSIC_ENTER), 0.25));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_POPUP_CLASSIC_EXIT), 0.2));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_POPUP_MODERN_ENTER, 0.18125), 0.7625));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_POPUP_MODERN_EXIT, 0.5375), 0.18125));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_POPUP_CLASSIC_ENTER, 0.3425), 0.5));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_POPUP_CLASSIC_EXIT, 0.6575), 0.5));
     /* a popup that comes in is over 85 percent of the way in the first third of the time, and one that leaves has hardly moved at the half */
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_POPUP_MODERN_ENTER, 0.33) > 0.85);
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_POPUP_MODERN_EXIT, 0.5) < 0.18);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_POPUP_MODERN_ENTER, 0.33) > 0.85);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_POPUP_MODERN_EXIT, 0.5) < 0.18);
     /* nothing overshoots: the cards stop on their size and place */
-    for (int curve = EXTERIA_MOTION_POPUP_MODERN_ENTER; curve <= EXTERIA_MOTION_POPUP_CLASSIC_EXIT; ++curve) {
-        for (int sample = 0; sample <= 1000; ++sample) CHECK(exteria_motion_progress((exteria_motion_curve)curve, sample / 1000.0) <= 1);
+    for (int curve = NOSHI_MOTION_POPUP_MODERN_ENTER; curve <= NOSHI_MOTION_POPUP_CLASSIC_EXIT; ++curve) {
+        for (int sample = 0; sample <= 1000; ++sample) CHECK(noshi_motion_progress((noshi_motion_curve)curve, sample / 1000.0) <= 1);
     }
 }
 
 static void navigation_decelerates(void) {
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_NAVIGATION), 0.32));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, 0.25), 0.578125));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, 0.5), 0.875));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, 0.75), 0.984375));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_NAVIGATION), 0.32));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_NAVIGATION, 0.25), 0.578125));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_NAVIGATION, 0.5), 0.875));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_NAVIGATION, 0.75), 0.984375));
     double previous_step = 1;
     for (int sample = 1; sample <= 100; ++sample) {
-        double previous = exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, (sample - 1) / 100.0);
-        double current = exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, sample / 100.0);
+        double previous = noshi_motion_progress(NOSHI_MOTION_NAVIGATION, (sample - 1) / 100.0);
+        double current = noshi_motion_progress(NOSHI_MOTION_NAVIGATION, sample / 100.0);
         double step = current - previous;
         CHECK(step > 0 && step <= previous_step);
         previous_step = step;
     }
-    CHECK(1 - exteria_motion_progress(EXTERIA_MOTION_NAVIGATION, 0.99) < 0.000002);
+    CHECK(1 - noshi_motion_progress(NOSHI_MOTION_NAVIGATION, 0.99) < 0.000002);
 }
 
 /* the move and add curve of ChatListItemAnimator: 250 ms, fast at the start, no overshoot */
 static void list_move_curve(void) {
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_LIST_MOVE), 0.25));
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_LIST_MOVE, 0.5) > 0.7);
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_LIST_MOVE, 0.5) < 1);
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_LIST_MOVE), 0.25));
+    CHECK(noshi_motion_progress(NOSHI_MOTION_LIST_MOVE, 0.5) > 0.7);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_LIST_MOVE, 0.5) < 1);
     for (int sample = 1; sample <= 100; ++sample) {
-        CHECK(exteria_motion_progress(EXTERIA_MOTION_LIST_MOVE, sample / 100.0) <= 1);
+        CHECK(noshi_motion_progress(NOSHI_MOTION_LIST_MOVE, sample / 100.0) <= 1);
     }
 }
 
 static void wobble_swings(void) {
-    double duration = exteria_motion_duration(EXTERIA_MOTION_WOBBLE);
+    double duration = noshi_motion_duration(NOSHI_MOTION_WOBBLE);
     CHECK(near(duration, 0.6));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_WOBBLE, 0), 0));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_WOBBLE, 1), 1));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_WOBBLE, 0), 0));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_WOBBLE, 1), 1));
     double peak = 3.14159265358979323846 / (sqrt(420.0) * sqrt(1 - 0.25));
-    double high = exteria_motion_progress(EXTERIA_MOTION_WOBBLE, peak / duration);
+    double high = noshi_motion_progress(NOSHI_MOTION_WOBBLE, peak / duration);
     CHECK(high > 1.15 && high < 1.2);
     /* it swings back under one and over it again before it rests */
-    double low = exteria_motion_progress(EXTERIA_MOTION_WOBBLE, 2 * peak / duration);
+    double low = noshi_motion_progress(NOSHI_MOTION_WOBBLE, 2 * peak / duration);
     CHECK(low < 1 && low > 0.95);
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_WOBBLE, 3 * peak / duration) > 1);
-    for (int sample = 0; sample <= 1000; ++sample) CHECK(isfinite(exteria_motion_progress(EXTERIA_MOTION_WOBBLE, sample / 1000.0)));
-    CHECK(fabs(exteria_motion_progress(EXTERIA_MOTION_WOBBLE, 0.999999) - 1) < 1e-4);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_WOBBLE, 3 * peak / duration) > 1);
+    for (int sample = 0; sample <= 1000; ++sample) CHECK(isfinite(noshi_motion_progress(NOSHI_MOTION_WOBBLE, sample / 1000.0)));
+    CHECK(fabs(noshi_motion_progress(NOSHI_MOTION_WOBBLE, 0.999999) - 1) < 1e-4);
 }
 
 static void spring_settles(void) {
-    double duration = exteria_motion_duration(EXTERIA_MOTION_SPRING);
+    double duration = noshi_motion_duration(NOSHI_MOTION_SPRING);
     double peak = 3.14159265358979323846 / (sqrt(650.0) * 0.8);
-    double progress = exteria_motion_progress(EXTERIA_MOTION_SPRING, peak / duration);
+    double progress = noshi_motion_progress(NOSHI_MOTION_SPRING, peak / duration);
     CHECK(progress > 1.09 && progress < 1.1);
     /* the normalized spring must reach its model value without a visible final snap */
-    CHECK(fabs(exteria_motion_progress(EXTERIA_MOTION_SPRING, 0.999999) - 1) < 1e-6);
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_ENTER, 0.25) > 0.7);
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_EXIT, 0.25) < 0.1);
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_ENTER), 0.32));
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_EXIT), 0.18));
+    CHECK(fabs(noshi_motion_progress(NOSHI_MOTION_SPRING, 0.999999) - 1) < 1e-6);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_ENTER, 0.25) > 0.7);
+    CHECK(noshi_motion_progress(NOSHI_MOTION_EXIT, 0.25) < 0.1);
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_ENTER), 0.32));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_EXIT), 0.18));
     /* a dismissal is well on its way after a tenth of its time, where the slow start of EXIT has hardly moved */
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_DISMISS), 0.2));
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_DISMISS, 0.1) > 0.15);
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_DISMISS, 1.0), 1.0));
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_DISMISS), 0.2));
+    CHECK(noshi_motion_progress(NOSHI_MOTION_DISMISS, 0.1) > 0.15);
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_DISMISS, 1.0), 1.0));
     /* the sheet leaves on EASE_OUT: the bezier parameter 0.5 gives x 0.3425 and y 0.5, and by a fifth of the time it has covered less than a third of the way */
-    CHECK(near(exteria_motion_duration(EXTERIA_MOTION_SHEET_DISMISS), 0.25));
-    CHECK(near(exteria_motion_progress(EXTERIA_MOTION_SHEET_DISMISS, 0.3425), 0.5));
-    CHECK(exteria_motion_progress(EXTERIA_MOTION_SHEET_DISMISS, 0.2) < 0.34);
+    CHECK(near(noshi_motion_duration(NOSHI_MOTION_SHEET_DISMISS), 0.25));
+    CHECK(near(noshi_motion_progress(NOSHI_MOTION_SHEET_DISMISS, 0.3425), 0.5));
+    CHECK(noshi_motion_progress(NOSHI_MOTION_SHEET_DISMISS, 0.2) < 0.34);
     CHECK(near(duration, 0.48));
-    CHECK(near(exteria_motion_duration((exteria_motion_curve)-1), 0));
-    CHECK(near(exteria_motion_progress((exteria_motion_curve)-1, 1), 0));
+    CHECK(near(noshi_motion_duration((noshi_motion_curve)-1), 0));
+    CHECK(near(noshi_motion_progress((noshi_motion_curve)-1, 1), 0));
 }
 
 static void playback_uses_elapsed_time(void) {
@@ -126,52 +126,52 @@ static void playback_uses_elapsed_time(void) {
         double elapsed = 0, previous = 10;
         for (int frame = 1; frame <= rates[i]; ++frame) {
             double now = 10 + (double)frame / rates[i];
-            elapsed = exteria_motion_elapsed(elapsed, previous, now, 0);
+            elapsed = noshi_motion_elapsed(elapsed, previous, now, 0);
             previous = now;
         }
         CHECK(near(elapsed, 1));
     }
-    CHECK(near(exteria_motion_elapsed(1, 10, 10.3, 0), 1.3));
-    CHECK(near(exteria_motion_elapsed(1, 10, 50, 1), 1));
-    CHECK(near(exteria_motion_elapsed(1, 10, 9, 0), 1));
-    CHECK(near(exteria_motion_elapsed(1, NAN, 11, 0), 1));
-    CHECK(near(exteria_motion_elapsed(1, 10, INFINITY, 0), 1));
-    CHECK(near(exteria_motion_elapsed(NAN, 10, 10, 0), 0));
-    CHECK(near(exteria_motion_elapsed(-1, 10, 10, 0), 0));
+    CHECK(near(noshi_motion_elapsed(1, 10, 10.3, 0), 1.3));
+    CHECK(near(noshi_motion_elapsed(1, 10, 50, 1), 1));
+    CHECK(near(noshi_motion_elapsed(1, 10, 9, 0), 1));
+    CHECK(near(noshi_motion_elapsed(1, NAN, 11, 0), 1));
+    CHECK(near(noshi_motion_elapsed(1, 10, INFINITY, 0), 1));
+    CHECK(near(noshi_motion_elapsed(NAN, 10, 10, 0), 0));
+    CHECK(near(noshi_motion_elapsed(-1, 10, 10, 0), 0));
 }
 
 static void outgoing_screen_memory(void) {
     const double screens[][3] = {{320, 480, 1}, {320, 480, 2}, {375, 667, 2}, {414, 736, 3}, {768, 1024, 2}, {1024, 768, 2}, {8192, 16, 3}};
     for (unsigned int i = 0; i < sizeof(screens) / sizeof(screens[0]); ++i) {
         double width = screens[i][0], height = screens[i][1], requested = screens[i][2];
-        double scale = exteria_motion_snapshot_scale(width, height, requested);
+        double scale = noshi_motion_snapshot_scale(width, height, requested);
         CHECK(scale > 0 && scale <= requested);
         CHECK(ceil(width * scale) * ceil(height * scale) <= 1048576);
-        CHECK(near(scale, exteria_motion_snapshot_scale(height, width, requested)));
+        CHECK(near(scale, noshi_motion_snapshot_scale(height, width, requested)));
     }
-    CHECK(near(exteria_motion_snapshot_scale(320, 480, 2), 2));
-    CHECK(near(exteria_motion_snapshot_scale(0, 480, 2), 0));
-    CHECK(near(exteria_motion_snapshot_scale(320, -1, 2), 0));
-    CHECK(near(exteria_motion_snapshot_scale(NAN, 480, 2), 0));
-    CHECK(near(exteria_motion_snapshot_scale(320, INFINITY, 2), 0));
-    CHECK(near(exteria_motion_snapshot_scale(320, 480, NAN), 0));
-    CHECK(near(exteria_motion_snapshot_scale(320, 480, 0), 0));
-    CHECK(near(exteria_motion_snapshot_scale(8193, 480, 2), 0));
+    CHECK(near(noshi_motion_snapshot_scale(320, 480, 2), 2));
+    CHECK(near(noshi_motion_snapshot_scale(0, 480, 2), 0));
+    CHECK(near(noshi_motion_snapshot_scale(320, -1, 2), 0));
+    CHECK(near(noshi_motion_snapshot_scale(NAN, 480, 2), 0));
+    CHECK(near(noshi_motion_snapshot_scale(320, INFINITY, 2), 0));
+    CHECK(near(noshi_motion_snapshot_scale(320, 480, NAN), 0));
+    CHECK(near(noshi_motion_snapshot_scale(320, 480, 0), 0));
+    CHECK(near(noshi_motion_snapshot_scale(8193, 480, 2), 0));
 }
 
 static void reply_swipe_direction(void) {
-    CHECK(exteria_motion_reply_swipe_begins(-90, 20));
-    CHECK(!exteria_motion_reply_swipe_begins(90, 20));
-    CHECK(!exteria_motion_reply_swipe_begins(-20, 30));
-    CHECK(!exteria_motion_reply_swipe_begins(-60, 20));
-    CHECK(exteria_motion_reply_swipe_begins(-61, 20));
-    CHECK(!exteria_motion_reply_swipe_begins(0, 0));
-    CHECK(!exteria_motion_reply_swipe_begins(NAN, 0));
-    CHECK(near(exteria_motion_reply_swipe_pull(-75), 75));
-    CHECK(near(exteria_motion_reply_swipe_pull(-80), 80));
-    CHECK(near(exteria_motion_reply_swipe_pull(-1000), 80));
-    CHECK(near(exteria_motion_reply_swipe_pull(75), 0));
-    CHECK(near(exteria_motion_reply_swipe_pull(NAN), 0));
+    CHECK(noshi_motion_reply_swipe_begins(-90, 20));
+    CHECK(!noshi_motion_reply_swipe_begins(90, 20));
+    CHECK(!noshi_motion_reply_swipe_begins(-20, 30));
+    CHECK(!noshi_motion_reply_swipe_begins(-60, 20));
+    CHECK(noshi_motion_reply_swipe_begins(-61, 20));
+    CHECK(!noshi_motion_reply_swipe_begins(0, 0));
+    CHECK(!noshi_motion_reply_swipe_begins(NAN, 0));
+    CHECK(near(noshi_motion_reply_swipe_pull(-75), 75));
+    CHECK(near(noshi_motion_reply_swipe_pull(-80), 80));
+    CHECK(near(noshi_motion_reply_swipe_pull(-1000), 80));
+    CHECK(near(noshi_motion_reply_swipe_pull(75), 0));
+    CHECK(near(noshi_motion_reply_swipe_pull(NAN), 0));
 }
 
 static void back_swipe_settles_from_finger(void) {
@@ -205,7 +205,7 @@ static void back_swipe_settles_from_finger(void) {
         {320, NAN, 800, 1, 0, 0, 0}
     };
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
-        exteria_motion_swipe plan = exteria_motion_back_swipe(cases[i].width, cases[i].translation,
+        noshi_motion_swipe plan = noshi_motion_back_swipe(cases[i].width, cases[i].translation,
                                                             cases[i].velocity, cases[i].ended);
         CHECK_EQ_INT(plan.completes, cases[i].completes);
         CHECK(near(plan.progress, cases[i].progress));
@@ -217,21 +217,21 @@ static void ambient_phase_survives_rebuild(void) {
     const double periods[] = {7, 9, 3.2, 4};
     for (size_t i = 0; i < sizeof(periods) / sizeof(periods[0]); ++i) {
         double seconds = periods[i];
-        CHECK(near(exteria_motion_alternating(0, seconds), 0));
-        CHECK(near(exteria_motion_alternating(seconds, seconds), 1));
-        CHECK(near(exteria_motion_alternating(seconds * 2, seconds), 0));
-        CHECK(near(exteria_motion_alternating(seconds / 2, seconds), 0.5));
+        CHECK(near(noshi_motion_alternating(0, seconds), 0));
+        CHECK(near(noshi_motion_alternating(seconds, seconds), 1));
+        CHECK(near(noshi_motion_alternating(seconds * 2, seconds), 0));
+        CHECK(near(noshi_motion_alternating(seconds / 2, seconds), 0.5));
         for (int frame = 0; frame < 100; ++frame) {
             double time = frame / 60.0;
-            CHECK(near(exteria_motion_alternating(time, seconds), exteria_motion_alternating(time + seconds * 2, seconds)));
+            CHECK(near(noshi_motion_alternating(time, seconds), noshi_motion_alternating(time + seconds * 2, seconds)));
         }
     }
-    CHECK(near(exteria_motion_alternating(NAN, 7), 0));
-    CHECK(near(exteria_motion_alternating(INFINITY, 7), 0));
-    CHECK(near(exteria_motion_alternating(-1, 7), 0));
-    CHECK(near(exteria_motion_alternating(1, 0), 0));
-    CHECK(near(exteria_motion_alternating(1, NAN), 0));
-    CHECK(near(exteria_motion_alternating(1, 3601), 0));
+    CHECK(near(noshi_motion_alternating(NAN, 7), 0));
+    CHECK(near(noshi_motion_alternating(INFINITY, 7), 0));
+    CHECK(near(noshi_motion_alternating(-1, 7), 0));
+    CHECK(near(noshi_motion_alternating(1, 0), 0));
+    CHECK(near(noshi_motion_alternating(1, NAN), 0));
+    CHECK(near(noshi_motion_alternating(1, 3601), 0));
 }
 
 int main(void) {

@@ -1,0 +1,96 @@
+#import <CoreText/CoreText.h>
+#import <UIKit/UIKit.h>
+
+#import "noshi_message.h"
+
+/* what a tap on a covered spoiler answers in place of an address */
+extern NSString *const NoshiSpoilerTarget;
+
+/* text laid out with CoreText: styles, links, and every emoji set in the lines as a picture of the app's one set;
+   a layout can be limited to a few lines */
+@interface NoshiTextLayout : NSObject {
+    NSAttributedString *_string;
+    CTLineRef *_lines;
+    CGPoint *_origins;
+    CGFloat *_ascents;
+    CGFloat *_descents;
+    NSUInteger _lineCount;
+    CGSize _size;
+    CGFloat _lastLineWidth;
+    BOOL *_quoted;
+    CGFloat _width;
+    UIColor *_ink;
+    BOOL _hasSpoilers;
+    BOOL _spoilersRevealed;
+    NSData *_marks;
+    NSString *_text;
+    NSString *_highlight;
+    NSArray *_highlightRanges;
+    NSInteger *_toggles;
+    CGFloat *_footers;
+    NSIndexSet *_expandedQuotes;
+}
+
+/* entities may be nil. maxLines of zero means no limit. flush is 0 for left aligned text, 0.5 for centered and 1
+   for right aligned */
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush;
+
+/* one line for a person's name: the same layout, with the invisible marks and the characters no font can draw left out so they never
+   show as boxes, and the name cut with an ellipsis at the width */
++ (NoshiTextLayout *)layoutForName:(NSString *)name font:(UIFont *)font color:(UIColor *)color width:(CGFloat)width;
+/* the same, for a name that carries custom emoji entities, such as the badge after the name of a Premium user; the
+   characters no font can draw go before the emoji are placed, so the offsets of the entities stay right */
++ (NoshiTextLayout *)layoutForName:(NSString *)name entities:(NSArray *)entities font:(UIFont *)font color:(UIColor *)color width:(CGFloat)width;
+
+/* layoutForText with the choice of dropping the characters no font can draw, which a name needs and a message must
+   not have (its entities count characters) */
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush dropsUndrawable:(BOOL)drops;
+
+/* the same, for a message: a quote that carries the collapsed flag shows its first three lines and a row with an arrow under them, unless the offset where its entity starts is in
+   expanded; a quote of three lines or fewer has no arrow and is always whole */
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush dropsUndrawable:(BOOL)drops expandedQuotes:(NSIndexSet *)expanded;
+
+/* the smallest box the text fits in at the width it was laid out for */
+@property (nonatomic, readonly) CGSize size;
+/* how far the last line reaches, to tell whether the time can sit beside it */
+@property (nonatomic, readonly) CGFloat lastLineWidth;
+@property (nonatomic, readonly) NSUInteger lineCount;
+
+/* text under a spoiler is covered until this is set; the cover is drawn, not laid out, so setting it needs only a redraw */
+@property (nonatomic, readonly) BOOL hasSpoilers;
+@property (nonatomic, assign) BOOL spoilersRevealed;
+
+/* draws with the top left corner of the text box at origin, in the current UIKit context */
+- (void)drawAtPoint:(CGPoint)origin;
+- (void)drawAtPoint:(CGPoint)origin hidingCustomEmoji:(long long)document;
+/* the address of the link under point (relative to the text box), nil when there is none */
+- (NSString *)linkAtPoint:(CGPoint)point;
+/* the original code or pre entity under the point, even when an emoji changed layout offsets */
+- (NoshiTextEntity *)codeAtPoint:(CGPoint)point;
+- (long long)customEmojiAtPoint:(CGPoint)point;
+/* the offset that names the foldable quote under the point (relative to the text box), NSNotFound when the point is outside every one; a tap there folds or opens it */
+- (NSUInteger)foldableQuoteAtPoint:(CGPoint)point;
+/* where the first custom emoji of this document stands in the layout, in its coordinates; CGRectNull when the text has none */
+- (CGRect)rectOfCustomEmoji:(long long)document;
+
+/* selection: indices count the laid out string, where an emoji is one character */
+- (NSUInteger)length;
+/* the words the layout was made of */
+- (NSString *)text;
+/* words that are drawn on a colored plate wherever they stand in the text, for the result of a search; compared without regard to case or accents. nil or empty for none. A change needs
+   only a redraw, the lines are not touched */
+@property (nonatomic, copy) NSString *highlight;
+- (NSUInteger)characterIndexAtPoint:(CGPoint)point;
+/* the boxes a range fills, one for each line it touches, in the coordinates of the text box */
+- (NSArray *)rectsForRange:(NSRange)range;
+- (NSRange)wordRangeAtIndex:(NSUInteger)index;
+/* the same range in the words, where an emoji is as long as it was written */
+- (NSRange)textRangeForRange:(NSRange)range;
+
+@end

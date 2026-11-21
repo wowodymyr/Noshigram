@@ -1,5 +1,5 @@
 #include "test_util.h"
-#include "exteria_stack_blur.h"
+#include "noshi_stack_blur.h"
 
 static uint32_t clamp_index(long index, uint32_t count) {
     if (index < 0) return 0;
@@ -40,7 +40,7 @@ static void compare(uint32_t width, uint32_t height, uint32_t radius, uint32_t s
     uint8_t *picture = malloc(size), *blurred = malloc(size), *expected = malloc(size);
     for (size_t i = 0; i < size; ++i) picture[i] = (uint8_t)next(&seed);
     memcpy(blurred, picture, size);
-    CHECK_EQ_INT(exteria_stack_blur_rgba(blurred, size, width, height, radius), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_stack_blur_rgba(blurred, size, width, height, radius), NOSHI_OK);
     reference(picture, expected, width, height, radius);
     /* the line sums are exact, the reference rounds once over the two axes, so a rounding of one step is the only difference allowed */
     int worst = 0;
@@ -62,7 +62,7 @@ int main(void) {
         for (size_t i = 0; i < sizeof flat; i += 4) { flat[i] = 200; flat[i + 1] = 17; flat[i + 2] = 255; flat[i + 3] = 0; }
         uint8_t kept[sizeof flat];
         memcpy(kept, flat, sizeof flat);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(flat, sizeof flat, 7, 5, 25), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(flat, sizeof flat, 7, 5, 25), NOSHI_OK);
         CHECK_MEM(flat, kept, sizeof flat);
     }
     /* radius 0 changes nothing */
@@ -70,14 +70,14 @@ int main(void) {
         uint8_t px[2 * 2 * 4] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         uint8_t kept[sizeof px];
         memcpy(kept, px, sizeof px);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 2, 2, 0), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 2, 2, 0), NOSHI_OK);
         CHECK_MEM(px, kept, sizeof px);
     }
     /* one bright pixel spreads as the product of two triangles: radius 1 gives 1/16 at the corners of the cross, 2/16 on its arms and 4/16 in the middle */
     {
         uint8_t px[5 * 5 * 4] = {0};
         px[(2 * 5 + 2) * 4] = 255;
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 5, 5, 1), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 5, 5, 1), NOSHI_OK);
         CHECK_EQ_INT(px[(2 * 5 + 2) * 4], 64);
         CHECK_EQ_INT(px[(2 * 5 + 1) * 4], 32);
         CHECK_EQ_INT(px[(1 * 5 + 2) * 4], 32);
@@ -92,18 +92,18 @@ int main(void) {
     compare(1, 8, 4, 4);
     compare(9, 1, 4, 5);
     compare(1, 1, 7, 6);
-    compare(40, 30, EXTERIA_STACK_BLUR_RADIUS_MAX, 7);
+    compare(40, 30, NOSHI_STACK_BLUR_RADIUS_MAX, 7);
     /* bad input leaves the pixels alone and says why */
     {
         uint8_t px[4 * 4] = {9, 9, 9, 9, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3};
         uint8_t kept[sizeof px];
         memcpy(kept, px, sizeof px);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(NULL, sizeof px, 2, 2, 1), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 0, 2, 1), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 2, 0, 1), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 2, 2, EXTERIA_STACK_BLUR_RADIUS_MAX + 1), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px - 1, 2, 2, 1), EXTERIA_E_LIMIT);
-        CHECK_EQ_INT(exteria_stack_blur_rgba(px, sizeof px, 0xFFFFFFFFu, 0xFFFFFFFFu, 1), EXTERIA_E_LIMIT);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(NULL, sizeof px, 2, 2, 1), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 0, 2, 1), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 2, 0, 1), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 2, 2, NOSHI_STACK_BLUR_RADIUS_MAX + 1), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px - 1, 2, 2, 1), NOSHI_E_LIMIT);
+        CHECK_EQ_INT(noshi_stack_blur_rgba(px, sizeof px, 0xFFFFFFFFu, 0xFFFFFFFFu, 1), NOSHI_E_LIMIT);
         CHECK_MEM(px, kept, sizeof px);
     }
     if (g_failures) {

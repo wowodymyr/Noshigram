@@ -10,7 +10,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from ui.alert import AlertDialogBuilder  # noqa: E402
 from ui.bulletin import BulletinHelper  # noqa: E402
 
@@ -26,7 +26,7 @@ class Dialogs(unittest.TestCase):
     def run_timers(self):
         while fake.timers:
             token, _ = fake.timers.pop(0)
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
 
     def test_buttons_reach_the_app_in_ios_order_and_answers_come_back(self):
         answers = []
@@ -40,7 +40,7 @@ class Dialogs(unittest.TestCase):
         self.assertEqual((shown["title"], shown["message"]), ("Delete?", "It cannot be undone"))
         self.assertEqual(shown["buttons"], ["Cancel", "Delete"])
         self.assertEqual(shown["cancel"], 0)
-        exteria_host.alert_result(shown["token"], 1)
+        noshi_host.alert_result(shown["token"], 1)
         self.assertEqual(answers, [("positive", -1)])
 
     def test_the_cancel_button_answers_negative(self):
@@ -50,7 +50,7 @@ class Dialogs(unittest.TestCase):
         builder.set_negative_button("No", lambda b, w: answers.append(w))
         builder.show()
         self.run_timers()
-        exteria_host.alert_result(self.calls("ui.alert")[0]["token"], 0)
+        noshi_host.alert_result(self.calls("ui.alert")[0]["token"], 0)
         self.assertEqual(answers, [-2])
 
     def test_a_list_of_items_is_a_choice(self):
@@ -61,7 +61,7 @@ class Dialogs(unittest.TestCase):
         self.run_timers()
         asked = self.calls("ui.choose")[0]
         self.assertEqual(asked["items"], ["a", "b", "c"])
-        exteria_host.alert_result(asked["token"], 2)
+        noshi_host.alert_result(asked["token"], 2)
         self.assertEqual(picked, [2])
 
     def test_a_progress_dialog_is_a_panel_the_plugin_moves_and_closes(self):
@@ -80,7 +80,7 @@ class Dialogs(unittest.TestCase):
         dialog.setMessage("Halfway")
         self.assertEqual(self.calls("progress.update")[-1]["message"], "Halfway")
         self.assertEqual(self.calls("progress.update")[-1]["percent"], 40)
-        exteria_host.alert_result(shown["token"], 0)
+        noshi_host.alert_result(shown["token"], 0)
         self.assertEqual(taps, ["stop"])
         self.assertFalse(dialog.isShowing())
 

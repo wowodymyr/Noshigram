@@ -15,7 +15,7 @@ fake = fakeapp.fake
 fake.plugins_dir = PLUGINS
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 import java  # noqa: E402
 
 
@@ -27,42 +27,42 @@ class PluginHost(unittest.TestCase):
         self.path = os.path.join(PLUGINS, "upper.plugin")
 
     def tearDown(self):
-        exteria_host.unload("upper")
+        noshi_host.unload("upper")
 
     def test_reads_metadata(self):
-        meta = exteria_host.metadata(self.path)
+        meta = noshi_host.metadata(self.path)
         self.assertTrue(meta["ok"])
         self.assertEqual(meta["meta"]["id"], "upper")
         self.assertEqual(meta["meta"]["name"], "Upper")
 
     def test_scans_the_permissions_a_plugin_needs(self):
-        self.assertEqual(exteria_host.capabilities(self.path), {"messages.send": ["on_send_message"]})
+        self.assertEqual(noshi_host.capabilities(self.path), {"messages.send": ["on_send_message"]})
 
     def test_loads_and_runs_hooks(self):
-        result = exteria_host.load(self.path, "upper")
+        result = noshi_host.load(self.path, "upper")
         self.assertTrue(result["ok"], result)
         self.assertIn(("hook.send.add", {"plugin": "upper", "priority": 0}), fake.calls)
         self.assertEqual(fake.settings[("upper", "loaded")], "true")
         self.assertEqual(fake.menu[0]["text"], "Upper")
-        out = exteria_host.send_message_hook("upper", 0, {"message": "hello", "peer": 5})
+        out = noshi_host.send_message_hook("upper", 0, {"message": "hello", "peer": 5})
         self.assertEqual(out, {"strategy": "MODIFY", "params": {"message": "HELLO", "peer": 5}})
-        self.assertEqual(exteria_host.send_message_hook("upper", 0, {"message": "stop"})["strategy"], "CANCEL")
+        self.assertEqual(noshi_host.send_message_hook("upper", 0, {"message": "stop"})["strategy"], "CANCEL")
 
     def test_menu_click_reaches_the_callback(self):
-        exteria_host.load(self.path, "upper")
-        exteria_host.menu_click("upper", "item1", {"n": 7})
+        noshi_host.load(self.path, "upper")
+        noshi_host.menu_click("upper", "item1", {"n": 7})
         self.assertEqual(fake.settings[("upper", "clicked")], "7")
         with self.assertRaises(LookupError):
-            exteria_host.menu_click("upper", "nope", {})
+            noshi_host.menu_click("upper", "nope", {})
 
     def test_app_events_are_logged(self):
-        exteria_host.load(self.path, "upper")
-        exteria_host.app_event("upper", "app_pause")
+        noshi_host.load(self.path, "upper")
+        noshi_host.app_event("upper", "app_pause")
         logs = [d["message"] for n, d in fake.calls if n == "log"]
         self.assertIn("event PAUSE", logs)
 
     def test_unknown_plugin_passes(self):
-        self.assertEqual(exteria_host.send_message_hook("ghost", 0, {"message": "x"}), {"strategy": "DEFAULT"})
+        self.assertEqual(noshi_host.send_message_hook("ghost", 0, {"message": "x"}), {"strategy": "DEFAULT"})
 
     def test_runtime_directories_are_known_before_any_plugin_runs(self):
         from extera_utils import audit_gate
@@ -102,7 +102,7 @@ class PluginHost(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix=".plugin", delete=False) as f:
             f.write("def broken(:\n")
         try:
-            refused = exteria_host.metadata(f.name)
+            refused = noshi_host.metadata(f.name)
             self.assertFalse(refused["ok"])
             self.assertIn("syntax error", refused["error"])
         finally:
@@ -133,11 +133,11 @@ class DexPlugin(BasePlugin):
             with open(path, "w") as handle:
                 handle.write(source)
             try:
-                result = exteria_host.load(path, "dexfixture")
+                result = noshi_host.load(path, "dexfixture")
                 self.assertTrue(result["ok"], result)
                 self.assertEqual(fake.settings[("dexfixture", "result")], "34")
             finally:
-                exteria_host.unload("dexfixture")
+                noshi_host.unload("dexfixture")
 
 
 if __name__ == "__main__":

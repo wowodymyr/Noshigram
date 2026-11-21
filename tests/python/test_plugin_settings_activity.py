@@ -12,7 +12,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402,F401
+import noshi_host  # noqa: E402,F401
 from java import jclass  # noqa: E402
 from java.lang import IllegalArgumentException, IllegalStateException, NullPointerException  # noqa: E402
 from org.telegram.ui import BaseFragment  # noqa: E402

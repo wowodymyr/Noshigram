@@ -1,0 +1,76 @@
+#import "noshi_forum_summaries.h"
+
+#import "noshi_dialog.h"
+
+/* the counts of the topics change without the last message of the forum moving, as when another device reads one */
+#define SUMMARY_MAX_AGE 60.0
+/* a read whose answer never came, as on a socket that dropped without failing the request, must not shut the forum out of its summary until the app is restarted */
+#define SUMMARY_READ_TIMEOUT 30.0
+
+@interface NoshiForumSummaries () {
+    NSMutableDictionary *_kept;
+    NSMutableDictionary *_dates;
+    NSMutableDictionary *_messages;
+    NSMutableDictionary *_reading;
+}
+@end
+
+@implementation NoshiForumSummaries
+
+- (id)init {
+    self = [super init];
+    if (!self) return nil;
+    _kept = [[NSMutableDictionary alloc] init];
+    _dates = [[NSMutableDictionary alloc] init];
+    _messages = [[NSMutableDictionary alloc] init];
+    _reading = [[NSMutableDictionary alloc] init];
+    return self;
+}
+
+- (void)dealloc {
+    [_kept release];
+    [_dates release];
+    [_messages release];
+    [_reading release];
+    [super dealloc];
+}
+
+- (void)applyToDialogs:(NSArray *)dialogs {
+    @synchronized (self) {
+        for (NoshiDialog *dialog in dialogs) {
+            if (!dialog.forum) continue;
+            NSData *kept = [_kept objectForKey:[NSNumber numberWithLongLong:dialog.peerId]];
+            if (kept.length == sizeof(noshi_forum_summary)) [dialog applyForumSummary:(const noshi_forum_summary *)kept.bytes];
+        }
+    }
+}
+
+- (void)setSummary:(const noshi_forum_summary *)summary forForum:(int64_t)peerId topMessage:(int32_t)topMessage {
+    if (!summary) return;
+    NSNumber *key = [NSNumber numberWithLongLong:peerId];
+    @synchronized (self) {
+        [_kept setObject:[NSData dataWithBytes:summary length:sizeof(*summary)] forKey:key];
+        [_dates setObject:[NSDate date] forKey:key];
+        [_messages setObject:[NSNumber numberWithInt:topMessage] forKey:key];
+    }
+}
+
+- (BOOL)beginReadingForum:(int64_t)peerId topMessage:(int32_t)topMessage {
+    NSNumber *key = [NSNumber numberWithLongLong:peerId];
+    @synchronized (self) {
+        NSDate *started = [_reading objectForKey:key];
+        if (started && -[started timeIntervalSinceNow] < SUMMARY_READ_TIMEOUT) return NO;
+        NSDate *date = [_dates objectForKey:key];
+        if (date && [[_messages objectForKey:key] intValue] == topMessage && -[date timeIntervalSinceNow] < SUMMARY_MAX_AGE) return NO;
+        [_reading setObject:[NSDate date] forKey:key];
+    }
+    return YES;
+}
+
+- (void)endReadingForum:(int64_t)peerId {
+    @synchronized (self) {
+        [_reading removeObjectForKey:[NSNumber numberWithLongLong:peerId]];
+    }
+}
+
+@end

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "exteria_bytes.h"
+#include "noshi_bytes.h"
 
 uint8_t fake_pattern_at(size_t i) {
     return (uint8_t)((i * 31 + 7) & 0xFF);
@@ -37,13 +37,13 @@ size_t fake_build_tcp(uint8_t *out, uint32_t src, uint32_t dst, uint16_t sport, 
     put16(out + 6, 0x4000);
     out[8] = 64;
     out[9] = 6;
-    exteria_put_u32be(out + 12, src);
-    exteria_put_u32be(out + 16, dst);
+    noshi_put_u32be(out + 12, src);
+    noshi_put_u32be(out + 16, dst);
     put16(out + 10, fake_fold(fake_add(0, out, 20)));
     put16(tcp, sport);
     put16(tcp + 2, dport);
-    exteria_put_u32be(tcp + 4, seq);
-    exteria_put_u32be(tcp + 8, ack);
+    noshi_put_u32be(tcp + 4, seq);
+    noshi_put_u32be(tcp + 8, ack);
     tcp[12] = (uint8_t)((tcp_len / 4) << 4);
     tcp[13] = flags;
     put16(tcp + 14, window);
@@ -53,8 +53,8 @@ size_t fake_build_tcp(uint8_t *out, uint32_t src, uint32_t dst, uint16_t sport, 
         put16(tcp + 22, 1240);
     }
     if (plen) memcpy(tcp + tcp_len, payload, plen);
-    exteria_put_u32be(pseudo, src);
-    exteria_put_u32be(pseudo + 4, dst);
+    noshi_put_u32be(pseudo, src);
+    noshi_put_u32be(pseudo + 4, dst);
     pseudo[8] = 0;
     pseudo[9] = 6;
     put16(pseudo + 10, (unsigned)(tcp_len + plen));
@@ -123,7 +123,7 @@ void fake_tcp_server_pump(fake_tcp_server *v, uint64_t now) {
 
 void fake_tcp_server_receive(fake_tcp_server *v, const uint8_t *packet, size_t len, uint64_t now) {
     const uint8_t *tcp = packet + 20;
-    uint32_t seq = exteria_get_u32be(tcp + 4), ack = exteria_get_u32be(tcp + 8);
+    uint32_t seq = noshi_get_u32be(tcp + 4), ack = noshi_get_u32be(tcp + 8);
     uint8_t flags = tcp[13];
     size_t doff = (size_t)(tcp[12] >> 4) * 4, plen = len - 20 - doff;
     if (len > v->max_segment_seen) v->max_segment_seen = len;
@@ -135,7 +135,7 @@ void fake_tcp_server_receive(fake_tcp_server *v, const uint8_t *packet, size_t l
     if (flags & 0x02) {
         ++v->syns_seen;
         if (!v->answer_syn) return;
-        v->client_ip = exteria_get_u32be(packet + 12);
+        v->client_ip = noshi_get_u32be(packet + 12);
         v->client_port = (uint16_t)(tcp[0] << 8 | tcp[1]);
         v->irs = seq;
         v->rcv_nxt = seq + 1;

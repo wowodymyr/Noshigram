@@ -19,7 +19,7 @@ from extera_utils import plugin_loader  # noqa: E402
 
 class OpenAlias(unittest.TestCase):
     def setUp(self):
-        self.dir = tempfile.mkdtemp(prefix="exteria-alias-")
+        self.dir = tempfile.mkdtemp(prefix="noshigram-alias-")
         self.saved = (fake.plugins_dir, plugin_loader._plugins_dir_cached)
         fake.plugins_dir = self.dir
         plugin_loader._plugins_dir_cached = None

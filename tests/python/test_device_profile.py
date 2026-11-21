@@ -1,6 +1,6 @@
 """the device profile a plugin sends with invokeWithLayer(initConnection(help.getNearestDc)): the record is serialized, read back, checked field by field,
 and only the three device texts reach the app. the app is the stand-in of fakeapp.py; the real device_fingerprint_spoofer runs over it when
-EXTERIA_DEVICE_SPOOFER names its file"""
+NOSHI_DEVICE_SPOOFER names its file"""
 
 import os
 import shutil
@@ -17,7 +17,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android.os import Build  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 from java.lang import Class  # noqa: E402
@@ -29,12 +29,12 @@ _saved = {}
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-device-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-device-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -151,12 +151,12 @@ class DeviceProfile(unittest.TestCase):
         self.assertIn("cannot be sent from a plugin on ios", str(caught.exception))
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_DEVICE_SPOOFER"), "set EXTERIA_DEVICE_SPOOFER to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_DEVICE_SPOOFER"), "set NOSHI_DEVICE_SPOOFER to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     def setUp(self):
         self.path = os.path.join(PLUGINS, "device_fingerprint_spoofer.plugin")
-        shutil.copy(os.environ["EXTERIA_DEVICE_SPOOFER"], self.path)
-        self.assertTrue(exteria_host.load(self.path, "device_fingerprint_spoofer")["ok"])
+        shutil.copy(os.environ["NOSHI_DEVICE_SPOOFER"], self.path)
+        self.assertTrue(noshi_host.load(self.path, "device_fingerprint_spoofer")["ok"])
         self.plugin = plugin_loader.plugins["device_fingerprint_spoofer"].instance
         # the settings of the plugin outlive its unload, so a test starts from the defaults
         for key, value in (("enabled", True), ("profile", 1), ("spoof_app", True)):
@@ -164,10 +164,10 @@ class RealPlugin(unittest.TestCase):
         fake.saved["calls"].clear()
 
     def tearDown(self):
-        exteria_host.unload("device_fingerprint_spoofer")
+        noshi_host.unload("device_fingerprint_spoofer")
 
     def status_rows(self):
-        return [row.get("text") for row in exteria_host.settings("device_fingerprint_spoofer") if row.get("text")]
+        return [row.get("text") for row in noshi_host.settings("device_fingerprint_spoofer") if row.get("text")]
 
     def test_the_account_is_active_and_the_profile_reaches_the_app_when_applied(self):
         self.plugin.apply_runtime(force_new=True, notify=False, force=True)

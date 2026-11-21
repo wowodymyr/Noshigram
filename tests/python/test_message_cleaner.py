@@ -1,5 +1,5 @@
 """the message_cleaner plugin over the stand-in app: the menu of a chat, its list of the messages of the open chat, the deletes and the progress panel.
-EXTERIA_MESSAGE_CLEANER names the file of the real plugin"""
+NOSHI_MESSAGE_CLEANER names the file of the real plugin"""
 
 import os
 import shutil
@@ -16,7 +16,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
 PLUGINS = None
@@ -25,12 +25,12 @@ _saved = {}
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-cleaner-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-cleaner-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -44,7 +44,7 @@ def pump(until, timeout=15):
     end = time.time() + timeout
     while time.time() < end:
         while fake.timers:
-            exteria_host.run_token(fake.timers.pop(0)[0])
+            noshi_host.run_token(fake.timers.pop(0)[0])
         fake.deliver()
         if until():
             return True
@@ -56,7 +56,7 @@ def message(number, out):
     return {"id": number, "date": number, "out": out, "post": False, "service": False}
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_MESSAGE_CLEANER"), "set EXTERIA_MESSAGE_CLEANER to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_MESSAGE_CLEANER"), "set NOSHI_MESSAGE_CLEANER to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     def setUp(self):
         fake.calls.clear()
@@ -67,23 +67,23 @@ class RealPlugin(unittest.TestCase):
         fake.saved.update(messages=[], calls=[], errors={}, inbox=[])
         fake.current = {"kind": "chat", "dialog": 600, "signed": 600, "peer_kind": 1, "topic": 0, "chat": {"id": 600, "title": "Ann"}, "user": {"id": 600}}
         path = os.path.join(PLUGINS, "message_cleaner.plugin")
-        shutil.copy(os.environ["EXTERIA_MESSAGE_CLEANER"], path)
-        result = exteria_host.load(path, "message_cleaner")
+        shutil.copy(os.environ["NOSHI_MESSAGE_CLEANER"], path)
+        result = noshi_host.load(path, "message_cleaner")
         self.assertTrue(result["ok"], result)
 
     def tearDown(self):
-        exteria_host.unload("message_cleaner")
+        noshi_host.unload("message_cleaner")
 
     def asked(self, name):
         return [data for call, data in fake.calls if call == name]
 
     def click_menu(self):
         self.assertEqual([item["menu_type"] for item in fake.menu], ["CHAT_ACTION_MENU"])
-        exteria_host.menu_click("message_cleaner", "item1", {})
+        noshi_host.menu_click("message_cleaner", "item1", {})
 
     def answer(self, name, index, count=1):
         self.assertTrue(pump(lambda: len(self.asked(name)) >= count))
-        exteria_host.alert_result(self.asked(name)[count - 1]["token"], index)
+        noshi_host.alert_result(self.asked(name)[count - 1]["token"], index)
 
     def logs(self):
         """what the plugin wrote to its log, for the failure message of a test"""
@@ -136,7 +136,7 @@ class RealPlugin(unittest.TestCase):
         self.answer("ui.alert", 2)
         self.assertTrue(pump(lambda: fake.progress))
         token = next(iter(fake.progress))
-        exteria_host.alert_result(token, 0)
+        noshi_host.alert_result(token, 0)
         self.assertTrue(pump(self.finished), self.logs())
         self.assertIn("stopped", self.asked("ui.alert")[1]["message"].lower())
 

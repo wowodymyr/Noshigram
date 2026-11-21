@@ -1,5 +1,5 @@
 """the bottom bar as a plugin sees it (MainTabsActivity), and the music_tab plugin over the stand-in app: it retitles the second tab, takes its tap and
-plays the newest or oldest song of a chat or the song of a profile. EXTERIA_MUSIC_TAB names the file of the real plugin"""
+plays the newest or oldest song of a chat or the song of a profile. NOSHI_MUSIC_TAB names the file of the real plugin"""
 
 import json
 import os
@@ -18,7 +18,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 from org.telegram.tgnet import TLRPC, requests  # noqa: E402
 from org.telegram.ui import MainTabsActivity  # noqa: E402
@@ -29,12 +29,12 @@ _saved = {}
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-tabs-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-tabs-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -57,7 +57,7 @@ def settle(until, timeout=3):
     while time.time() < end:
         # the main thread of the app: queued calls (run_on_ui_thread) and the answers of the account
         while fake.timers:
-            exteria_host.run_token(fake.timers.pop(0)[0])
+            noshi_host.run_token(fake.timers.pop(0)[0])
         fake.deliver()
         if until():
             return True
@@ -90,9 +90,9 @@ class Tabs(unittest.TestCase):
         tab.setOnClickListener(lambda view: taps.append(view))
         tab.setOnLongClickListener(None)
         self.assertEqual((fake.tabs[1]["click"], fake.tabs[1]["hold"]), (True, False))
-        exteria_host.tab_event(1, "click")
+        noshi_host.tab_event(1, "click")
         self.assertEqual(taps, [tab])
-        exteria_host.tab_event(1, "hold")
+        noshi_host.tab_event(1, "hold")
         self.assertEqual(taps, [tab])
 
     def test_the_bar_has_the_icons_of_the_app_only(self):
@@ -115,11 +115,11 @@ class Tabs(unittest.TestCase):
         activity = MainTabsActivity.instance()
         activity.createView = lambda context: seen.append("create")
         activity.onResume = lambda: seen.append("resume")
-        exteria_host.fragment_event("tabs", "create", 0, 0)
-        exteria_host.fragment_event("tabs", "resume", 0, 0)
+        noshi_host.fragment_event("tabs", "create", 0, 0)
+        noshi_host.fragment_event("tabs", "resume", 0, 0)
         self.assertEqual(seen, ["create", "resume"])
         with self.assertRaises(ValueError):
-            exteria_host.fragment_event("tabs", "pause", 0, 0)
+            noshi_host.fragment_event("tabs", "pause", 0, 0)
 
 
 class Search(unittest.TestCase):
@@ -198,7 +198,7 @@ class Search(unittest.TestCase):
         self.assertIsNone(controller.getInputUser(601))
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_MUSIC_TAB"), "set EXTERIA_MUSIC_TAB to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_MUSIC_TAB"), "set NOSHI_MUSIC_TAB to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     def setUp(self):
         fake.tabs.clear()
@@ -207,24 +207,24 @@ class RealPlugin(unittest.TestCase):
         fake.peers = {-500, 600}
         fake.saved.update(messages=[], music=[], next_id=100, calls=[], errors={}, inbox=[], chat_music={}, profile_music={})
         path = os.path.join(PLUGINS, "music_tab.plugin")
-        shutil.copy(os.environ["EXTERIA_MUSIC_TAB"], path)
-        lib = os.environ.get("EXTERIA_PYTHON_LIB")
+        shutil.copy(os.environ["NOSHI_MUSIC_TAB"], path)
+        lib = os.environ.get("NOSHI_PYTHON_LIB")
         if lib:
             sys.path.insert(0, lib)
-        self.result = exteria_host.load(path, "music_tab")
+        self.result = noshi_host.load(path, "music_tab")
         self.assertTrue(self.result["ok"], self.result)
         # the plugin patches the bar from a call queued for the main thread
         self.assertTrue(settle(lambda: 1 in fake.tabs))
 
     def tearDown(self):
-        exteria_host.unload("music_tab")
+        noshi_host.unload("music_tab")
 
     def configure(self, **values):
         for key, value in values.items():
             fake.settings[("music_tab", key)] = json.dumps(value)
 
     def tap(self):
-        exteria_host.tab_event(1, "click")
+        noshi_host.tab_event(1, "click")
 
     def test_loading_patches_the_bar_that_is_up(self):
         self.assertTrue(settle(lambda: 1 in fake.tabs))
@@ -232,7 +232,7 @@ class RealPlugin(unittest.TestCase):
 
     def test_a_bar_built_later_is_patched_by_its_events(self):
         fake.tabs.clear()
-        exteria_host.fragment_event("tabs", "create", 0, 0)
+        noshi_host.fragment_event("tabs", "create", 0, 0)
         self.assertEqual(fake.tabs[1]["title"], "Музыка")
 
     def test_a_tap_plays_the_newest_song_of_saved_messages(self):

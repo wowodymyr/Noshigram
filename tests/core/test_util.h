@@ -1,5 +1,5 @@
-#ifndef EXTERIA_TEST_UTIL_H
-#define EXTERIA_TEST_UTIL_H
+#ifndef NOSHI_TEST_UTIL_H
+#define NOSHI_TEST_UTIL_H
 
 #include <stddef.h>
 #include <stdint.h>

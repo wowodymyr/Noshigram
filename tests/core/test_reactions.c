@@ -1,81 +1,81 @@
 #include "test_util.h"
-#include "exteria_messages.h"
-#include "exteria_reaction_layout.h"
-#include "exteria_reaction_art.h"
-#include "exteria_updates.h"
-#include "exteria_tl_ids.h"
+#include "noshi_messages.h"
+#include "noshi_reaction_layout.h"
+#include "noshi_reaction_art.h"
+#include "noshi_updates.h"
+#include "noshi_tl_ids.h"
 
 #include <math.h>
 #include <unistd.h>
 
-static exteria_arena arena;
+static noshi_arena arena;
 
-static exteria_tl_value *obj(const char *name) {
-    exteria_tl_value *v = exteria_tl_new_obj(&arena, name);
+static noshi_tl_value *obj(const char *name) {
+    noshi_tl_value *v = noshi_tl_new_obj(&arena, name);
     CHECK(v != NULL);
     return v;
 }
-static void set(exteria_tl_value *v, const char *field, exteria_tl_value *x) {
-    CHECK_EQ_INT(exteria_tl_set(v, field, x), EXTERIA_OK);
+static void set(noshi_tl_value *v, const char *field, noshi_tl_value *x) {
+    CHECK_EQ_INT(noshi_tl_set(v, field, x), NOSHI_OK);
 }
-static void i32(exteria_tl_value *v, const char *field, int32_t x) {
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, v, field, x), EXTERIA_OK);
+static void i32(noshi_tl_value *v, const char *field, int32_t x) {
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, v, field, x), NOSHI_OK);
 }
-static void i64(exteria_tl_value *v, const char *field, int64_t x) {
-    CHECK_EQ_INT(exteria_tl_set_i64(&arena, v, field, x), EXTERIA_OK);
+static void i64(noshi_tl_value *v, const char *field, int64_t x) {
+    CHECK_EQ_INT(noshi_tl_set_i64(&arena, v, field, x), NOSHI_OK);
 }
-static void str(exteria_tl_value *v, const char *field, const char *x) {
-    CHECK_EQ_INT(exteria_tl_set_str(&arena, v, field, x), EXTERIA_OK);
+static void str(noshi_tl_value *v, const char *field, const char *x) {
+    CHECK_EQ_INT(noshi_tl_set_str(&arena, v, field, x), NOSHI_OK);
 }
-static void flag(exteria_tl_value *v, const char *field) {
-    CHECK_EQ_INT(exteria_tl_set_flag(v, field), EXTERIA_OK);
+static void flag(noshi_tl_value *v, const char *field) {
+    CHECK_EQ_INT(noshi_tl_set_flag(v, field), NOSHI_OK);
 }
-static exteria_tl_value *emoji(const char *text) {
-    exteria_tl_value *v = obj("reactionEmoji");
+static noshi_tl_value *emoji(const char *text) {
+    noshi_tl_value *v = obj("reactionEmoji");
     str(v, "emoticon", text);
     return v;
 }
-static exteria_tl_value *result(exteria_tl_value *reaction, int32_t count, int chosen) {
-    exteria_tl_value *v = obj("reactionCount");
+static noshi_tl_value *result(noshi_tl_value *reaction, int32_t count, int chosen) {
+    noshi_tl_value *v = obj("reactionCount");
     set(v, "reaction", reaction);
     i32(v, "count", count);
     if (chosen) i32(v, "chosen_order", 0);
     return v;
 }
-static exteria_tl_value *reactions(exteria_tl_value *r, int min) {
-    exteria_tl_value *v = obj("messageReactions"), *vec = exteria_tl_new_vec(&arena, r ? 1 : 0);
-    if (r) CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, r), EXTERIA_OK);
+static noshi_tl_value *reactions(noshi_tl_value *r, int min) {
+    noshi_tl_value *v = obj("messageReactions"), *vec = noshi_tl_new_vec(&arena, r ? 1 : 0);
+    if (r) CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, r), NOSHI_OK);
     set(v, "results", vec);
     if (min) flag(v, "min");
     return v;
 }
-static exteria_tl_value *peer(const char *type, const char *field, int64_t id) {
-    exteria_tl_value *v = obj(type);
+static noshi_tl_value *peer(const char *type, const char *field, int64_t id) {
+    noshi_tl_value *v = obj(type);
     i64(v, field, id);
     return v;
 }
 
 static void test_reaction_people(void) {
-    exteria_peer_ref chat = {3, 12, 34, 0, 0};
-    exteria_tl_value *request = NULL, *decoded = NULL, *answer = obj("messages.messageReactionsList"), *vec = exteria_tl_new_vec(&arena, 2);
-    exteria_tl_value *a = obj("messagePeerReaction"), *b = obj("messagePeerReaction");
-    exteria_reaction_person rows[2];
-    exteria_writer writer;
+    noshi_peer_ref chat = {3, 12, 34, 0, 0};
+    noshi_tl_value *request = NULL, *decoded = NULL, *answer = obj("messages.messageReactionsList"), *vec = noshi_tl_new_vec(&arena, 2);
+    noshi_tl_value *a = obj("messagePeerReaction"), *b = obj("messagePeerReaction");
+    noshi_reaction_person rows[2];
+    noshi_writer writer;
     size_t count = 99;
-    char next[EXTERIA_REACTION_OFFSET_MAX];
+    char next[NOSHI_REACTION_OFFSET_MAX];
     int32_t value = 0;
-    CHECK_EQ_INT(exteria_reaction_people_request(&arena, &chat, 5, NULL, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getMessageReactionsList);
-    CHECK(!exteria_tl_has(request, "offset"));
-    CHECK_EQ_INT(exteria_reaction_people_request(&arena, &chat, 5, "cursor", &request), EXTERIA_OK);
-    exteria_writer_init(&writer, 4096);
-    CHECK_EQ_INT(exteria_tl_encode(request, &writer, NULL), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_decode_all(&arena, NULL, EXTERIA_TL_REF_ANY, writer.data, writer.len, &decoded), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(decoded, "id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_people_request(&arena, &chat, 5, NULL, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getMessageReactionsList);
+    CHECK(!noshi_tl_has(request, "offset"));
+    CHECK_EQ_INT(noshi_reaction_people_request(&arena, &chat, 5, "cursor", &request), NOSHI_OK);
+    noshi_writer_init(&writer, 4096);
+    CHECK_EQ_INT(noshi_tl_encode(request, &writer, NULL), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_decode_all(&arena, NULL, NOSHI_TL_REF_ANY, writer.data, writer.len, &decoded), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(decoded, "id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 5);
-    CHECK(exteria_tl_has(decoded, "offset"));
-    exteria_writer_free(&writer);
-    CHECK_EQ_INT(exteria_reaction_people_request(&arena, &chat, 0, NULL, &request), EXTERIA_E_ARG);
+    CHECK(noshi_tl_has(decoded, "offset"));
+    noshi_writer_free(&writer);
+    CHECK_EQ_INT(noshi_reaction_people_request(&arena, &chat, 0, NULL, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
     set(a, "peer_id", peer("peerUser", "user_id", 10));
     i32(a, "date", 12345);
@@ -83,11 +83,11 @@ static void test_reaction_people(void) {
     set(b, "peer_id", peer("peerChannel", "channel_id", 20));
     i32(b, "date", 0);
     set(b, "reaction", obj("reactionPaid"));
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, a), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 1, b), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, a), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 1, b), NOSHI_OK);
     set(answer, "reactions", vec);
     str(answer, "next_offset", "next");
-    CHECK_EQ_INT(exteria_reaction_people_parse(answer, rows, 2, &count, next, sizeof(next)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_people_parse(answer, rows, 2, &count, next, sizeof(next)), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(rows[0].peer_kind, 1);
     CHECK_EQ_INT(rows[0].peer_id, 10);
@@ -95,47 +95,47 @@ static void test_reaction_people(void) {
     CHECK(!strcmp(rows[0].reaction.emoji, "👍"));
     CHECK_EQ_INT(rows[1].peer_kind, 3);
     CHECK_EQ_INT(rows[1].date, 0);
-    CHECK_EQ_INT(rows[1].reaction.kind, EXTERIA_REACTION_PAID);
+    CHECK_EQ_INT(rows[1].reaction.kind, NOSHI_REACTION_PAID);
     /* two of fifty is the last page, whatever offset the server names */
     CHECK_EQ_INT(next[0], 0);
-    CHECK_EQ_INT(exteria_reaction_people_parse(answer, rows, 1, &count, next, sizeof(next)), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_reaction_people_parse(answer, rows, 1, &count, next, sizeof(next)), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
     i32(b, "date", -1);
-    CHECK_EQ_INT(exteria_reaction_people_parse(answer, rows, 2, &count, next, sizeof(next)), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_people_parse(answer, rows, 2, &count, next, sizeof(next)), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(count, 0);
     CHECK_EQ_INT(next[0], 0);
-    CHECK_EQ_INT(exteria_reaction_people_parse(obj("boolTrue"), rows, 2, &count, next, sizeof(next)), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_people_parse(obj("boolTrue"), rows, 2, &count, next, sizeof(next)), NOSHI_E_MALFORMED);
     /* a full page keeps the offset: the next one may hold more */
     {
-        exteria_tl_value *full = obj("messages.messageReactionsList"), *many = exteria_tl_new_vec(&arena, EXTERIA_REACTION_PEOPLE_PAGE);
-        exteria_reaction_person page[EXTERIA_REACTION_PEOPLE_PAGE];
-        for (uint32_t i = 0; i < EXTERIA_REACTION_PEOPLE_PAGE; ++i) {
-            exteria_tl_value *item = obj("messagePeerReaction");
+        noshi_tl_value *full = obj("messages.messageReactionsList"), *many = noshi_tl_new_vec(&arena, NOSHI_REACTION_PEOPLE_PAGE);
+        noshi_reaction_person page[NOSHI_REACTION_PEOPLE_PAGE];
+        for (uint32_t i = 0; i < NOSHI_REACTION_PEOPLE_PAGE; ++i) {
+            noshi_tl_value *item = obj("messagePeerReaction");
             set(item, "peer_id", peer("peerUser", "user_id", 100 + i));
             i32(item, "date", 1);
             set(item, "reaction", emoji("👍"));
-            CHECK_EQ_INT(exteria_tl_vec_set(many, i, item), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tl_vec_set(many, i, item), NOSHI_OK);
         }
         set(full, "reactions", many);
         str(full, "next_offset", "more");
-        CHECK_EQ_INT(exteria_reaction_people_parse(full, page, EXTERIA_REACTION_PEOPLE_PAGE, &count, next, sizeof(next)), EXTERIA_OK);
-        CHECK_EQ_INT(count, EXTERIA_REACTION_PEOPLE_PAGE);
+        CHECK_EQ_INT(noshi_reaction_people_parse(full, page, NOSHI_REACTION_PEOPLE_PAGE, &count, next, sizeof(next)), NOSHI_OK);
+        CHECK_EQ_INT(count, NOSHI_REACTION_PEOPLE_PAGE);
         CHECK(!strcmp(next, "more"));
     }
 }
 
 static void test_parse(void) {
-    exteria_reactions rows;
-    exteria_message_row *message_row = calloc(1, sizeof(*message_row));
-    exteria_tl_value *v, *r, *vec, *message;
+    noshi_reactions rows;
+    noshi_message_row *message_row = calloc(1, sizeof(*message_row));
+    noshi_tl_value *v, *r, *vec, *message;
     CHECK(message_row != NULL);
-    CHECK_EQ_INT(exteria_reactions_read(NULL, &rows), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(NULL, &rows), NOSHI_OK);
     CHECK_EQ_INT(rows.count, 0);
-    CHECK_EQ_INT(exteria_reactions_read(obj("boolTrue"), &rows), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reactions_read(NULL, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reactions_read(obj("boolTrue"), &rows), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(NULL, NULL), NOSHI_E_ARG);
     r = result(emoji("👍"), 2147483647, 1);
     v = reactions(r, 0);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
     CHECK_EQ_INT(rows.count, 1);
     CHECK_EQ_INT(rows.items[0].count, INT32_MAX);
     CHECK_EQ_INT(rows.items[0].chosen, 1);
@@ -146,116 +146,116 @@ static void test_parse(void) {
     i32(message, "date", 10);
     str(message, "message", "text");
     set(message, "reactions", v);
-    CHECK_EQ_INT(exteria_message_read(message, message_row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(message, message_row), NOSHI_OK);
     CHECK(message_row->has_reactions && message_row->reactions_possible);
     CHECK_EQ_INT(message_row->reactions.items[0].count, INT32_MAX);
     i32(r, "count", -1);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(rows.count, 0);
     i32(r, "count", 0);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_MALFORMED);
     i32(r, "count", 1);
     i32(r, "chosen_order", -1);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_MALFORMED);
     i32(r, "chosen_order", 0);
-    vec = exteria_tl_new_vec(&arena, 2);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, r), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 1, r), EXTERIA_OK);
+    vec = noshi_tl_new_vec(&arena, 2);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, r), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 1, r), NOSHI_OK);
     set(v, "results", vec);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_MALFORMED);
-    set(v, "results", exteria_tl_new_vec(&arena, EXTERIA_REACTIONS_MAX + 1));
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_MALFORMED);
+    set(v, "results", noshi_tl_new_vec(&arena, NOSHI_REACTIONS_MAX + 1));
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_LIMIT);
     v = reactions(NULL, 0);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
     CHECK_EQ_INT(rows.count, 0);
     r = obj("reactionCustomEmoji");
     i64(r, "document_id", INT64_C(4294967305));
     v = reactions(result(r, 2, 0), 1);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
-    CHECK_EQ_INT(rows.items[0].kind, EXTERIA_REACTION_CUSTOM);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
+    CHECK_EQ_INT(rows.items[0].kind, NOSHI_REACTION_CUSTOM);
     CHECK_EQ_INT(rows.items[0].document_id, INT64_C(4294967305));
     CHECK_EQ_INT(rows.min, 1);
     i64(r, "document_id", 0);
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(obj("reactionPaid"), 10, 0), 0), &rows), EXTERIA_OK);
-    CHECK_EQ_INT(rows.items[0].kind, EXTERIA_REACTION_PAID);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(obj("reactionPaid"), 10, 0), 0), &rows), NOSHI_OK);
+    CHECK_EQ_INT(rows.items[0].kind, NOSHI_REACTION_PAID);
     r = emoji("\xc0\x80");
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(r, 1, 0), 0), &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(r, 1, 0), 0), &rows), NOSHI_E_MALFORMED);
     str(r, "emoticon", "\xed\xa0\x80");
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(r, 1, 0), 0), &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(r, 1, 0), 0), &rows), NOSHI_E_MALFORMED);
     str(r, "emoticon", "a\n");
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(r, 1, 0), 0), &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(r, 1, 0), 0), &rows), NOSHI_E_MALFORMED);
     str(r, "emoticon", "");
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(r, 1, 0), 0), &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(r, 1, 0), 0), &rows), NOSHI_E_MALFORMED);
     str(r, "emoticon", "0123456789012345678901234567890123");
-    CHECK_EQ_INT(exteria_reactions_read(reactions(result(r, 1, 0), 0), &rows), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reactions_read(reactions(result(r, 1, 0), 0), &rows), NOSHI_E_MALFORMED);
     free(message_row);
 }
 
-static void roundtrip(exteria_tl_value *request, uint32_t constructor) {
-    exteria_writer writer;
-    exteria_tl_value *decoded = NULL;
-    exteria_writer_init(&writer, 65536);
-    CHECK_EQ_INT(exteria_tl_encode(request, &writer, NULL), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_decode_all(&arena, NULL, EXTERIA_TL_REF_ANY, writer.data, writer.len, &decoded), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(decoded), constructor);
-    exteria_writer_free(&writer);
+static void roundtrip(noshi_tl_value *request, uint32_t constructor) {
+    noshi_writer writer;
+    noshi_tl_value *decoded = NULL;
+    noshi_writer_init(&writer, 65536);
+    CHECK_EQ_INT(noshi_tl_encode(request, &writer, NULL), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_decode_all(&arena, NULL, NOSHI_TL_REF_ANY, writer.data, writer.len, &decoded), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(decoded), constructor);
+    noshi_writer_free(&writer);
 }
 
 static void test_requests(void) {
-    exteria_peer_ref peers[] = {{1, 5, 7, 0, 0}, {2, 6, 0, 0, 0}, {3, 7, 9, 0, 0}, {1, 1, 0, 1, 0}};
-    exteria_reaction choices[2];
-    exteria_tl_value *request;
+    noshi_peer_ref peers[] = {{1, 5, 7, 0, 0}, {2, 6, 0, 0, 0}, {3, 7, 9, 0, 0}, {1, 1, 0, 1, 0}};
+    noshi_reaction choices[2];
+    noshi_tl_value *request;
     int32_t ids[] = {1, 2, INT32_MAX};
     size_t i;
     memset(choices, 0, sizeof(choices));
-    choices[0].kind = EXTERIA_REACTION_EMOJI;
+    choices[0].kind = NOSHI_REACTION_EMOJI;
     strcpy(choices[0].emoji, "❤️");
-    choices[1].kind = EXTERIA_REACTION_CUSTOM;
+    choices[1].kind = NOSHI_REACTION_CUSTOM;
     choices[1].document_id = INT64_C(4294967401);
     for (i = 0; i < sizeof(peers) / sizeof(peers[0]); ++i) {
-        CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[i], 10, choices, 2, &request), EXTERIA_OK);
-        roundtrip(request, EXTERIA_TL_ID_messages_sendReaction);
-        CHECK_EQ_INT(exteria_tl_get(request, "reaction")->u.vec.count, 2);
-        CHECK(exteria_tl_has(request, "add_to_recent"));
-        CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[i], 10, NULL, 0, &request), EXTERIA_OK);
-        roundtrip(request, EXTERIA_TL_ID_messages_sendReaction);
-        CHECK_EQ_INT(exteria_tl_get(request, "reaction")->u.vec.count, 0);
-        CHECK(!exteria_tl_has(request, "add_to_recent"));
-        CHECK_EQ_INT(exteria_paid_reaction_request(&arena, &peers[i], 10, 1, 77, &request), EXTERIA_OK);
-        roundtrip(request, EXTERIA_TL_ID_messages_sendPaidReaction);
-        CHECK_EQ_INT(exteria_paid_reaction_request(&arena, &peers[i], 10, 0, 77, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_paid_reaction_request(&arena, &peers[i], 10, EXTERIA_PAID_REACTION_MAX + 1, 77, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_paid_reaction_request(&arena, &peers[i], 10, 1, 0, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_get_reactions_request(&arena, &peers[i], ids, 3, &request), EXTERIA_OK);
-        roundtrip(request, EXTERIA_TL_ID_messages_getMessagesReactions);
+        CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[i], 10, choices, 2, &request), NOSHI_OK);
+        roundtrip(request, NOSHI_TL_ID_messages_sendReaction);
+        CHECK_EQ_INT(noshi_tl_get(request, "reaction")->u.vec.count, 2);
+        CHECK(noshi_tl_has(request, "add_to_recent"));
+        CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[i], 10, NULL, 0, &request), NOSHI_OK);
+        roundtrip(request, NOSHI_TL_ID_messages_sendReaction);
+        CHECK_EQ_INT(noshi_tl_get(request, "reaction")->u.vec.count, 0);
+        CHECK(!noshi_tl_has(request, "add_to_recent"));
+        CHECK_EQ_INT(noshi_paid_reaction_request(&arena, &peers[i], 10, 1, 77, &request), NOSHI_OK);
+        roundtrip(request, NOSHI_TL_ID_messages_sendPaidReaction);
+        CHECK_EQ_INT(noshi_paid_reaction_request(&arena, &peers[i], 10, 0, 77, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_paid_reaction_request(&arena, &peers[i], 10, NOSHI_PAID_REACTION_MAX + 1, 77, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_paid_reaction_request(&arena, &peers[i], 10, 1, 0, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_get_reactions_request(&arena, &peers[i], ids, 3, &request), NOSHI_OK);
+        roundtrip(request, NOSHI_TL_ID_messages_getMessagesReactions);
     }
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 0, choices, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 0, choices, 1, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 1, NULL, 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 1, choices, EXTERIA_REACTIONS_MAX + 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 1, NULL, 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 1, choices, NOSHI_REACTIONS_MAX + 1, &request), NOSHI_E_ARG);
     choices[1] = choices[0];
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 1, choices, 2, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 1, choices, 2, &request), NOSHI_E_ARG);
     memset(choices[0].emoji, 'x', sizeof(choices[0].emoji));
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 1, choices, 1, &request), EXTERIA_E_ARG);
-    choices[0].kind = EXTERIA_REACTION_PAID;
-    CHECK_EQ_INT(exteria_send_reactions_request(&arena, &peers[0], 1, choices, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 1, choices, 1, &request), NOSHI_E_ARG);
+    choices[0].kind = NOSHI_REACTION_PAID;
+    CHECK_EQ_INT(noshi_send_reactions_request(&arena, &peers[0], 1, choices, 1, &request), NOSHI_E_ARG);
     ids[1] = -1;
-    CHECK_EQ_INT(exteria_get_reactions_request(&arena, &peers[0], ids, 3, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_get_reactions_request(&arena, &peers[0], ids, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_get_reactions_request(&arena, &peers[0], ids, EXTERIA_MESSAGES_MAX + 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_get_reactions_request(&arena, &peers[0], ids, 3, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_get_reactions_request(&arena, &peers[0], ids, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_get_reactions_request(&arena, &peers[0], ids, NOSHI_MESSAGES_MAX + 1, &request), NOSHI_E_ARG);
     peers[0].access_hash = 0;
-    CHECK_EQ_INT(exteria_get_reactions_request(&arena, &peers[0], ids, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_get_reactions_request(&arena, &peers[0], ids, 1, &request), NOSHI_E_ARG);
 }
 
-static exteria_tl_value *config_of(const char *key1, double v1, const char *key2, double v2) {
-    exteria_tl_value *answer = obj("help.appConfig"), *config = obj("jsonObject"), *vec = exteria_tl_new_vec(&arena, key2 ? 2 : (key1 ? 1 : 0));
+static noshi_tl_value *config_of(const char *key1, double v1, const char *key2, double v2) {
+    noshi_tl_value *answer = obj("help.appConfig"), *config = obj("jsonObject"), *vec = noshi_tl_new_vec(&arena, key2 ? 2 : (key1 ? 1 : 0));
     for (unsigned i = 0; i < (key2 ? 2u : (key1 ? 1u : 0u)); ++i) {
-        exteria_tl_value *entry = obj("jsonObjectValue"), *number = obj("jsonNumber");
+        noshi_tl_value *entry = obj("jsonObjectValue"), *number = obj("jsonNumber");
         str(entry, "key", i ? key2 : key1);
-        CHECK_EQ_INT(exteria_tl_set_f64(&arena, number, "value", i ? v2 : v1), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_set_f64(&arena, number, "value", i ? v2 : v1), NOSHI_OK);
         set(entry, "value", number);
-        CHECK_EQ_INT(exteria_tl_vec_set(vec, i, entry), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_vec_set(vec, i, entry), NOSHI_OK);
     }
     i32(answer, "hash", 1);
     set(config, "value", vec);
@@ -263,10 +263,10 @@ static exteria_tl_value *config_of(const char *key1, double v1, const char *key2
     return answer;
 }
 
-static exteria_reaction pick_of(const char *text, int32_t order) {
-    exteria_reaction r;
+static noshi_reaction pick_of(const char *text, int32_t order) {
+    noshi_reaction r;
     memset(&r, 0, sizeof(r));
-    r.kind = EXTERIA_REACTION_EMOJI;
+    r.kind = NOSHI_REACTION_EMOJI;
     r.chosen = order > 0;
     r.chosen_order = order;
     snprintf(r.emoji, sizeof(r.emoji), "%s", text);
@@ -275,49 +275,49 @@ static exteria_reaction pick_of(const char *text, int32_t order) {
 
 static void test_user_limit(void) {
     int32_t standard = 0, premium = 0;
-    exteria_reaction chosen[3], pick = pick_of("D", 0), out[EXTERIA_REACTIONS_MAX];
-    CHECK_EQ_INT(exteria_reaction_limits_read(config_of(NULL, 0, NULL, 0), &standard, &premium), EXTERIA_OK);
+    noshi_reaction chosen[3], pick = pick_of("D", 0), out[NOSHI_REACTIONS_MAX];
+    CHECK_EQ_INT(noshi_reaction_limits_read(config_of(NULL, 0, NULL, 0), &standard, &premium), NOSHI_OK);
     CHECK_EQ_INT(standard, 1);
     CHECK_EQ_INT(premium, 3);
-    CHECK_EQ_INT(exteria_reaction_limits_read(config_of("reactions_user_max_default", 2, "reactions_user_max_premium", 5), &standard, &premium), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_limits_read(config_of("reactions_user_max_default", 2, "reactions_user_max_premium", 5), &standard, &premium), NOSHI_OK);
     CHECK_EQ_INT(standard, 2);
     CHECK_EQ_INT(premium, 5);
-    CHECK_EQ_INT(exteria_reaction_limits_read(config_of("reactions_user_max_premium", 0, NULL, 0), &standard, &premium), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_limits_read(config_of("reactions_user_max_premium", 0, NULL, 0), &standard, &premium), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(standard, 1);
-    CHECK_EQ_INT(exteria_reaction_limits_read(config_of("reactions_user_max_default", EXTERIA_REACTIONS_MAX + 1, NULL, 0), &standard, &premium), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_limits_read(obj("help.appConfigNotModified"), &standard, &premium), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_limits_read(config_of(NULL, 0, NULL, 0), NULL, &premium), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_limits_read(config_of("reactions_user_max_default", NOSHI_REACTIONS_MAX + 1, NULL, 0), &standard, &premium), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_limits_read(obj("help.appConfigNotModified"), &standard, &premium), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_limits_read(config_of(NULL, 0, NULL, 0), NULL, &premium), NOSHI_E_ARG);
 
     /* the chosen ones come in any order, the oldest leave first, the pick goes last */
     chosen[0] = pick_of("C", 3);
     chosen[1] = pick_of("A", 1);
     chosen[2] = pick_of("B", 2);
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 3, out, EXTERIA_REACTIONS_MAX), 3);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 3, out, NOSHI_REACTIONS_MAX), 3);
     CHECK(!strcmp(out[0].emoji, "B") && !strcmp(out[1].emoji, "C") && !strcmp(out[2].emoji, "D"));
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 4, out, EXTERIA_REACTIONS_MAX), 4);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 4, out, NOSHI_REACTIONS_MAX), 4);
     CHECK(!strcmp(out[0].emoji, "A") && !strcmp(out[3].emoji, "D"));
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 1, out, EXTERIA_REACTIONS_MAX), 1);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 1, out, NOSHI_REACTIONS_MAX), 1);
     CHECK(!strcmp(out[0].emoji, "D"));
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(NULL, 0, &pick, 3, out, EXTERIA_REACTIONS_MAX), 1);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(NULL, 0, &pick, 3, out, NOSHI_REACTIONS_MAX), 1);
     /* a pick that is already chosen moves to the end instead of doubling */
     pick = pick_of("A", 0);
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 3, out, EXTERIA_REACTIONS_MAX), 3);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 3, out, NOSHI_REACTIONS_MAX), 3);
     CHECK(!strcmp(out[0].emoji, "B") && !strcmp(out[1].emoji, "C") && !strcmp(out[2].emoji, "A"));
     /* a paid reaction is not counted */
-    chosen[1].kind = EXTERIA_REACTION_PAID;
+    chosen[1].kind = NOSHI_REACTION_PAID;
     pick = pick_of("D", 0);
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 3, out, EXTERIA_REACTIONS_MAX), 3);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 3, out, NOSHI_REACTIONS_MAX), 3);
     CHECK(!strcmp(out[0].emoji, "B") && !strcmp(out[2].emoji, "D"));
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 0, out, EXTERIA_REACTIONS_MAX), 0);
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, &pick, 3, out, 2), 0);
-    CHECK_EQ_INT(exteria_reaction_choices_after_pick(chosen, 3, NULL, 3, out, EXTERIA_REACTIONS_MAX), 0);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 0, out, NOSHI_REACTIONS_MAX), 0);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, &pick, 3, out, 2), 0);
+    CHECK_EQ_INT(noshi_reaction_choices_after_pick(chosen, 3, NULL, 3, out, NOSHI_REACTIONS_MAX), 0);
 }
 
-static exteria_tl_value *art_document(int64_t id, const char *mime) {
-    exteria_tl_value *d = obj("document"), *attributes = exteria_tl_new_vec(&arena, 0);
+static noshi_tl_value *art_document(int64_t id, const char *mime) {
+    noshi_tl_value *d = obj("document"), *attributes = noshi_tl_new_vec(&arena, 0);
     i64(d, "id", id);
     i64(d, "access_hash", id * 7);
-    CHECK_EQ_INT(exteria_tl_set_bytes(&arena, d, "file_reference", "ref", 3), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_bytes(&arena, d, "file_reference", "ref", 3), NOSHI_OK);
     i32(d, "date", 1);
     str(d, "mime_type", mime);
     i64(d, "size", 100);
@@ -326,8 +326,8 @@ static exteria_tl_value *art_document(int64_t id, const char *mime) {
     return d;
 }
 
-static exteria_tl_value *art_reaction(const char *emoji, int with_around) {
-    exteria_tl_value *r = obj("availableReaction");
+static noshi_tl_value *art_reaction(const char *emoji, int with_around) {
+    noshi_tl_value *r = obj("availableReaction");
     str(r, "reaction", emoji);
     str(r, "title", "title");
     set(r, "static_icon", art_document(10, "image/webp"));
@@ -342,42 +342,42 @@ static exteria_tl_value *art_reaction(const char *emoji, int with_around) {
 }
 
 static void test_art(void) {
-    exteria_tl_value *v = obj("messages.availableReactions"), *vec = exteria_tl_new_vec(&arena, 2), *bad;
-    exteria_reaction_art items[4];
+    noshi_tl_value *v = obj("messages.availableReactions"), *vec = noshi_tl_new_vec(&arena, 2), *bad;
+    noshi_reaction_art items[4];
     size_t count = 99;
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, art_reaction("👍", 1)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, art_reaction("👍", 1)), NOSHI_OK);
     bad = art_reaction("👎", 0);
     flag(bad, "inactive");
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 1, bad), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 1, bad), NOSHI_OK);
     i32(v, "hash", 1);
     set(v, "reactions", vec);
-    CHECK_EQ_INT(exteria_reaction_art_read(v, items, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_art_read(v, items, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK(!strcmp(items[0].emoji, "👍"));
     CHECK_EQ_INT(items[0].icon.id, 10);
-    CHECK_EQ_INT(items[0].icon.format, EXTERIA_STICKER_STATIC);
-    CHECK_EQ_INT(items[0].icon.ref.source, EXTERIA_MEDIA_SOURCE_DOCUMENT);
+    CHECK_EQ_INT(items[0].icon.format, NOSHI_STICKER_STATIC);
+    CHECK_EQ_INT(items[0].icon.ref.source, NOSHI_MEDIA_SOURCE_DOCUMENT);
     CHECK_EQ_INT(items[0].icon.ref.dc, 2);
-    CHECK_EQ_INT(items[0].appear.format, EXTERIA_STICKER_ANIMATED);
+    CHECK_EQ_INT(items[0].appear.format, NOSHI_STICKER_ANIMATED);
     CHECK_EQ_INT(items[0].select.id, 12);
     CHECK_EQ_INT(items[0].activate.id, 13);
     CHECK_EQ_INT(items[0].effect.id, 14);
     CHECK_EQ_INT(items[0].around.id, 15);
     CHECK_EQ_INT(items[1].around.id, 0);
-    CHECK_EQ_INT(items[1].around.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
-    CHECK_EQ_INT(exteria_reaction_art_read(v, items, 1, &count), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(items[1].around.ref.source, NOSHI_MEDIA_SOURCE_NONE);
+    CHECK_EQ_INT(noshi_reaction_art_read(v, items, 1, &count), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
     /* a required document that is empty makes the whole answer unusable */
     set(bad, "effect_animation", obj("documentEmpty"));
-    CHECK_EQ_INT(exteria_reaction_art_read(v, items, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_art_read(obj("messages.availableReactionsNotModified"), items, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_art_read(v, NULL, 4, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_art_read(v, items, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_art_read(obj("messages.availableReactionsNotModified"), items, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_art_read(v, NULL, 4, &count), NOSHI_E_ARG);
 }
 
 static void test_catalog_policy(void) {
-    exteria_tl_value *v = obj("messages.availableReactions"), *vec = exteria_tl_new_vec(&arena, 3), *r;
-    exteria_reaction items[4];
-    exteria_reactions allowed;
+    noshi_tl_value *v = obj("messages.availableReactions"), *vec = noshi_tl_new_vec(&arena, 3), *r;
+    noshi_reaction items[4];
+    noshi_reactions allowed;
     size_t count = 99;
     int all = 99;
     unsigned i;
@@ -386,242 +386,242 @@ static void test_catalog_policy(void) {
         str(r, "reaction", i == 0 ? "👍" : "👎");
         if (i == 1) flag(r, "inactive");
         if (i == 2) flag(r, "premium");
-        CHECK_EQ_INT(exteria_tl_vec_set(vec, i, r), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_vec_set(vec, i, r), NOSHI_OK);
     }
     set(v, "reactions", vec);
-    CHECK_EQ_INT(exteria_reaction_catalog_read(v, items, 4, &count, 0), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_catalog_read(v, items, 4, &count, 0), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
     CHECK(!strcmp(items[0].emoji, "👍"));
-    CHECK_EQ_INT(exteria_reaction_catalog_read(v, items, 4, &count, 1), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_catalog_read(v, items, 4, &count, 1), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK(!strcmp(items[1].emoji, "👎"));
-    set(v, "reactions", exteria_tl_new_vec(&arena, EXTERIA_REACTION_CATALOG_MAX + 1));
-    CHECK_EQ_INT(exteria_reaction_catalog_read(v, items, 4, &count, 0), EXTERIA_E_LIMIT);
+    set(v, "reactions", noshi_tl_new_vec(&arena, NOSHI_REACTION_CATALOG_MAX + 1));
+    CHECK_EQ_INT(noshi_reaction_catalog_read(v, items, 4, &count, 0), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
-    CHECK_EQ_INT(exteria_reaction_catalog_read(obj("boolTrue"), items, 4, &count, 0), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_catalog_read(obj("boolTrue"), items, 4, &count, 0), NOSHI_E_MALFORMED);
     v = obj("messages.chatFull");
     r = obj("channelFull");
     set(v, "full_chat", r);
-    CHECK_EQ_INT(exteria_reaction_policy_read(v, &allowed, &all), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_policy_read(v, &allowed, &all), NOSHI_OK);
     CHECK_EQ_INT(all, 0);
     CHECK_EQ_INT(allowed.count, 0);
     set(r, "available_reactions", obj("chatReactionsAll"));
-    CHECK_EQ_INT(exteria_reaction_policy_read(v, &allowed, &all), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_policy_read(v, &allowed, &all), NOSHI_OK);
     CHECK_EQ_INT(all, 1);
     set(r, "available_reactions", obj("chatReactionsNone"));
-    CHECK_EQ_INT(exteria_reaction_policy_read(v, &allowed, &all), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_policy_read(v, &allowed, &all), NOSHI_OK);
     CHECK_EQ_INT(all, 0);
-    vec = exteria_tl_new_vec(&arena, 1);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, emoji("❤️")), EXTERIA_OK);
+    vec = noshi_tl_new_vec(&arena, 1);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, emoji("❤️")), NOSHI_OK);
     r = obj("chatReactionsSome");
     set(r, "reactions", vec);
-    set((exteria_tl_value *)exteria_tl_get(v, "full_chat"), "available_reactions", r);
-    CHECK_EQ_INT(exteria_reaction_policy_read(v, &allowed, &all), EXTERIA_OK);
+    set((noshi_tl_value *)noshi_tl_get(v, "full_chat"), "available_reactions", r);
+    CHECK_EQ_INT(noshi_reaction_policy_read(v, &allowed, &all), NOSHI_OK);
     CHECK_EQ_INT(allowed.count, 1);
     CHECK(!strcmp(allowed.items[0].emoji, "❤️"));
 }
 
 static void test_custom_reactions(void) {
-    exteria_tl_value *request = NULL, *vec, *full, *chat, *custom, *answer;
-    exteria_reaction items[4];
+    noshi_tl_value *request = NULL, *vec, *full, *chat, *custom, *answer;
+    noshi_reaction items[4];
     size_t count = 9;
-    CHECK_EQ_INT(exteria_reaction_list_request(&arena, 0, 20, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getTopReactions);
-    CHECK_EQ_INT(exteria_reaction_list_request(&arena, 1, 20, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getRecentReactions);
-    CHECK_EQ_INT(exteria_reaction_list_request(&arena, 1, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_reaction_list_request(&arena, 1, 101, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_reaction_list_request(&arena, 1, 20, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_list_request(&arena, 0, 20, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getTopReactions);
+    CHECK_EQ_INT(noshi_reaction_list_request(&arena, 1, 20, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getRecentReactions);
+    CHECK_EQ_INT(noshi_reaction_list_request(&arena, 1, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_list_request(&arena, 1, 101, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_list_request(&arena, 1, 20, NULL), NOSHI_E_ARG);
 
     /* the list keeps the custom emoji only, in order, and skips one without a document */
-    vec = exteria_tl_new_vec(&arena, 4);
+    vec = noshi_tl_new_vec(&arena, 4);
     custom = obj("reactionCustomEmoji");
     i64(custom, "document_id", 77);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 0, emoji("\xE2\x9D\xA4")), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 1, custom), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 2, obj("reactionCustomEmoji")), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 0, emoji("\xE2\x9D\xA4")), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 1, custom), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 2, obj("reactionCustomEmoji")), NOSHI_OK);
     custom = obj("reactionCustomEmoji");
     i64(custom, "document_id", 78);
-    CHECK_EQ_INT(exteria_tl_vec_set(vec, 3, custom), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(vec, 3, custom), NOSHI_OK);
     answer = obj("messages.reactions");
     i64(answer, "hash", 1);
     set(answer, "reactions", vec);
-    CHECK_EQ_INT(exteria_reaction_list_read(answer, items, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_list_read(answer, items, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
-    CHECK_EQ_INT(items[0].kind, EXTERIA_REACTION_CUSTOM);
+    CHECK_EQ_INT(items[0].kind, NOSHI_REACTION_CUSTOM);
     CHECK_EQ_INT(items[0].document_id, 77);
     CHECK_EQ_INT(items[1].document_id, 78);
-    CHECK_EQ_INT(exteria_reaction_list_read(answer, items, 1, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_list_read(answer, items, 1, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
-    CHECK_EQ_INT(exteria_reaction_list_read(obj("messages.reactionsNotModified"), items, 4, &count), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_reaction_list_read(obj("messages.reactionsNotModified"), items, 4, &count), NOSHI_E_NOTFOUND);
     CHECK_EQ_INT(count, 0);
-    CHECK_EQ_INT(exteria_reaction_list_read(obj("boolTrue"), items, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_list_read(answer, items, 0, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_list_read(obj("boolTrue"), items, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_list_read(answer, items, 0, &count), NOSHI_E_ARG);
 
     /* everyone may use custom emoji only when the chat says so */
     full = obj("messages.chatFull");
     chat = obj("channelFull");
     set(full, "full_chat", chat);
-    CHECK_EQ_INT(exteria_reaction_policy_custom(full), 0);
+    CHECK_EQ_INT(noshi_reaction_policy_custom(full), 0);
     set(chat, "available_reactions", obj("chatReactionsAll"));
-    CHECK_EQ_INT(exteria_reaction_policy_custom(full), 0);
+    CHECK_EQ_INT(noshi_reaction_policy_custom(full), 0);
     custom = obj("chatReactionsAll");
     flag(custom, "allow_custom");
     set(chat, "available_reactions", custom);
-    CHECK_EQ_INT(exteria_reaction_policy_custom(full), 1);
+    CHECK_EQ_INT(noshi_reaction_policy_custom(full), 1);
     set(chat, "available_reactions", obj("chatReactionsNone"));
-    CHECK_EQ_INT(exteria_reaction_policy_custom(full), 0);
-    CHECK_EQ_INT(exteria_reaction_policy_custom(obj("boolTrue")), 0);
+    CHECK_EQ_INT(noshi_reaction_policy_custom(full), 0);
+    CHECK_EQ_INT(noshi_reaction_policy_custom(obj("boolTrue")), 0);
 }
 
 static void test_store(void) {
-    exteria_store *store = NULL;
-    exteria_updates updates;
-    exteria_tl_value *m, *update, *wrapper, *got, *r, *state;
-    exteria_reactions parsed;
-    exteria_arena read;
-    exteria_peer channel = {3, INT64_C(4294967309)}, other = {3, 99};
-    char path[] = "/tmp/exteria-reactions-XXXXXX";
+    noshi_store *store = NULL;
+    noshi_updates updates;
+    noshi_tl_value *m, *update, *wrapper, *got, *r, *state;
+    noshi_reactions parsed;
+    noshi_arena read;
+    noshi_peer channel = {3, INT64_C(4294967309)}, other = {3, 99};
+    char path[] = "/tmp/noshigram-reactions-XXXXXX";
     int fd = mkstemp(path);
     CHECK(fd >= 0);
     if (fd >= 0) close(fd);
-    exteria_arena_init(&read, 16u * 1024u * 1024u);
-    CHECK_EQ_INT(exteria_store_open(&store, path, 1), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_updates_init(&updates, store, 1), EXTERIA_OK);
+    noshi_arena_init(&read, 16u * 1024u * 1024u);
+    CHECK_EQ_INT(noshi_store_open(&store, path, 1), NOSHI_OK);
+    CHECK_EQ_INT(noshi_updates_init(&updates, store, 1), NOSHI_OK);
     state = obj("updates.state");
     i32(state, "pts", 0); i32(state, "qts", 0); i32(state, "seq", 0); i32(state, "date", 10);
-    CHECK_EQ_INT(exteria_updates_state(&updates, state), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_state(&updates, state), NOSHI_OK);
     m = obj("message");
     i32(m, "id", 5); i32(m, "date", 10); str(m, "message", "keep this text");
     set(m, "peer_id", peer("peerChannel", "channel_id", channel.id));
     set(m, "reactions", reactions(result(emoji("👍"), 2, 1), 0));
-    CHECK_EQ_INT(exteria_updates_cache_message(&updates, m), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_put(store, EXTERIA_RECORD_MESSAGE, other, 5, m), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_cache_message(&updates, m), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_put(store, NOSHI_RECORD_MESSAGE, other, 5, m), NOSHI_OK);
     update = obj("updateMessageReactions");
     set(update, "peer", peer("peerChannel", "channel_id", channel.id));
     i32(update, "msg_id", 5);
     r = reactions(result(emoji("👍"), 3, 0), 1);
     set(update, "reactions", r);
     wrapper = obj("updateShort"); set(wrapper, "update", update); i32(wrapper, "date", 11);
-    CHECK_EQ_INT(exteria_reaction_update_read(wrapper, channel.kind, channel.id, 5, &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_update_read(wrapper, channel.kind, channel.id, 5, &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].count, 3);
-    CHECK_EQ_INT(exteria_reaction_update_read(wrapper, other.kind, other.id, 5, &parsed), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_reaction_update_read(wrapper, other.kind, other.id, 5, &parsed), NOSHI_E_NOTFOUND);
     CHECK_EQ_INT(parsed.count, 0);
-    CHECK_EQ_INT(exteria_reaction_update_read(wrapper, channel.kind, channel.id, 6, &parsed), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_reaction_update_read(obj("updatesTooLong"), channel.kind, channel.id, 5, &parsed), EXTERIA_E_RETRY);
-    CHECK_EQ_INT(exteria_reaction_update_read(obj("boolTrue"), channel.kind, channel.id, 5, &parsed), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_reaction_update_read(wrapper, 0, channel.id, 5, &parsed), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_updates_apply(&updates, wrapper), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, channel, 5, &read, &got), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_reactions_read(exteria_tl_get(got, "reactions"), &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_update_read(wrapper, channel.kind, channel.id, 6, &parsed), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_reaction_update_read(obj("updatesTooLong"), channel.kind, channel.id, 5, &parsed), NOSHI_E_RETRY);
+    CHECK_EQ_INT(noshi_reaction_update_read(obj("boolTrue"), channel.kind, channel.id, 5, &parsed), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_reaction_update_read(wrapper, 0, channel.id, 5, &parsed), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_updates_apply(&updates, wrapper), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, channel, 5, &read, &got), NOSHI_OK);
+    CHECK_EQ_INT(noshi_reactions_read(noshi_tl_get(got, "reactions"), &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].count, 3);
     CHECK_EQ_INT(parsed.items[0].chosen, 1);
     /* the rpc value must not borrow a chosen_order from the freed storage arena */
-    CHECK_EQ_INT(exteria_reactions_read(r, &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(r, &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].chosen, 0);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, other, 5, &read, &got), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_reactions_read(exteria_tl_get(got, "reactions"), &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, other, 5, &read, &got), NOSHI_OK);
+    CHECK_EQ_INT(noshi_reactions_read(noshi_tl_get(got, "reactions"), &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].count, 2);
     set(m, "reactions", reactions(result(emoji("👍"), 4, 0), 1));
-    CHECK_EQ_INT(exteria_updates_cache_message(&updates, m), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, channel, 5, &read, &got), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_reactions_read(exteria_tl_get(got, "reactions"), &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_cache_message(&updates, m), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, channel, 5, &read, &got), NOSHI_OK);
+    CHECK_EQ_INT(noshi_reactions_read(noshi_tl_get(got, "reactions"), &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].count, 4);
     CHECK_EQ_INT(parsed.items[0].chosen, 1);
     set(update, "reactions", reactions(result(emoji("👍"), 4, 0), 0));
-    CHECK_EQ_INT(exteria_updates_apply(&updates, wrapper), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, channel, 5, &read, &got), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_reactions_read(exteria_tl_get(got, "reactions"), &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_apply(&updates, wrapper), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, channel, 5, &read, &got), NOSHI_OK);
+    CHECK_EQ_INT(noshi_reactions_read(noshi_tl_get(got, "reactions"), &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.items[0].chosen, 0);
     set(update, "reactions", reactions(result(emoji("👍"), -1, 0), 0));
-    CHECK_EQ_INT(exteria_updates_apply(&updates, wrapper), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_updates_apply(&updates, wrapper), NOSHI_E_MALFORMED);
     set(update, "reactions", reactions(NULL, 0));
-    CHECK_EQ_INT(exteria_updates_apply(&updates, wrapper), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_apply(&updates, wrapper), NOSHI_OK);
     i32(update, "msg_id", 900);
-    CHECK_EQ_INT(exteria_updates_apply(&updates, wrapper), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, channel, 900, &read, &got), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_store_close(store), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_open(&store, path, 1), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_store_get(store, EXTERIA_RECORD_MESSAGE, channel, 5, &read, &got), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_reactions_read(exteria_tl_get(got, "reactions"), &parsed), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_updates_apply(&updates, wrapper), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, channel, 900, &read, &got), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_store_close(store), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_open(&store, path, 1), NOSHI_OK);
+    CHECK_EQ_INT(noshi_store_get(store, NOSHI_RECORD_MESSAGE, channel, 5, &read, &got), NOSHI_OK);
+    CHECK_EQ_INT(noshi_reactions_read(noshi_tl_get(got, "reactions"), &parsed), NOSHI_OK);
     CHECK_EQ_INT(parsed.count, 0);
     {
         const uint8_t *text; size_t length;
-        CHECK_EQ_INT(exteria_tl_get_bytes(got, "message", &text, &length), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_get_bytes(got, "message", &text, &length), NOSHI_OK);
         CHECK_EQ_INT(length, strlen("keep this text"));
         CHECK(!memcmp(text, "keep this text", length));
     }
-    CHECK_EQ_INT(exteria_store_close(store), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_store_close(store), NOSHI_OK);
     unlink(path);
-    exteria_arena_free(&read);
+    noshi_arena_free(&read);
 }
 
 static void test_layout(void) {
-    double widths[EXTERIA_REACTION_CATALOG_MAX], height;
-    exteria_rect frames[EXTERIA_REACTION_CATALOG_MAX];
+    double widths[NOSHI_REACTION_CATALOG_MAX], height;
+    noshi_rect frames[NOSHI_REACTION_CATALOG_MAX];
     size_t i;
     const double hosts[] = {240, 320, 480, 768};
-    for (i = 0; i < EXTERIA_REACTION_CATALOG_MAX; ++i) widths[i] = (i % 3 == 0) ? 100 : 44;
+    for (i = 0; i < NOSHI_REACTION_CATALOG_MAX; ++i) widths[i] = (i % 3 == 0) ? 100 : 44;
     for (i = 0; i < sizeof(hosts) / sizeof(hosts[0]); ++i) {
         size_t j;
-        CHECK_EQ_INT(exteria_reaction_layout_compute(hosts[i], 1, widths, EXTERIA_REACTION_CATALOG_MAX,
-            frames, EXTERIA_REACTION_CATALOG_MAX, &height), EXTERIA_OK);
-        for (j = 0; j < EXTERIA_REACTION_CATALOG_MAX; ++j) {
+        CHECK_EQ_INT(noshi_reaction_layout_compute(hosts[i], 1, widths, NOSHI_REACTION_CATALOG_MAX,
+            frames, NOSHI_REACTION_CATALOG_MAX, &height), NOSHI_OK);
+        for (j = 0; j < NOSHI_REACTION_CATALOG_MAX; ++j) {
             CHECK(frames[j].x >= 0 && frames[j].x + frames[j].width <= hosts[i]);
             CHECK(frames[j].y + frames[j].height <= height);
             if (j && frames[j].y == frames[j - 1].y) CHECK(frames[j].x >= frames[j - 1].x + frames[j - 1].width + 4);
         }
     }
     widths[0] = 1000;
-    CHECK_EQ_INT(exteria_reaction_layout_compute(44, 1, widths, 1, frames, 1, &height), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(44, 1, widths, 1, frames, 1, &height), NOSHI_OK);
     CHECK_EQ_INT(frames[0].width, 44);
     CHECK_EQ_INT(height, 36);
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 1, NULL, 0, NULL, 0, &height), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 1, NULL, 0, NULL, 0, &height), NOSHI_OK);
     CHECK_EQ_INT(height, 0);
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 1, widths, 2, frames, 1, &height), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_reaction_layout_compute(43, 1, widths, 1, frames, 1, &height), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 1, widths, 2, frames, 1, &height), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(43, 1, widths, 1, frames, 1, &height), NOSHI_E_ARG);
     widths[0] = NAN;
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 1, widths, 1, frames, 1, &height), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 1, widths, 1, frames, 1, &height), NOSHI_E_ARG);
     CHECK_EQ_INT(height, 0);
     CHECK_EQ_INT(frames[0].width, 0);
     widths[0] = -1;
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 1, widths, 1, frames, 1, &height), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 1, widths, 1, frames, 1, &height), NOSHI_E_ARG);
     /* a smaller text size shrinks the chip, its smallest width and the rows together; a size outside the range is refused */
     widths[0] = 10;
     widths[1] = 10;
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 0.75, widths, 2, frames, 2, &height), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 0.75, widths, 2, frames, 2, &height), NOSHI_OK);
     CHECK_EQ_INT(frames[0].width, 33);
     CHECK_EQ_INT(frames[0].height, 27);
     CHECK_EQ_INT(frames[1].x, 33 + 3);
     CHECK_EQ_INT(height, 27);
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 0.4, widths, 1, frames, 1, &height), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_reaction_layout_compute(320, 2.5, widths, 1, frames, 1, &height), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 0.4, widths, 1, frames, 1, &height), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_reaction_layout_compute(320, 2.5, widths, 1, frames, 1, &height), NOSHI_E_ARG);
 }
 
-static exteria_tl_value *peer_reaction(const char *peer_type, const char *field, int64_t id, exteria_tl_value *reaction) {
-    exteria_tl_value *v = obj("messagePeerReaction");
+static noshi_tl_value *peer_reaction(const char *peer_type, const char *field, int64_t id, noshi_tl_value *reaction) {
+    noshi_tl_value *v = obj("messagePeerReaction");
     set(v, "peer_id", peer(peer_type, field, id));
     set(v, "reaction", reaction);
     i32(v, "date", 5);
     return v;
 }
-static exteria_tl_value *recent_of(exteria_tl_value **items, uint32_t n) {
-    exteria_tl_value *vec = exteria_tl_new_vec(&arena, n);
+static noshi_tl_value *recent_of(noshi_tl_value **items, uint32_t n) {
+    noshi_tl_value *vec = noshi_tl_new_vec(&arena, n);
     uint32_t i;
     CHECK(vec != NULL);
-    for (i = 0; i < n; ++i) CHECK_EQ_INT(exteria_tl_vec_set(vec, i, items[i]), EXTERIA_OK);
+    for (i = 0; i < n; ++i) CHECK_EQ_INT(noshi_tl_vec_set(vec, i, items[i]), NOSHI_OK);
     return vec;
 }
 
 static void test_reactors(void) {
-    exteria_reactions rows;
-    exteria_tl_value *v = obj("messageReactions"), *results = exteria_tl_new_vec(&arena, 2), *recent[7];
+    noshi_reactions rows;
+    noshi_tl_value *v = obj("messageReactions"), *results = noshi_tl_new_vec(&arena, 2), *recent[7];
     CHECK(results != NULL);
-    CHECK_EQ_INT(exteria_tl_vec_set(results, 0, result(emoji("👍"), 3, 0)), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(results, 1, result(emoji("🔥"), 1, 1)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(results, 0, result(emoji("👍"), 3, 0)), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(results, 1, result(emoji("🔥"), 1, 1)), NOSHI_OK);
     set(v, "results", results);
     /* without a list there are no reactors */
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
     CHECK_EQ_INT(rows.items[0].reactor_count, 0);
     CHECK_EQ_INT(rows.items[1].reactor_count, 0);
 
@@ -633,7 +633,7 @@ static void test_reactors(void) {
     recent[5] = peer_reaction("peerUser", "user_id", 14, emoji("😢"));      /* a reaction the message does not count */
     recent[6] = peer_reaction("peerUser", "user_id", 15, emoji("👍"));
     set(v, "recent_reactions", recent_of(recent, 7));
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
     CHECK_EQ_INT(rows.count, 2);
     CHECK_EQ_INT(rows.items[0].reactor_count, 3);
     CHECK_EQ_INT(rows.items[0].reactors[0], 11);
@@ -651,64 +651,64 @@ static void test_reactors(void) {
     recent[5] = obj("boolTrue");
     recent[6] = peer_reaction("peerUser", "user_id", 26, obj("reactionEmpty"));
     set(v, "recent_reactions", recent_of(recent, 7));
-    CHECK_EQ_INT(exteria_reactions_read(v, &rows), EXTERIA_OK);
-    CHECK_EQ_INT(rows.items[0].reactor_count, EXTERIA_REACTORS_MAX);
+    CHECK_EQ_INT(noshi_reactions_read(v, &rows), NOSHI_OK);
+    CHECK_EQ_INT(rows.items[0].reactor_count, NOSHI_REACTORS_MAX);
     CHECK_EQ_INT(rows.items[0].reactors[2], 23);
     CHECK_EQ_INT(rows.items[1].reactor_count, 0);
 }
 
 static void test_faces(void) {
-    exteria_reactions all;
+    noshi_reactions all;
     memset(&all, 0, sizeof(all));
     all.count = 2;
-    all.items[0].kind = EXTERIA_REACTION_EMOJI;
-    all.items[1].kind = EXTERIA_REACTION_EMOJI;
+    all.items[0].kind = NOSHI_REACTION_EMOJI;
+    all.items[1].kind = NOSHI_REACTION_EMOJI;
     /* a private chat knows who chose from the count and our own flag */
     all.items[0].count = 1;
     all.items[1].count = 2;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 1), EXTERIA_FACES_OTHER);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 1), NOSHI_FACES_OTHER);
     all.items[0].chosen = 1;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 1), EXTERIA_FACES_SELF);
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 1, 1), EXTERIA_FACES_SELF_AND_OTHER);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 1), NOSHI_FACES_SELF);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 1, 1), NOSHI_FACES_SELF_AND_OTHER);
     all.items[0].count = 3;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 1), EXTERIA_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 1), NOSHI_FACES_NONE);
     /* a group names people only for at most three reactions in all, every one of them known */
     all.items[0].count = 1;
     all.items[0].reactor_count = 1;
     all.items[1].count = 2;
     all.items[1].reactor_count = 2;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 0), EXTERIA_FACES_REACTORS);
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 1, 0), EXTERIA_FACES_REACTORS);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 0), NOSHI_FACES_REACTORS);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 1, 0), NOSHI_FACES_REACTORS);
     all.items[1].reactor_count = 1;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 1, 0), EXTERIA_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 1, 0), NOSHI_FACES_NONE);
     all.items[1].reactor_count = 2;
     all.items[0].count = 2;
     all.items[0].reactor_count = 2;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 0), EXTERIA_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 0), NOSHI_FACES_NONE);
     all.count = 1;
     all.items[0].count = 3;
     all.items[0].reactor_count = 3;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 0), EXTERIA_FACES_REACTORS);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 0), NOSHI_FACES_REACTORS);
     all.items[0].count = 4;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 0), EXTERIA_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 0), NOSHI_FACES_NONE);
     all.items[0].count = 1;
     all.items[0].reactor_count = 1;
-    all.items[0].kind = EXTERIA_REACTION_PAID;
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 0), EXTERIA_FACES_NONE);
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 0, 1), EXTERIA_FACES_NONE);
-    CHECK_EQ_INT(exteria_reaction_faces(&all, 1, 0), EXTERIA_FACES_NONE);
-    CHECK_EQ_INT(exteria_reaction_faces(NULL, 0, 0), EXTERIA_FACES_NONE);
+    all.items[0].kind = NOSHI_REACTION_PAID;
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 0), NOSHI_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 0, 1), NOSHI_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(&all, 1, 0), NOSHI_FACES_NONE);
+    CHECK_EQ_INT(noshi_reaction_faces(NULL, 0, 0), NOSHI_FACES_NONE);
 }
 
 int main(void) {
-    CHECK(exteria_quick_reaction_document("animated_123456789") == 123456789);
-    CHECK(exteria_quick_reaction_document("animated_9223372036854775807") == INT64_MAX);
-    CHECK(exteria_quick_reaction_document("animated_9223372036854775808") == 0);
-    CHECK(exteria_quick_reaction_document("animated_-1") == 0);
-    CHECK(exteria_quick_reaction_document("animated_12x") == 0);
-    CHECK(exteria_quick_reaction_document("animated_") == 0);
-    CHECK(exteria_quick_reaction_document("heart") == 0);
-    exteria_arena_init(&arena, 16u * 1024u * 1024u);
+    CHECK(noshi_quick_reaction_document("animated_123456789") == 123456789);
+    CHECK(noshi_quick_reaction_document("animated_9223372036854775807") == INT64_MAX);
+    CHECK(noshi_quick_reaction_document("animated_9223372036854775808") == 0);
+    CHECK(noshi_quick_reaction_document("animated_-1") == 0);
+    CHECK(noshi_quick_reaction_document("animated_12x") == 0);
+    CHECK(noshi_quick_reaction_document("animated_") == 0);
+    CHECK(noshi_quick_reaction_document("heart") == 0);
+    noshi_arena_init(&arena, 16u * 1024u * 1024u);
     test_parse();
     test_reaction_people();
     test_reactors();
@@ -720,6 +720,6 @@ int main(void) {
     test_custom_reactions();
     test_store();
     test_layout();
-    exteria_arena_free(&arena);
+    noshi_arena_free(&arena);
     return test_finish("test_reactions");
 }

@@ -1,7 +1,7 @@
-# exteria
+# noshigram
 
 <p align="center">
-  <img src="docs/banner.png" alt="exteria">
+  <img src="docs/banner.png" alt="noshigram">
 </p>
 
 <p align="center"><b>native telegram for old iphones and ipads: ios 5 and up, calls with video, stories, folders, its own vpn</b></p>
@@ -25,7 +25,7 @@
 - calls: voice and video (vp8); voice chats of groups and channels, audio only
 - translator: telegram, services and ai
 - passcode lock, several accounts, login by phone or qr
-- session files (`session-N.bin`) are sealed with chacha20-poly1305 under a random device key, kept in the keychain (this device only, after first unlock) or, where the keychain refuses the app, in `Application Support/Exteria/session-key`. files from older builds are sealed on first read. restoring a backup onto another device signs the account out, since the key does not travel
+- session files (`session-N.bin`) are sealed with chacha20-poly1305 under a random device key, kept in the keychain (this device only, after first unlock) or, where the keychain refuses the app, in `Application Support/Noshigram/session-key`. files from older builds are sealed on first read. restoring a backup onto another device signs the account out, since the key does not travel
 - keeps deleted and edited messages on the phone, if you ask for it
 - ayumoments: copies of protected messages from chats the account can read
 - two looks: modern, and classic with the glossy ios 5 and 6 style and a hue of your own (ios 5 to 10)
@@ -37,10 +37,10 @@
 
 ## themes
 
-open a `.tgios-theme` file in Exteria, or copy it to Documents and choose it in chat settings. a `t.me/addtheme/<slug>` link works too. the preview shows both bubbles before applying.
+open a `.tgios-theme` file in Noshigram, or copy it to Documents and choose it in chat settings. a `t.me/addtheme/<slug>` link works too. the preview shows both bubbles before applying.
 
 - limits: 256 KiB, 512 values, 16 nesting levels
-- colors reach the lists, bars, search, tabs, chat input and bubbles; missing values use the Exteria palette
+- colors reach the lists, bars, search, tabs, chat input and bubbles; missing values use the Noshigram palette
 - gradients of up to four colors are drawn static; wallpaper slugs, patterns and motion are not reproduced
 - classic has its own palette
 
@@ -55,14 +55,14 @@ the vpn of the app and of no other app: a wireguard tunnel to cloudflare warp in
 
 ## browser
 
-web links open in exteria, the system browser, or an installed chrome, firefox or brave, as chosen in the main settings. telegram links stay in the app. youtube track and playlist links (watch, playlist, shorts, live, embed, youtu.be) open in rewind when it is installed, whatever browser is chosen.
+web links open in noshigram, the system browser, or an installed chrome, firefox or brave, as chosen in the main settings. telegram links stay in the app. youtube track and playlist links (watch, playlist, shorts, live, embed, youtu.be) open in rewind when it is installed, whatever browser is chosen.
 
 ## proxy
 
 add a `tg://proxy`, `tg://socks`, `t.me/proxy` or `t.me/socks` link on the welcome screen or in more settings.
 
 - mtproto: plain, `dd` and `ee` secrets; socks5: username and password
-- up to 64 links, kept in the keychain or in `Application Support/Exteria/proxy-link`
+- up to 64 links, kept in the keychain or in `Application Support/Noshigram/proxy-link`
 - telegram connections use the proxy, through shiro when it is on; calls and web pages do not
 
 ## plugins
@@ -73,7 +73,7 @@ python plugins in the exteraGram format (`.plugin` or `.py`) in `Documents/Plugi
 - does not work: request hooks of tl, `org.telegram.*` and `android.*` classes outside the shim, `fork`, `subprocess`. such a plugin is listed and fails on import with the class it lacks
 - a plugin runs inside the app with the rights of the app, a permission is shown to the person and is not a wall
 
-the host is `core/pyhost`, the python side is `python/shim` and `third_party/exteraless`, the hooks into the chat are `app/platform/exteria_plugins.m`.
+the host is `core/pyhost`, the python side is `python/shim` and `third_party/exteraless`, the hooks into the chat are `app/platform/noshi_plugins.m`.
 
 ## for developers
 
@@ -89,27 +89,27 @@ bash scripts/build_sticker_codecs.sh
 meow build
 ```
 
-built with [meow](https://github.com/sqmrak/meow), see `meow.toml`. needs `EXTERIA_TC EXTERIA_SDK_V7 EXTERIA_SDK_V64 EXTERIA_OPENSSL_V7 EXTERIA_OPENSSL_V64 EXTERIA_VIDEO_V7 EXTERIA_VIDEO_V64 EXTERIA_PYTHON_V7 EXTERIA_PYTHON_V64 EXTERIA_PYTHON_BUNDLE`, optional `EXTERIA_CRT_V7` (the `crt1.3.1.o` of the armv7 sdk when left out) and `MEOW_LDID` (the ldid of the toolchain when left out). api id and hash come from `local/credentials.env` (`EXTERIA_API_ID`, `EXTERIA_API_HASH`). output: `build/ios/Exteria-v<version>.ipa`, its `.sha256` and `build/ios/exteria_<version>.deb`.
+built with [meow](https://github.com/sqmrak/meow), see `meow.toml`. needs `NOSHI_TC NOSHI_SDK_V7 NOSHI_SDK_V64 NOSHI_OPENSSL_V7 NOSHI_OPENSSL_V64 NOSHI_VIDEO_V7 NOSHI_VIDEO_V64 NOSHI_PYTHON_V7 NOSHI_PYTHON_V64 NOSHI_PYTHON_BUNDLE`, optional `NOSHI_CRT_V7` (the `crt1.3.1.o` of the armv7 sdk when left out) and `MEOW_LDID` (the ldid of the toolchain when left out). api id and hash come from `local/credentials.env` (`NOSHI_API_ID`, `NOSHI_API_HASH`). output: `build/ios/Noshigram-v<version>.ipa`, its `.sha256` and `build/ios/noshi_<version>.deb`.
 
 - `meow doctor`: the toolchain and sdks meow found
-- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime, needs `EXTERIA_SDK_V5`
-- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers, needs `EXTERIA_SDK_V6`
+- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime, needs `NOSHI_SDK_V5`
+- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers, needs `NOSHI_SDK_V6`
 - `make test-video`: video decoders under asan and ubsan, needs ffmpeg libraries, pkg-config and libvpx
-- video stickers and calls link static ffmpeg and libvpx: set `EXTERIA_FFMPEG_SOURCE`, `EXTERIA_LIBVPX_SOURCE`, `EXTERIA_VIDEO_V7` and `EXTERIA_VIDEO_V64`, see `resources/licenses/video_stickers.txt`
+- video stickers and calls link static ffmpeg and libvpx: set `NOSHI_FFMPEG_SOURCE`, `NOSHI_LIBVPX_SOURCE`, `NOSHI_VIDEO_V7` and `NOSHI_VIDEO_V64`, see `resources/licenses/video_stickers.txt`
 
 ## install
 
 ```bash
-meow install --host <device-ip> --legacy build/ios/exteria_<version>.deb
+meow install --host <device-ip> --legacy build/ios/noshi_<version>.deb
 ```
 
 the postinst of the deb copies the bundle to `/Applications` on a rootful system, makes `mobile:wheel` the owner (or the app cannot change its own icon on ios 6) and runs `uicache`.
 
-on ios 5 and 6 an app in `/Applications` gets no banners, no notification center entry and no settings row, because springboard gives notification settings to user apps only. the postinst runs `/Applications/Exteria.app/Exteria --system-notifications on` for that, and the postrm takes it back with `off`. it adds the `SBInternalAppTag` to the bundle's `Info.plist` and sets `SBShowInternalApps` in the springboard preferences (without it the icon of an internal app is hidden). the in-app update runs it again after it replaces the files. an ipa installed as a user app (ipainstaller, appsync) and the rootless `/var/jb` install need nothing, and ios 7 and later are left alone by the command.
+on ios 5 and 6 an app in `/Applications` gets no banners, no notification center entry and no settings row, because springboard gives notification settings to user apps only. the postinst runs `/Applications/Noshigram.app/Noshigram --system-notifications on` for that, and the postrm takes it back with `off`. it adds the `SBInternalAppTag` to the bundle's `Info.plist` and sets `SBShowInternalApps` in the springboard preferences (without it the icon of an internal app is hidden). the in-app update runs it again after it replaces the files. an ipa installed as a user app (ipainstaller, appsync) and the rootless `/var/jb` install need nothing, and ios 7 and later are left alone by the command.
 
 ## updates
 
-on start the app asks `api.github.com` for the latest release and shows a notice when its tag is newer. a release needs `Exteria-v<version>.ipa` and `Exteria-v<version>.ipa.sha256`, the tag is `v<version>`.
+on start the app asks `api.github.com` for the latest release and shows a notice when its tag is newer. a release needs `Noshigram-v<version>.ipa` and `Noshigram-v<version>.ipa.sha256`, the tag is `v<version>`.
 
 - the update replaces the files of the running bundle on a writable jailbreak install in `/Applications`, `/var/jb/Applications` or the user app folder `/var/containers/Bundle/Application` (an ipa installed with ldid keeps the entitlement that allows the write; an apple-signed install does not, and its write probe fails); other installs open the release page
 - the ipa must match its digest, or nothing is installed
@@ -117,18 +117,18 @@ on start the app asks `api.github.com` for the latest release and shows a notice
 
 ## paths
 
-- accounts: `Library/Application Support/Exteria/exteria-<id>.db`
-- warp account: `Library/Application Support/Exteria/shiro.account`
-- crash log: `/var/mobile/Library/Caches/exteria-crash.log`
-- call trace: `/var/mobile/Documents/exteria-call-trace.log`
-- frame log: `Library/Caches/exteria-perf.log`, on with `defaults write com.sqmrak.exteria exteria.perf -bool YES`
+- accounts: `Library/Application Support/Noshigram/noshigram-<id>.db`
+- warp account: `Library/Application Support/Noshigram/shiro.account`
+- crash log: `/var/mobile/Library/Caches/noshigram-crash.log`
+- call trace: `/var/mobile/Documents/noshigram-call-trace.log`
+- frame log: `Library/Caches/noshigram-perf.log`, on with `defaults write com.noshigram.app noshigram.perf -bool YES`
 
 to resolve app frames in a copied crash log, use the executable of the exact reported build and architecture (needs `llvm-objdump` and `llvm-addr2line`):
 
 ```bash
-python3 scripts/symbolicate_crash.py crash.log /path/to/Exteria --arch armv7
+python3 scripts/symbolicate_crash.py crash.log /path/to/Noshigram --arch armv7
 ```
 
 ## license
 
-[exteria license](LICENSE). rights already granted under [gpl v3](LICENSE.gpl-3.0) remain in effect. the emoji pack is apple artwork and is not licensed for redistribution, see `resources/emoji/NOTICE.txt`. fonts, codecs and sounds keep their licenses in `resources/licenses` and `resources/fonts`.
+[noshigram license](LICENSE). rights already granted under [gpl v3](LICENSE.gpl-3.0) remain in effect. the emoji pack is apple artwork and is not licensed for redistribution, see `resources/emoji/NOTICE.txt`. fonts, codecs and sounds keep their licenses in `resources/licenses` and `resources/fonts`.

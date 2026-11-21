@@ -1,6 +1,6 @@
 """the settings tab as a page plugins hook (SettingsActivity: createView, onResume, onPause), the picker of pictures that answers through
 LaunchActivity.onActivityResult, the pictures the app decodes, shrinks and blurs, and the color filters that dim a picture and make the
-cards see-through. the plugin here does what a wallpaper plugin does; the real one runs when EXTERIA_SETTINGS_WALLPAPER names its file"""
+cards see-through. the plugin here does what a wallpaper plugin does; the real one runs when NOSHI_SETTINGS_WALLPAPER names its file"""
 
 import gc
 import json
@@ -19,7 +19,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android import _ui  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
@@ -140,12 +140,12 @@ ADDRESS = "file://" + PICTURE
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-page-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-page-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -167,7 +167,7 @@ def pump(until, seconds=3):
         # a plugin that polls puts its timer back each time, so only the timers that stand now are run
         due, fake.timers[:] = list(fake.timers), []
         for token, _delay in due:
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         if until():
             return True
         time.sleep(0.01)
@@ -204,14 +204,14 @@ class Page(unittest.TestCase):
         page.getFragmentView().removeAllViews()
         page.listView.sectionBackgroundPaint._sent = 1.0
         self.path = write("wall", WALLPAPER)
-        self.assertTrue(exteria_host.load(self.path, "wall")["ok"])
+        self.assertTrue(noshi_host.load(self.path, "wall")["ok"])
 
     def tearDown(self):
-        exteria_host.unload("wall")
-        exteria_host.fragment_event("settings", "pause", 320, 480)
+        noshi_host.unload("wall")
+        noshi_host.fragment_event("settings", "pause", 320, 480)
 
     def event(self, name, width=320, height=480):
-        exteria_host.fragment_event("settings", name, width, height)
+        noshi_host.fragment_event("settings", name, width, height)
 
     def choose(self, size=(4000, 3000), **values):
         fake.pictures[PICTURE] = size
@@ -248,12 +248,12 @@ class Page(unittest.TestCase):
         plugin.pick()
         _ui.flush()
         self.assertEqual(fake.image_picks, [{"request": 0xC11B}])
-        exteria_host.activity_result(0xC11B, -1, ADDRESS)
+        noshi_host.activity_result(0xC11B, -1, ADDRESS)
         self.assertEqual(setting("wall", "answer"), [0xC11B, -1, ADDRESS])
         self.assertEqual(setting("wall", "uri"), ADDRESS)
 
     def test_a_cancelled_picker_answers_without_data(self):
-        exteria_host.activity_result(0xC11B, 0, "")
+        noshi_host.activity_result(0xC11B, 0, "")
         self.assertEqual(setting("wall", "answer"), [0xC11B, 0, None])
         self.assertIsNone(setting("wall", "uri"))
 
@@ -439,37 +439,37 @@ class Page(unittest.TestCase):
         return record.instance
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_SETTINGS_WALLPAPER"), "set EXTERIA_SETTINGS_WALLPAPER to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_SETTINGS_WALLPAPER"), "set NOSHI_SETTINGS_WALLPAPER to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     """the plugin as its author wrote it, through the settings page: pick, answer, build, dim, blur, cards"""
 
     def setUp(self):
         reset()
         self.path = os.path.join(PLUGINS, "settings_wallpaper.plugin")
-        shutil.copy(os.environ["EXTERIA_SETTINGS_WALLPAPER"], self.path)
-        self.assertTrue(exteria_host.load(self.path, "settings_wallpaper")["ok"])
+        shutil.copy(os.environ["NOSHI_SETTINGS_WALLPAPER"], self.path)
+        self.assertTrue(noshi_host.load(self.path, "settings_wallpaper")["ok"])
 
     def tearDown(self):
-        exteria_host.unload("settings_wallpaper")
-        exteria_host.fragment_event("settings", "pause", 320, 480)
+        noshi_host.unload("settings_wallpaper")
+        noshi_host.fragment_event("settings", "pause", 320, 480)
 
     def test_it_picks_builds_the_background_and_takes_it_away(self):
         fake.current = {"kind": "settings"}
         try:
             fake.pictures[PICTURE] = (3000, 2000)
-            exteria_host.fragment_event("settings", "create", 320, 480)
-            exteria_host.fragment_event("settings", "resume", 320, 480)
+            noshi_host.fragment_event("settings", "create", 320, 480)
+            noshi_host.fragment_event("settings", "resume", 320, 480)
             pump(lambda: False, 0.1)
             self.assertEqual(ops("nimg"), [])
             fake.settings[("settings_wallpaper", "blur_radius")] = json.dumps(2)
             fake.settings[("settings_wallpaper", "dimming")] = json.dumps(5)
             fake.settings[("settings_wallpaper", "card_opacity")] = json.dumps(5)
-            pick = [item for item in exteria_host.settings("settings_wallpaper") if item.get("type") == "text"]
+            pick = [item for item in noshi_host.settings("settings_wallpaper") if item.get("type") == "text"]
             self.assertEqual(len(pick), 1)
-            exteria_host.setting_click("settings_wallpaper", pick[0]["callback_id"])
+            noshi_host.setting_click("settings_wallpaper", pick[0]["callback_id"])
             self.assertTrue(pump(lambda: fake.image_picks, 2), "the plugin did not open the picker")
             request = fake.image_picks[0]["request"]
-            exteria_host.activity_result(request, -1, ADDRESS)
+            noshi_host.activity_result(request, -1, ADDRESS)
             self.assertTrue(pump(lambda: ops("nimg"), 3), "no picture was put on the page")
             self.assertTrue(pump(lambda: fake.cards, 3), "the cards were not made see-through")
             view = [op for op in ops("add") if op[1] == -1][0][2]
@@ -478,7 +478,7 @@ class RealPlugin(unittest.TestCase):
             self.assertAlmostEqual(fake.cards[-1], 127 / 255.0, places=2)
             live = len(fake.bitmaps)
             self.assertGreaterEqual(live, 1)
-            exteria_host.unload("settings_wallpaper")
+            noshi_host.unload("settings_wallpaper")
             self.assertTrue(pump(lambda: fake.cards[-1] == 1.0, 3), "the cards were not put back")
             self.assertTrue(any(op[0] == "rm" and op[1] == view for op in fake.ops), "the picture was not taken off the page")
         finally:

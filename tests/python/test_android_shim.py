@@ -19,7 +19,7 @@ from android.hardware import Sensor, SensorEventListener, SensorManager  # noqa:
 from android.os import Bundle, Handler, Looper  # noqa: E402
 from android.view import Gravity, MotionEvent, View, dispatch_touch  # noqa: E402
 from android.widget import FrameLayout, ImageView, LinearLayout, TextView  # noqa: E402
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 import java  # noqa: E402
 from org.telegram.messenger import AndroidUtilities, NotificationCenter  # noqa: E402
 
@@ -128,7 +128,7 @@ class AndroidShim(unittest.TestCase):
         self.assertEqual(anim[0][1:4], [view._id, {"tx": 30.0, "alpha": 0.0}, 120])
         token, delay = fake.timers[-1]
         self.assertEqual(delay, 120)
-        exteria_host.run_token(token)
+        noshi_host.run_token(token)
         self.assertEqual(ended, [1])
 
     def test_handler_runs_and_cancels(self):
@@ -139,7 +139,7 @@ class AndroidShim(unittest.TestCase):
         handler.postDelayed(drop, 10)
         handler.removeCallbacks(drop)
         for token, _ in list(fake.timers):
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         self.assertEqual(ran, ["keep"])
 
     def test_touch_listener_and_click(self):
@@ -156,22 +156,22 @@ class AndroidShim(unittest.TestCase):
         _ui.flush()
         self.assertTrue(self.sets(view._id)["touch"])
         for action in (0, 2, 1):
-            self.assertTrue(exteria_host.touch(view._id, action, 5, 5, 1.0))
+            self.assertTrue(noshi_host.touch(view._id, action, 5, 5, 1.0))
         self.assertEqual(seen, [0, 2, 1])
         clicked = []
         other = View(activity())
         other.setOnClickListener(lambda v: clicked.append(v))
         self.decor.addView(other, FrameLayout.LayoutParams(10, 10))
-        exteria_host.touch(other._id, MotionEvent.ACTION_DOWN, 5, 5, 1.0)
-        exteria_host.touch(other._id, MotionEvent.ACTION_UP, 5, 5, 1.1)
+        noshi_host.touch(other._id, MotionEvent.ACTION_DOWN, 5, 5, 1.0)
+        noshi_host.touch(other._id, MotionEvent.ACTION_UP, 5, 5, 1.1)
         self.assertEqual(clicked, [other])
         moved = []
         third = View(activity())
         third.setOnClickListener(lambda v: moved.append(v))
         self.decor.addView(third, FrameLayout.LayoutParams(10, 10))
-        exteria_host.touch(third._id, MotionEvent.ACTION_DOWN, 5, 5, 1.0)
-        exteria_host.touch(third._id, MotionEvent.ACTION_MOVE, 80, 5, 1.05)
-        exteria_host.touch(third._id, MotionEvent.ACTION_UP, 80, 5, 1.1)
+        noshi_host.touch(third._id, MotionEvent.ACTION_DOWN, 5, 5, 1.0)
+        noshi_host.touch(third._id, MotionEvent.ACTION_MOVE, 80, 5, 1.05)
+        noshi_host.touch(third._id, MotionEvent.ACTION_UP, 80, 5, 1.1)
         self.assertEqual(moved, [])
 
     def test_bitmap_canvas_and_image_op(self):
@@ -213,7 +213,7 @@ class AndroidShim(unittest.TestCase):
         manager = activity().getSystemService("sensor")
         sensor = manager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         self.assertTrue(manager.registerListener(Listener(), sensor, SensorManager.SENSOR_DELAY_UI))
-        exteria_host.sensor(0.0, 9.8, 0.1, 1.0)
+        noshi_host.sensor(0.0, 9.8, 0.1, 1.0)
         self.assertEqual(got, [[0.0, 9.8, 0.1]])
         self.assertEqual([c[0] for c in fake.calls if c[0].startswith("sensor.")][-2:], ["sensor.available", "sensor.start"])
 
@@ -226,7 +226,7 @@ class AndroidShim(unittest.TestCase):
 
         delegate = Delegate()
         NotificationCenter.getInstance(0).addObserver(delegate, NotificationCenter.didReceiveNewMessages)
-        exteria_host.new_messages(0, 777, [{"id": 5, "text": "hi", "out": False}])
+        noshi_host.new_messages(0, 777, [{"id": 5, "text": "hi", "out": False}])
         NotificationCenter.getInstance(0).removeObserver(delegate, NotificationCenter.didReceiveNewMessages)
         self.assertEqual(got, [(NotificationCenter.didReceiveNewMessages, 0, 777, "hi", False)])
 

@@ -1,11 +1,11 @@
 #include "test_util.h"
-#include "exteria_translate_text.h"
+#include "noshi_translate_text.h"
 
 #include <string.h>
 
 static void restore(const char *original, const char *translated, const char *expected) {
     char out[128];
-    CHECK_EQ_INT(exteria_tr_restore_newlines(original, translated, out, sizeof(out)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tr_restore_newlines(original, translated, out, sizeof(out)), NOSHI_OK);
     CHECK(!strcmp(out, expected));
 }
 
@@ -28,15 +28,15 @@ static void test_restore(void) {
 
 static void test_bounds(void) {
     char out[8];
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a\nb", "A\n\nB", out, sizeof(out)), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a\nb", "AAAAAAAAAA", out, sizeof(out)), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a\nb", "A\n\nB", out, sizeof(out)), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a\nb", "AAAAAAAAAA", out, sizeof(out)), NOSHI_E_LIMIT);
     CHECK_EQ_INT(out[0], 0);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a", "AAAAAAAAAA", out, sizeof(out)), EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a\nb", "A\n\nB", out, 3), EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(exteria_tr_restore_newlines(NULL, "A", out, sizeof(out)), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a", NULL, out, sizeof(out)), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a", "A", NULL, sizeof(out)), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tr_restore_newlines("a", "A", out, 0), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a", "AAAAAAAAAA", out, sizeof(out)), NOSHI_E_LIMIT);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a\nb", "A\n\nB", out, 3), NOSHI_E_LIMIT);
+    CHECK_EQ_INT(noshi_tr_restore_newlines(NULL, "A", out, sizeof(out)), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a", NULL, out, sizeof(out)), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a", "A", NULL, sizeof(out)), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tr_restore_newlines("a", "A", out, 0), NOSHI_E_ARG);
 }
 
 int main(void) {

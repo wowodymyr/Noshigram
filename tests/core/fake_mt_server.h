@@ -1,14 +1,14 @@
-#ifndef EXTERIA_FAKE_MT_SERVER_H
-#define EXTERIA_FAKE_MT_SERVER_H
+#ifndef NOSHI_FAKE_MT_SERVER_H
+#define NOSHI_FAKE_MT_SERVER_H
 
 #include <stddef.h>
 #include <stdint.h>
 
-#include "exteria_arena.h"
-#include "exteria_bytes.h"
-#include "exteria_mt_keys.h"
-#include "exteria_mt_msg.h"
-#include "exteria_tl.h"
+#include "noshi_arena.h"
+#include "noshi_bytes.h"
+#include "noshi_mt_keys.h"
+#include "noshi_mt_msg.h"
+#include "noshi_tl.h"
 
 typedef enum fake_hs_mode {
     FAKE_HS_NORMAL = 0,
@@ -28,7 +28,7 @@ typedef struct fake_mt_server {
     void *rsa_n;
     void *rsa_d;
     uint8_t n_bytes[256];
-    exteria_mt_rsa_key key;
+    noshi_mt_rsa_key key;
     fake_hs_mode mode;
     int retries_left;
     int dc_expected;
@@ -45,7 +45,7 @@ typedef struct fake_mt_server {
     uint64_t pq;
     int step;
     uint64_t next_msg_id;
-    exteria_mt_auth_key auth_key;
+    noshi_mt_auth_key auth_key;
     int have_key;
     uint64_t salt;
     uint64_t session_id;
@@ -56,12 +56,12 @@ typedef struct fake_mt_server {
 int fake_mt_server_init(fake_mt_server *s);
 void fake_mt_server_free(fake_mt_server *s);
 
-int fake_mt_server_handshake(fake_mt_server *s, const uint8_t *packet, size_t len, exteria_writer *out);
+int fake_mt_server_handshake(fake_mt_server *s, const uint8_t *packet, size_t len, noshi_writer *out);
 
-int fake_mt_server_decrypt(fake_mt_server *s, const uint8_t *packet, size_t len, exteria_writer *plain,
-                           exteria_mt_header *h, const uint8_t **body, size_t *body_len);
+int fake_mt_server_decrypt(fake_mt_server *s, const uint8_t *packet, size_t len, noshi_writer *plain,
+                           noshi_mt_header *h, const uint8_t **body, size_t *body_len);
 int fake_mt_server_encrypt(fake_mt_server *s, uint64_t msg_id, int content_related, const uint8_t *body, size_t len,
-                           exteria_writer *out);
+                           noshi_writer *out);
 uint64_t fake_mt_server_msg_id(fake_mt_server *s, int is_response);
 
 #endif

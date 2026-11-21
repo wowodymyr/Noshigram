@@ -4,7 +4,7 @@
 #include <opus.h>
 
 #include "test_util.h"
-#include "exteria_voice.h"
+#include "noshi_voice.h"
 
 typedef struct sink {
     uint8_t *data;
@@ -29,7 +29,7 @@ static int collect(void *ctx, const uint8_t *bytes, size_t len) {
 }
 
 static void tone(int16_t *out, size_t count, double hz, double amplitude) {
-    for (size_t i = 0; i < count; ++i) out[i] = (int16_t)(amplitude * sin(2.0 * 3.14159265358979 * hz * (double)i / EXTERIA_VOICE_RATE));
+    for (size_t i = 0; i < count; ++i) out[i] = (int16_t)(amplitude * sin(2.0 * 3.14159265358979 * hz * (double)i / NOSHI_VOICE_RATE));
 }
 
 /* the stream is read back with libogg and decoded with libopus, as a player would */
@@ -43,7 +43,7 @@ static void check_stream(const sink *s, size_t samples) {
     long pre_skip = 0;
     uint64_t decoded = 0;
     double energy = 0;
-    OpusDecoder *decoder = opus_decoder_create(EXTERIA_VOICE_RATE, 1, NULL);
+    OpusDecoder *decoder = opus_decoder_create(NOSHI_VOICE_RATE, 1, NULL);
     CHECK(decoder != NULL);
     ogg_sync_init(&sync);
     char *buffer = ogg_sync_buffer(&sync, (long)s->len);
@@ -62,7 +62,7 @@ static void check_stream(const sink *s, size_t samples) {
                 CHECK(packet.bytes == 19 && !memcmp(packet.packet, "OpusHead", 8));
                 CHECK_EQ_INT(packet.packet[9], 1);
                 pre_skip = packet.packet[10] | (packet.packet[11] << 8);
-                CHECK_EQ_INT(packet.packet[12] | (packet.packet[13] << 8), EXTERIA_VOICE_RATE);
+                CHECK_EQ_INT(packet.packet[12] | (packet.packet[13] << 8), NOSHI_VOICE_RATE);
             } else if (packet.packetno == 1) {
                 CHECK(packet.bytes >= 12 && !memcmp(packet.packet, "OpusTags", 8));
             } else {
@@ -87,7 +87,7 @@ static void check_stream(const sink *s, size_t samples) {
     /* the end granule position names the real length, so a player trims the padding of the last frame */
     CHECK_EQ_INT(last_granule, pre_skip + (int64_t)samples * 3);
     CHECK(decoded >= samples);
-    CHECK(decoded < samples + 2 * EXTERIA_VOICE_RATE / 50);
+    CHECK(decoded < samples + 2 * NOSHI_VOICE_RATE / 50);
     CHECK(energy > 1e6);
     if (started) ogg_stream_clear(&stream);
     ogg_sync_clear(&sync);
@@ -96,21 +96,21 @@ static void check_stream(const sink *s, size_t samples) {
 }
 
 static void test_roundtrip(void) {
-    const size_t total = EXTERIA_VOICE_RATE * 2 + 123;
+    const size_t total = NOSHI_VOICE_RATE * 2 + 123;
     int16_t *pcm = malloc(total * sizeof(int16_t));
     sink s = {NULL, 0, 0, -1};
-    exteria_voice_encoder *e = NULL;
+    noshi_voice_encoder *e = NULL;
     CHECK(pcm != NULL);
     tone(pcm, total, 440.0, 12000.0);
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_OK);
     /* odd chunk sizes: a frame is never aligned with the calls */
     for (size_t at = 0; at < total;) {
         size_t n = 777;
         if (at + n > total) n = total - at;
-        CHECK_EQ_INT(exteria_voice_encoder_feed(e, pcm + at, n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_voice_encoder_feed(e, pcm + at, n), NOSHI_OK);
         at += n;
     }
-    CHECK_EQ_INT(exteria_voice_encoder_finish(e), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_finish(e), NOSHI_OK);
     check_stream(&s, total);
     free(s.data);
     free(pcm);
@@ -118,66 +118,66 @@ static void test_roundtrip(void) {
 
 static void test_boundaries(void) {
     sink s = {NULL, 0, 0, -1};
-    exteria_voice_encoder *e = NULL;
+    noshi_voice_encoder *e = NULL;
     int16_t pcm[320];
     memset(pcm, 0, sizeof(pcm));
-    CHECK_EQ_INT(exteria_voice_encoder_new(NULL, collect, &s), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, NULL, &s), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_voice_encoder_new(NULL, collect, &s), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, NULL, &s), NOSHI_E_ARG);
     CHECK(e == NULL);
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_voice_encoder_feed(e, NULL, 1), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_voice_encoder_feed(e, pcm, 0), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_feed(e, NULL, 1), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_voice_encoder_feed(e, pcm, 0), NOSHI_OK);
     /* nothing was recorded: no empty note */
-    CHECK_EQ_INT(exteria_voice_encoder_finish(e), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_voice_encoder_finish(e), NOSHI_E_ARG);
     free(s.data);
 
     /* one exact frame ends on a boundary and still closes the stream */
     memset(&s, 0, sizeof(s));
     s.fail_after = -1;
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_voice_encoder_feed(e, pcm, 320), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_voice_encoder_finish(e), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_feed(e, pcm, 320), NOSHI_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_finish(e), NOSHI_OK);
     CHECK(s.len > 50);
     free(s.data);
 }
 
 static void test_sink_failure(void) {
     sink s = {NULL, 0, 0, 0};
-    exteria_voice_encoder *e = NULL;
+    noshi_voice_encoder *e = NULL;
     /* a sink that refuses the very first page fails the constructor and leaks nothing */
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_E_IO);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_E_IO);
     CHECK(e == NULL);
     s.fail_after = 100;
     free(s.data);
     memset(&s, 0, sizeof(s));
     s.fail_after = 90;
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_OK);
     {
         int16_t pcm[16000];
-        exteria_status status = EXTERIA_OK;
+        noshi_status status = NOSHI_OK;
         memset(pcm, 0x20, sizeof(pcm));
-        for (int i = 0; i < 8 && status == EXTERIA_OK; ++i) status = exteria_voice_encoder_feed(e, pcm, 16000);
-        CHECK_EQ_INT(status, EXTERIA_E_IO);
-        CHECK_EQ_INT(exteria_voice_encoder_feed(e, pcm, 10), EXTERIA_E_STATE);
-        CHECK_EQ_INT(exteria_voice_encoder_finish(e), EXTERIA_E_STATE);
+        for (int i = 0; i < 8 && status == NOSHI_OK; ++i) status = noshi_voice_encoder_feed(e, pcm, 16000);
+        CHECK_EQ_INT(status, NOSHI_E_IO);
+        CHECK_EQ_INT(noshi_voice_encoder_feed(e, pcm, 10), NOSHI_E_STATE);
+        CHECK_EQ_INT(noshi_voice_encoder_finish(e), NOSHI_E_STATE);
     }
     free(s.data);
 }
 
 static void test_limit(void) {
     sink s = {NULL, 0, 0, -1};
-    exteria_voice_encoder *e = NULL;
-    static int16_t chunk[EXTERIA_VOICE_RATE];
-    exteria_status status = EXTERIA_OK;
+    noshi_voice_encoder *e = NULL;
+    static int16_t chunk[NOSHI_VOICE_RATE];
+    noshi_status status = NOSHI_OK;
     int seconds = 0;
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, &s), EXTERIA_OK);
-    while (status == EXTERIA_OK && seconds <= EXTERIA_VOICE_SECONDS_MAX + 1) {
-        status = exteria_voice_encoder_feed(e, chunk, EXTERIA_VOICE_RATE);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, &s), NOSHI_OK);
+    while (status == NOSHI_OK && seconds <= NOSHI_VOICE_SECONDS_MAX + 1) {
+        status = noshi_voice_encoder_feed(e, chunk, NOSHI_VOICE_RATE);
         ++seconds;
     }
-    CHECK_EQ_INT(status, EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(seconds, EXTERIA_VOICE_SECONDS_MAX + 1);
-    exteria_voice_encoder_free(e);
+    CHECK_EQ_INT(status, NOSHI_E_LIMIT);
+    CHECK_EQ_INT(seconds, NOSHI_VOICE_SECONDS_MAX + 1);
+    noshi_voice_encoder_free(e);
     free(s.data);
 }
 
@@ -189,28 +189,28 @@ static int bar(const uint8_t *packed, int index) {
 
 static void test_waveform(void) {
     int16_t pcm[1000];
-    uint8_t out[EXTERIA_WAVEFORM_BYTES];
-    CHECK_EQ_INT(EXTERIA_WAVEFORM_BYTES, 63);
-    CHECK_EQ_INT(exteria_waveform_build(NULL, 1, out, sizeof(out)), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 0, out, sizeof(out)), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 10, out, EXTERIA_WAVEFORM_BYTES - 1), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 10, NULL, sizeof(out)), EXTERIA_E_ARG);
+    uint8_t out[NOSHI_WAVEFORM_BYTES];
+    CHECK_EQ_INT(NOSHI_WAVEFORM_BYTES, 63);
+    CHECK_EQ_INT(noshi_waveform_build(NULL, 1, out, sizeof(out)), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 0, out, sizeof(out)), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 10, out, NOSHI_WAVEFORM_BYTES - 1), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 10, NULL, sizeof(out)), NOSHI_E_ARG);
 
     /* silence stays silent and never divides by zero */
     memset(pcm, 0, sizeof(pcm));
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 1000, out, sizeof(out)), EXTERIA_OK);
-    for (int i = 0; i < EXTERIA_WAVEFORM_BARS; ++i) CHECK_EQ_INT(bar(out, i), 0);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 1000, out, sizeof(out)), NOSHI_OK);
+    for (int i = 0; i < NOSHI_WAVEFORM_BARS; ++i) CHECK_EQ_INT(bar(out, i), 0);
 
     /* a rising ramp: the last bar is the loudest, the first is near silence, and the bars never fall */
     for (int i = 0; i < 1000; ++i) pcm[i] = (int16_t)(i * 30);
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 1000, out, sizeof(out)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 1000, out, sizeof(out)), NOSHI_OK);
     CHECK_EQ_INT(bar(out, 99), 31);
     CHECK(bar(out, 0) <= 1);
-    for (int i = 1; i < EXTERIA_WAVEFORM_BARS; ++i) CHECK(bar(out, i) >= bar(out, i - 1));
+    for (int i = 1; i < NOSHI_WAVEFORM_BARS; ++i) CHECK(bar(out, i) >= bar(out, i - 1));
 
     /* negative samples count by magnitude; fewer samples than bars still fills every bar */
     for (int i = 0; i < 10; ++i) pcm[i] = (int16_t)(i == 3 ? -32768 : 100);
-    CHECK_EQ_INT(exteria_waveform_build(pcm, 10, out, sizeof(out)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_waveform_build(pcm, 10, out, sizeof(out)), NOSHI_OK);
     CHECK_EQ_INT(bar(out, 30), 31);
     CHECK_EQ_INT(bar(out, 0), 0);
 }
@@ -243,45 +243,45 @@ static size_t wav(uint8_t *out, uint32_t rate, uint16_t format, uint16_t channel
 static void test_wav(void) {
     uint8_t file[512];
     size_t offset = 1, count = 1, len;
-    CHECK_EQ_INT(exteria_wav_pcm16(NULL, 0, 16000, &offset, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, 10, 16000, NULL, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_wav_pcm16(NULL, 0, 16000, &offset, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, 10, 16000, NULL, &count), NOSHI_E_ARG);
     len = wav(file, 16000, 1, 1, 16, 0, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_OK);
     CHECK_EQ_INT(offset, 44);
     CHECK_EQ_INT(count, 20);
     /* a chunk before fmt, with the odd size padded */
     len = wav(file, 16000, 1, 1, 16, 1, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_OK);
     CHECK_EQ_INT(offset, 56);
     CHECK_EQ_INT(count, 20);
     /* a recorder that never closed the header leaves a size of zero or a huge one: the file decides */
     len = wav(file, 16000, 1, 1, 16, 0, 0xffffffffu, 30);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 30);
     /* a size smaller than the file wins over the rest */
     len = wav(file, 16000, 1, 1, 16, 0, 10, 30);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 5);
     len = wav(file, 44100, 1, 1, 16, 0, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_UNSUPPORTED);
     len = wav(file, 16000, 1, 2, 16, 0, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_UNSUPPORTED);
     len = wav(file, 16000, 3, 1, 16, 0, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_UNSUPPORTED);
     len = wav(file, 16000, 1, 1, 8, 0, 40, 20);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_UNSUPPORTED);
     len = wav(file, 16000, 1, 1, 16, 0, 0, 0);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_EOF);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_EOF);
     /* cut inside the headers */
     len = wav(file, 16000, 1, 1, 16, 0, 40, 20);
-    for (size_t cut = 0; cut < 44; ++cut) CHECK(exteria_wav_pcm16(file, cut, 16000, &offset, &count) != EXTERIA_OK);
+    for (size_t cut = 0; cut < 44; ++cut) CHECK(noshi_wav_pcm16(file, cut, 16000, &offset, &count) != NOSHI_OK);
     memcpy(file, "RIFX", 4);
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_MALFORMED);
     /* a chunk that claims more than the file holds cannot walk past the end */
     len = wav(file, 16000, 1, 1, 16, 1, 40, 20);
     memcpy(file, "RIFF", 4);
     file[16] = 0xff; file[17] = 0xff; file[18] = 0xff; file[19] = 0x7f;
-    CHECK_EQ_INT(exteria_wav_pcm16(file, len, 16000, &offset, &count), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_wav_pcm16(file, len, 16000, &offset, &count), NOSHI_E_MALFORMED);
 }
 
 typedef struct pcm {
@@ -309,15 +309,15 @@ static int take_pcm(void *ctx, const int16_t *samples, size_t count) {
 }
 
 static void encode_tone(sink *s, size_t samples, double hz) {
-    exteria_voice_encoder *e = NULL;
+    noshi_voice_encoder *e = NULL;
     int16_t *wave = malloc(samples * sizeof(int16_t));
     CHECK(wave != NULL);
     tone(wave, samples, hz, 12000);
     memset(s, 0, sizeof(*s));
     s->fail_after = -1;
-    CHECK_EQ_INT(exteria_voice_encoder_new(&e, collect, s), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_voice_encoder_feed(e, wave, samples), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_voice_encoder_finish(e), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_new(&e, collect, s), NOSHI_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_feed(e, wave, samples), NOSHI_OK);
+    CHECK_EQ_INT(noshi_voice_encoder_finish(e), NOSHI_OK);
     free(wave);
 }
 
@@ -354,33 +354,33 @@ static void build_stream(sink *s, const uint8_t *head, size_t head_len, int with
 }
 
 static void test_waveform_unpack(void) {
-    int16_t wave[EXTERIA_VOICE_RATE];
-    uint8_t packed[EXTERIA_WAVEFORM_BYTES], bars[EXTERIA_WAVEFORM_BARS + 8];
+    int16_t wave[NOSHI_VOICE_RATE];
+    uint8_t packed[NOSHI_WAVEFORM_BYTES], bars[NOSHI_WAVEFORM_BARS + 8];
     size_t count = 99;
-    for (size_t i = 0; i < EXTERIA_VOICE_RATE; ++i) wave[i] = (int16_t)(i < EXTERIA_VOICE_RATE / 2 ? 3000 : 12000);
-    CHECK_EQ_INT(exteria_waveform_build(wave, EXTERIA_VOICE_RATE, packed, sizeof(packed)), EXTERIA_OK);
+    for (size_t i = 0; i < NOSHI_VOICE_RATE; ++i) wave[i] = (int16_t)(i < NOSHI_VOICE_RATE / 2 ? 3000 : 12000);
+    CHECK_EQ_INT(noshi_waveform_build(wave, NOSHI_VOICE_RATE, packed, sizeof(packed)), NOSHI_OK);
     /* what the recorder packs, the player reads back: the quiet half and the loud half, the loudest bar at the top of the scale */
-    CHECK_EQ_INT(exteria_waveform_unpack(packed, sizeof(packed), bars, sizeof(bars), &count), EXTERIA_OK);
-    CHECK_EQ_INT(count, EXTERIA_WAVEFORM_BYTES * 8 / 5);
-    CHECK(count >= EXTERIA_WAVEFORM_BARS);
+    CHECK_EQ_INT(noshi_waveform_unpack(packed, sizeof(packed), bars, sizeof(bars), &count), NOSHI_OK);
+    CHECK_EQ_INT(count, NOSHI_WAVEFORM_BYTES * 8 / 5);
+    CHECK(count >= NOSHI_WAVEFORM_BARS);
     CHECK_EQ_INT(bars[0], 8);
-    CHECK_EQ_INT(bars[EXTERIA_WAVEFORM_BARS - 1], 31);
+    CHECK_EQ_INT(bars[NOSHI_WAVEFORM_BARS - 1], 31);
     for (size_t i = 0; i < count; ++i) CHECK(bars[i] <= 31);
     /* the room of the caller cuts the list, a note without a waveform has no bars, and the arguments are checked */
-    CHECK_EQ_INT(exteria_waveform_unpack(packed, sizeof(packed), bars, 10, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_waveform_unpack(packed, sizeof(packed), bars, 10, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 10);
-    CHECK_EQ_INT(exteria_waveform_unpack(packed, 0, bars, sizeof(bars), &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_waveform_unpack(packed, 0, bars, sizeof(bars), &count), NOSHI_OK);
     CHECK_EQ_INT(count, 0);
     {
         /* one byte holds one whole bar and three bits of the next, which is not a bar */
         static const uint8_t one[1] = {0xe9};
-        CHECK_EQ_INT(exteria_waveform_unpack(one, 1, bars, sizeof(bars), &count), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_waveform_unpack(one, 1, bars, sizeof(bars), &count), NOSHI_OK);
         CHECK_EQ_INT(count, 1);
         CHECK_EQ_INT(bars[0], 0xe9 & 31);
     }
-    CHECK_EQ_INT(exteria_waveform_unpack(packed, sizeof(packed), bars, sizeof(bars), NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_waveform_unpack(packed, sizeof(packed), NULL, sizeof(bars), &count), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_waveform_unpack(NULL, 4, bars, sizeof(bars), &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_unpack(packed, sizeof(packed), bars, sizeof(bars), NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_unpack(packed, sizeof(packed), NULL, sizeof(bars), &count), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_waveform_unpack(NULL, 4, bars, sizeof(bars), &count), NOSHI_E_ARG);
 }
 
 static void test_decode(void) {
@@ -393,16 +393,16 @@ static void test_decode(void) {
     out.refuse_after = -1;
 
     /* a second of tone comes back as a second of tone, within the padding of the last frame, and in chunks no longer than a frame */
-    encode_tone(&encoded, EXTERIA_VOICE_RATE, 440);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_OK);
+    encode_tone(&encoded, NOSHI_VOICE_RATE, 440);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_OK);
     CHECK_EQ_INT(total, out.len);
-    CHECK(out.len >= EXTERIA_VOICE_RATE - EXTERIA_VOICE_RATE / 50 && out.len <= EXTERIA_VOICE_RATE + EXTERIA_VOICE_RATE / 10);
-    CHECK(out.largest_chunk <= EXTERIA_VOICE_RATE / 1000 * 120);
+    CHECK(out.len >= NOSHI_VOICE_RATE - NOSHI_VOICE_RATE / 50 && out.len <= NOSHI_VOICE_RATE + NOSHI_VOICE_RATE / 10);
+    CHECK(out.largest_chunk <= NOSHI_VOICE_RATE / 1000 * 120);
     for (size_t i = out.len / 4; i < out.len / 2; ++i) energy += (double)out.data[i] * (double)out.data[i];
     CHECK(energy / (double)(out.len / 4) > 1.0e6);
 
     /* the samples go to a WAV file the player can read back */
-    exteria_wav_header(EXTERIA_VOICE_RATE, out.len, header);
+    noshi_wav_header(NOSHI_VOICE_RATE, out.len, header);
     {
         uint8_t *file = malloc(sizeof(header) + out.len * 2);
         CHECK(file != NULL);
@@ -411,7 +411,7 @@ static void test_decode(void) {
             file[sizeof(header) + 2 * i] = (uint8_t)((uint16_t)out.data[i] & 0xffu);
             file[sizeof(header) + 2 * i + 1] = (uint8_t)((uint16_t)out.data[i] >> 8);
         }
-        CHECK_EQ_INT(exteria_wav_pcm16(file, sizeof(header) + out.len * 2, EXTERIA_VOICE_RATE, &offset, &count), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_wav_pcm16(file, sizeof(header) + out.len * 2, NOSHI_VOICE_RATE, &offset, &count), NOSHI_OK);
         CHECK_EQ_INT(offset, 44);
         CHECK_EQ_INT(count, out.len);
         free(file);
@@ -421,27 +421,27 @@ static void test_decode(void) {
     free(out.data);
     memset(&out, 0, sizeof(out));
     out.refuse_after = 3000;
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_IO);
-    CHECK(total > 0 && total < EXTERIA_VOICE_RATE);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_IO);
+    CHECK(total > 0 && total < NOSHI_VOICE_RATE);
 
     /* a cut file gives the pages that are whole; garbage is not a stream; nothing at all is an argument error; the
        encoder closes a page about each second, so a few seconds make several */
     free(encoded.data);
-    encode_tone(&encoded, 4 * EXTERIA_VOICE_RATE, 330);
+    encode_tone(&encoded, 4 * NOSHI_VOICE_RATE, 330);
     free(out.data);
     memset(&out, 0, sizeof(out));
     out.refuse_after = -1;
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len / 4 * 3, take_pcm, &out, &total), EXTERIA_OK);
-    CHECK(total > 0 && total < 4 * EXTERIA_VOICE_RATE);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len / 4 * 3, take_pcm, &out, &total), NOSHI_OK);
+    CHECK(total > 0 && total < 4 * NOSHI_VOICE_RATE);
     {
         uint8_t noise[600];
         for (size_t i = 0; i < sizeof(noise); ++i) noise[i] = (uint8_t)(i * 31u + 7u);
-        CHECK_EQ_INT(exteria_voice_decode(noise, sizeof(noise), take_pcm, &out, &total), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_voice_decode(noise, sizeof(noise), take_pcm, &out, &total), NOSHI_E_MALFORMED);
         CHECK_EQ_INT(total, 0);
     }
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, 0, take_pcm, &out, &total), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, NULL, &out, &total), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, 0, take_pcm, &out, &total), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, NULL, &out, &total), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, NULL), NOSHI_E_ARG);
     /* damage in the middle costs that audio and not the rest */
     {
         uint8_t *damaged = malloc(encoded.len);
@@ -449,7 +449,7 @@ static void test_decode(void) {
         CHECK(damaged != NULL);
         memcpy(damaged, encoded.data, encoded.len);
         for (size_t i = encoded.len / 2; i < encoded.len / 2 + 40; ++i) damaged[i] ^= 0xa5u;
-        CHECK_EQ_INT(exteria_voice_decode(damaged, encoded.len, take_pcm, &out, &total), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_voice_decode(damaged, encoded.len, take_pcm, &out, &total), NOSHI_OK);
         CHECK(total > 0 && out.len > before);
         free(damaged);
     }
@@ -457,25 +457,25 @@ static void test_decode(void) {
 
     /* the heads: a mono head with no audio has none to give, and other mappings, channel counts and magic are refused */
     build_stream(&encoded, head, sizeof(head), 1);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_EOF);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_EOF);
     free(encoded.data);
     head[18] = 1;
     build_stream(&encoded, head, sizeof(head), 1);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_UNSUPPORTED);
     free(encoded.data);
     head[18] = 0;
     head[9] = 6;
     build_stream(&encoded, head, sizeof(head), 1);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_UNSUPPORTED);
     free(encoded.data);
     head[9] = 1;
     head[0] = 'X';
     build_stream(&encoded, head, sizeof(head), 1);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_MALFORMED);
     free(encoded.data);
     head[0] = 'O';
     build_stream(&encoded, head, sizeof(head), 0);
-    CHECK_EQ_INT(exteria_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), EXTERIA_E_EOF);
+    CHECK_EQ_INT(noshi_voice_decode(encoded.data, encoded.len, take_pcm, &out, &total), NOSHI_E_EOF);
     free(encoded.data);
     free(out.data);
 }

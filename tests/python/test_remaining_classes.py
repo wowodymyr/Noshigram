@@ -13,7 +13,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android import _ui  # noqa: E402
 from android.app import activity  # noqa: E402
 from android.graphics import Bitmap, Canvas  # noqa: E402
@@ -82,7 +82,7 @@ class Particles(unittest.TestCase):
 
     def run_next(self):
         token, _delay = fake.timers.pop(0)
-        exteria_host.run_token(token)
+        noshi_host.run_token(token)
         _ui.flush()
 
     def view(self, count=40):

@@ -1,7 +1,7 @@
-"""builds _exteria_dexnative for the host python so the native path of the dex runtime can be tested
+"""builds _noshi_dexnative for the host python so the native path of the dex runtime can be tested
 
-the sources are the ones the app links (core/dexnative and core/pyhost/exteria_dexnative_module.c), compiled with the cc
-of the machine against the headers of the python that runs the tests. EXTERIA_DEXNATIVE_MODULE names a folder that
+the sources are the ones the app links (core/dexnative and core/pyhost/noshi_dexnative_module.c), compiled with the cc
+of the machine against the headers of the python that runs the tests. NOSHI_DEXNATIVE_MODULE names a folder that
 already holds the built module and skips the build. load() answers None when there is no compiler or no Python.h"""
 
 import importlib
@@ -24,12 +24,12 @@ def load():
     if _module:
         return _module[0]
     found = None
-    prebuilt = os.environ.get("EXTERIA_DEXNATIVE_MODULE")
+    prebuilt = os.environ.get("NOSHI_DEXNATIVE_MODULE")
     folder = prebuilt or _build()
     if folder:
         sys.path.insert(0, folder)
         try:
-            found = importlib.import_module("_exteria_dexnative")
+            found = importlib.import_module("_noshi_dexnative")
         except ImportError as error:
             _reason.append("the module did not import: %s" % error)
         finally:
@@ -47,14 +47,14 @@ def _build():
     if not include or not os.path.isfile(os.path.join(include, "Python.h")):
         _reason.append("no Python.h for this python")
         return None
-    folder = tempfile.mkdtemp(prefix="exteria-dexnative-")
+    folder = tempfile.mkdtemp(prefix="noshigram-dexnative-")
     suffix = sysconfig.get_config_var("EXT_SUFFIX") or ".so"
     command = [compiler, "-O2", "-std=c99", "-D_POSIX_C_SOURCE=200809L", "-D_DEFAULT_SOURCE", "-Wall", "-Wextra", "-Werror",
                "-Wno-cast-function-type", "-fPIC", "-shared", "-isystem", include,
                "-I" + os.path.join(ROOT, "core", "dexnative"), "-I" + os.path.join(ROOT, "core", "pyhost"),
-               os.path.join(ROOT, "core", "pyhost", "exteria_dexnative_module.c"),
-               os.path.join(ROOT, "core", "dexnative", "exteria_dexnative.c"),
-               "-o", os.path.join(folder, "_exteria_dexnative" + suffix)]
+               os.path.join(ROOT, "core", "pyhost", "noshi_dexnative_module.c"),
+               os.path.join(ROOT, "core", "dexnative", "noshi_dexnative.c"),
+               "-o", os.path.join(folder, "_noshi_dexnative" + suffix)]
     # posix_spawn, not subprocess: the shim of the dex runtime is on the path of these tests and its _posixsubprocess refuses
     # to start a process, as it must on ios
     log = os.path.join(folder, "build.log")

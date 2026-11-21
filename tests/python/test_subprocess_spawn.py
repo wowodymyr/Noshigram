@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 def load_shim():
-    spec = importlib.util.spec_from_file_location("exteria_posixsubprocess_shim", os.path.join(ROOT, "python", "shim", "_posixsubprocess.py"))
+    spec = importlib.util.spec_from_file_location("noshi_posixsubprocess_shim", os.path.join(ROOT, "python", "shim", "_posixsubprocess.py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -47,8 +47,8 @@ class SpawnSubprocess(unittest.TestCase):
         self.assertEqual(result.stdout, b"e")
 
     def test_passes_the_environment_it_is_given(self):
-        env = {"PATH": os.environ.get("PATH", ""), "EXTERIA_PROBE": "seen"}
-        result = subprocess.run([sys.executable, "-c", "import os; print(os.environ['EXTERIA_PROBE'])"], env=env, capture_output=True)
+        env = {"PATH": os.environ.get("PATH", ""), "NOSHI_PROBE": "seen"}
+        result = subprocess.run([sys.executable, "-c", "import os; print(os.environ['NOSHI_PROBE'])"], env=env, capture_output=True)
         self.assertEqual(result.stdout, b"seen\n")
 
     def test_searches_the_path(self):
@@ -57,8 +57,8 @@ class SpawnSubprocess(unittest.TestCase):
 
     def test_a_missing_program_raises_with_its_name(self):
         with self.assertRaises(FileNotFoundError) as caught:
-            subprocess.run(["/nonexistent/exteria-probe"])
-        self.assertEqual(caught.exception.filename, "/nonexistent/exteria-probe")
+            subprocess.run(["/nonexistent/noshigram-probe"])
+        self.assertEqual(caught.exception.filename, "/nonexistent/noshigram-probe")
 
     def test_a_file_that_cannot_run_raises_permission_error(self):
         with tempfile.NamedTemporaryFile() as plain:
@@ -136,8 +136,8 @@ class SpawnSubprocess(unittest.TestCase):
 
     def test_a_missing_working_directory_raises_with_its_name(self):
         with self.assertRaises(FileNotFoundError) as caught:
-            subprocess.run([sys.executable, "-c", "pass"], cwd="/nonexistent/exteria-dir")
-        self.assertEqual(caught.exception.filename, "/nonexistent/exteria-dir")
+            subprocess.run([sys.executable, "-c", "pass"], cwd="/nonexistent/noshigram-dir")
+        self.assertEqual(caught.exception.filename, "/nonexistent/noshigram-dir")
 
     def test_a_file_as_working_directory_raises_not_a_directory(self):
         with tempfile.NamedTemporaryFile() as plain:
@@ -146,13 +146,13 @@ class SpawnSubprocess(unittest.TestCase):
 
     def test_a_working_directory_without_a_shell_names_the_shell(self):
         saved = SHIM.SHELL
-        SHIM.SHELL = "/nonexistent/exteria-sh"
+        SHIM.SHELL = "/nonexistent/noshigram-sh"
         try:
             with self.assertRaises(FileNotFoundError) as caught:
                 subprocess.run([sys.executable, "-c", "pass"], cwd="/")
         finally:
             SHIM.SHELL = saved
-        self.assertEqual(caught.exception.filename, "/nonexistent/exteria-sh")
+        self.assertEqual(caught.exception.filename, "/nonexistent/noshigram-sh")
 
     def test_a_process_group_can_be_set(self):
         result = subprocess.run([sys.executable, "-c", "import os; print(os.getpgrp() == os.getpid())"], process_group=0, capture_output=True)
@@ -166,8 +166,8 @@ class System(unittest.TestCase):
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import fakeapp  # noqa: F401
         sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
-        import exteria_host
-        self.system = exteria_host._system
+        import noshi_host
+        self.system = noshi_host._system
 
     def tearDown(self):
         subprocess._fork_exec = self.saved

@@ -1,0 +1,13 @@
+#!/bin/sh
+# the executable takes back the switch for internal apps (see postinst) while it still exists
+
+case "$1" in
+  remove|purge)
+    killall -9 Noshigram >/dev/null 2>&1 || true
+    if [ -x /Applications/Noshigram.app/Noshigram ]; then
+      /Applications/Noshigram.app/Noshigram --system-notifications off || echo "noshigram: the switch for internal apps could not be taken back" >&2
+    fi
+    ;;
+esac
+
+exit 0

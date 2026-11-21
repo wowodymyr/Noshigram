@@ -12,4 +12,4 @@ for arch in armv7 arm64; do
 done
 directory="$(dirname "$0")/../build/symbols"
 mkdir -p "$directory"
-cp "$binary" "$directory/Exteria$name"
+cp "$binary" "$directory/Noshigram$name"

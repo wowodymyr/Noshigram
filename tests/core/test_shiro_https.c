@@ -13,7 +13,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include "exteria_https.h"
+#include "noshi_https.h"
 #include "test_util.h"
 
 /* a TLS server on the loopback with certificates made here, so that every way a certificate can be wrong is a real handshake against the real client */
@@ -237,10 +237,10 @@ static void pki_free(pki *p) {
     free(p->other_roots);
 }
 
-static exteria_status post(const pki *p, server *s, const char *host, int split, int timeout, exteria_https_response *response, const char *roots,
+static noshi_status post(const pki *p, server *s, const char *host, int split, int timeout, noshi_https_response *response, const char *roots,
                            size_t roots_len) {
     static const char *const headers[] = {"Content-Type: application/json; charset=UTF-8", "User-Agent: test/1", NULL};
-    exteria_https_request r;
+    noshi_https_request r;
     memset(&r, 0, sizeof(r));
     r.host = host;
     r.connect_ip = "127.0.0.1";
@@ -253,17 +253,17 @@ static exteria_status post(const pki *p, server *s, const char *host, int split,
     r.roots_len = roots ? roots_len : p->roots_len;
     r.split_hello = split;
     r.timeout_ms = timeout;
-    return exteria_https_post(&r, response);
+    return noshi_https_post(&r, response);
 }
 
 static const char ok_reply[] = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 11\r\n\r\n{\"ok\":true}";
 
 static void a_good_exchange(pki *p) {
     server s;
-    exteria_https_response r;
+    noshi_https_response r;
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(r.status, 200);
     CHECK_EQ_INT(r.body_len, 11);
@@ -275,7 +275,7 @@ static void a_good_exchange(pki *p) {
     CHECK(strstr(s.request, "\r\nConnection: close\r\n") != NULL);
     CHECK(strstr(s.request, "\r\n\r\n{\"a\":1}") != NULL);
     CHECK(s.first_peek > 100);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
     CHECK(r.body == NULL);
 }
 
@@ -285,17 +285,17 @@ static int cancelled_call(void *ctx) {
 
 static void get_and_conditional(pki *p) {
     static const char answer[]="HTTP/1.1 304 Not Modified\r\nContent-Length: 0\r\nCache-Control: max-age=3600\r\nETag: \"tile\"\r\n\r\n";
-    static const char *const headers[]={"User-Agent: Exteria/test", "If-None-Match: \"tile\"", NULL};
+    static const char *const headers[]={"User-Agent: Noshigram/test", "If-None-Match: \"tile\"", NULL};
     server s;
     server_start(&s,p->leaf,p->leaf_key,BEHAVE_ANSWER,(const uint8_t *)answer,strlen(answer));
     server_run(&s);
-    exteria_https_request request;
-    exteria_https_response response;
+    noshi_https_request request;
+    noshi_https_response response;
     memset(&request,0,sizeof(request));
     request.host="api.test.invalid";request.connect_ip="127.0.0.1";request.port=s.port;
     request.path="/0/0/0.png";request.headers=headers;
     request.roots_pem=p->roots;request.roots_len=p->roots_len;request.timeout_ms=5000;
-    CHECK_EQ_INT(exteria_https_get(&request,&response),EXTERIA_OK);
+    CHECK_EQ_INT(noshi_https_get(&request,&response),NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(response.status,304);
     CHECK_EQ_INT(response.body_len,0);
@@ -303,13 +303,13 @@ static void get_and_conditional(pki *p) {
     CHECK(strstr(s.request,"If-None-Match: \"tile\"\r\n")!=NULL);
     CHECK(strstr(response.headers,"Cache-Control: max-age=3600\r\n")!=NULL);
     CHECK(strstr(response.headers,"ETag: \"tile\"\r\n")!=NULL);
-    exteria_https_response_free(&response);
+    noshi_https_response_free(&response);
     int cancelled=1;
     request.is_cancelled=cancelled_call;request.cancel_ctx=&cancelled;
-    CHECK_EQ_INT(exteria_https_get(&request,&response),EXTERIA_E_TIMEOUT);
+    CHECK_EQ_INT(noshi_https_get(&request,&response),NOSHI_E_TIMEOUT);
     CHECK(response.body==NULL && response.status==0);
     request.body=(const uint8_t *)"x";request.body_len=1;
-    CHECK_EQ_INT(exteria_https_get(&request,&response),EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_get(&request,&response),NOSHI_E_ARG);
 }
 
 /* a reply bigger than the default is refused, and read whole when the caller asks for room; the ask itself is bounded */
@@ -319,8 +319,8 @@ static void large_reply(pki *p) {
     size_t head_len = (size_t)snprintf(head, sizeof(head), "HTTP/1.1 200 OK\r\nContent-Length: %zu\r\n\r\n", BODY);
     uint8_t *reply = (uint8_t *)malloc(head_len + BODY);
     server s;
-    exteria_https_response r;
-    exteria_https_request request;
+    noshi_https_response r;
+    noshi_https_request request;
     CHECK(reply != NULL);
     if (!reply) return;
     memcpy(reply, head, head_len);
@@ -335,31 +335,31 @@ static void large_reply(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, reply, head_len + BODY);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get(&request, &r), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_https_get(&request, &r), NOSHI_E_LIMIT);
     CHECK(r.body == NULL);
     server_stop(&s);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, reply, head_len + BODY);
     server_run(&s);
     request.port = s.port;
     request.max_response = 1024u * 1024u;
-    CHECK_EQ_INT(exteria_https_get(&request, &r), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_https_get(&request, &r), NOSHI_OK);
     CHECK_EQ_INT(r.status, 200);
     CHECK_EQ_INT(r.body_len, BODY);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
     server_stop(&s);
-    request.max_response = EXTERIA_HTTPS_MAX_RESPONSE_LIMIT + 1;
-    CHECK_EQ_INT(exteria_https_get(&request, &r), EXTERIA_E_ARG);
+    request.max_response = NOSHI_HTTPS_MAX_RESPONSE_LIMIT + 1;
+    CHECK_EQ_INT(noshi_https_get(&request, &r), NOSHI_E_ARG);
     free(reply);
 }
 
 typedef struct sink_state { size_t total; uint32_t sum; size_t stop_after; } sink_state;
 
-static exteria_status take_piece(void *ctx, const uint8_t *data, size_t len) {
+static noshi_status take_piece(void *ctx, const uint8_t *data, size_t len) {
     sink_state *st = (sink_state *)ctx;
     size_t i;
     for (i = 0; i < len; ++i) st->sum = st->sum * 31u + data[i];
     st->total += len;
-    return st->stop_after && st->total >= st->stop_after ? EXTERIA_E_STORAGE : EXTERIA_OK;
+    return st->stop_after && st->total >= st->stop_after ? NOSHI_E_STORAGE : NOSHI_OK;
 }
 
 /* a file past the buffered limit goes to the sink piece by piece; redirects and refusals come back as a head with no body read */
@@ -374,8 +374,8 @@ static void streamed_file(pki *p) {
     uint32_t expect = 0;
     size_t i;
     server s;
-    exteria_https_request request;
-    exteria_https_head answer;
+    noshi_https_request request;
+    noshi_https_head answer;
     sink_state st;
     CHECK(reply != NULL && cut != NULL);
     if (!reply || !cut) return;
@@ -398,7 +398,7 @@ static void streamed_file(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, reply, head_len + BODY);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_OK);
     CHECK_EQ_INT(answer.status, 200);
     CHECK_EQ_INT(answer.content_length, BODY);
     CHECK_EQ_INT(st.total, BODY);
@@ -411,7 +411,7 @@ static void streamed_file(pki *p) {
     server_run(&s);
     request.port = s.port;
     request.max_response = BODY - 1;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_LIMIT);
     CHECK_EQ_INT(st.total, 0);
     server_stop(&s);
     request.max_response = BODY;
@@ -422,7 +422,7 @@ static void streamed_file(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, reply, head_len + BODY);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_STORAGE);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_STORAGE);
     CHECK(st.total < BODY);
     server_stop(&s);
 
@@ -431,7 +431,7 @@ static void streamed_file(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, cut, head_len + BODY / 2);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_IO);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_IO);
     CHECK_EQ_INT(st.total, BODY / 2);
     server_stop(&s);
 
@@ -439,7 +439,7 @@ static void streamed_file(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)moved, sizeof(moved) - 1);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_OK);
     CHECK_EQ_INT(answer.status, 302);
     CHECK(!strcmp(answer.location, "https://cdn.test.invalid/file.ipa?sig=1"));
     CHECK_EQ_INT(st.total, 0);
@@ -448,12 +448,12 @@ static void streamed_file(pki *p) {
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)chunked, sizeof(chunked) - 1);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_UNSUPPORTED);
     server_stop(&s);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)unframed, sizeof(unframed) - 1);
     server_run(&s);
     request.port = s.port;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_UNSUPPORTED);
     server_stop(&s);
 
     /* a chain that does not lead to the roots stops before the request leaves */
@@ -461,15 +461,15 @@ static void streamed_file(pki *p) {
     server_run(&s);
     request.port = s.port;
     memset(&st, 0, sizeof(st));
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_SECURITY);
     CHECK_EQ_INT(st.total, 0);
     server_stop(&s);
 
     request.max_response = 0;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, take_piece, &st), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, take_piece, &st), NOSHI_E_ARG);
     request.max_response = BODY;
-    CHECK_EQ_INT(exteria_https_get_stream(&request, &answer, NULL, &st), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_https_get_stream(NULL, &answer, take_piece, &st), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_get_stream(&request, &answer, NULL, &st), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_https_get_stream(NULL, &answer, take_piece, &st), NOSHI_E_ARG);
     free(reply);
     free(cut);
 }
@@ -480,122 +480,122 @@ static void statuses_and_framing(pki *p) {
     static const char to_close[] = "HTTP/1.0 200 OK\r\n\r\nuntil the close";
     static const char cut[] = "HTTP/1.1 200 OK\r\nContent-Length: 50\r\n\r\nshort";
     server s;
-    exteria_https_response r;
+    noshi_https_response r;
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)not_found, strlen(not_found));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(r.status, 404);
     CHECK_EQ_INT(r.body_len, 3);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
 
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)chunked, strlen(chunked));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(r.body_len, 9);
     CHECK_MEM(r.body, "wikipedia", 9);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
 
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)to_close, strlen(to_close));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(r.body_len, strlen("until the close"));
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
 
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)cut, strlen(cut));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_IO);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_IO);
     server_stop(&s);
     CHECK(r.body == NULL);
 }
 
 static void certificates_that_must_be_refused(pki *p) {
     server s;
-    exteria_https_response r;
+    noshi_https_response r;
     /* the right certificate asked for under another name */
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "evil.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "evil.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK(r.body == NULL);
     CHECK_EQ_INT(s.request_len, 0);
     /* a certificate made for another name */
     server_start(&s, p->wrong_name, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* expired */
     server_start(&s, p->expired, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* signed by a root the request does not trust */
     server_start(&s, p->foreign, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* the good certificate, but only the other root is trusted */
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, p->other_roots, p->other_roots_len), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, p->other_roots, p->other_roots_len), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* a certificate that vouches for itself */
     server_start(&s, p->self_signed, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* a server that only speaks TLS 1.1 */
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     s.max_version = TLS1_1_VERSION;
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
     /* TLS 1.2 is enough */
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     s.max_version = TLS1_2_VERSION;
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
 }
 
 static void broken_servers(pki *p) {
     static const char huge_head[] = "HTTP/1.1 200 OK\r\nContent-Length: 300000\r\n\r\n";
     server s;
-    exteria_https_response r;
+    noshi_https_response r;
     uint8_t *huge;
     size_t head = strlen(huge_head);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_CLOSE, NULL, 0);
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_IO);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_IO);
     server_stop(&s);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_GARBAGE, NULL, 0);
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_MALFORMED);
     server_stop(&s);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_SILENT, NULL, 0);
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 400, &r, NULL, 0), EXTERIA_E_TIMEOUT);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 400, &r, NULL, 0), NOSHI_E_TIMEOUT);
     server_stop(&s);
     huge = (uint8_t *)malloc(head + 300000);
     memcpy(huge, huge_head, head);
     memset(huge + head, 'x', 300000);
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, huge, head + 300000);
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 0, 5000, &r, NULL, 0), NOSHI_E_LIMIT);
     server_stop(&s);
     free(huge);
     /* nothing listens there */
     {
-        exteria_https_request q;
+        noshi_https_request q;
         memset(&q, 0, sizeof(q));
         q.host = "api.test.invalid";
         q.connect_ip = "127.0.0.1";
@@ -604,43 +604,43 @@ static void broken_servers(pki *p) {
         q.roots_pem = p->roots;
         q.roots_len = p->roots_len;
         q.timeout_ms = 2000;
-        CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_IO);
+        CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_IO);
     }
 }
 
 static void split_hello(pki *p) {
     server s;
-    exteria_https_response r;
+    noshi_https_response r;
     server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 1, 5000, &r, NULL, 0), EXTERIA_OK);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", 1, 5000, &r, NULL, 0), NOSHI_OK);
     server_stop(&s);
     CHECK_EQ_INT(r.status, 200);
     /* the first thing that reached the server was a piece of a few bytes, not the whole hello */
     CHECK(s.first_peek > 0 && s.first_peek <= 24);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
     /* the byebyedpi cuts of the hello inside the SNI: the server still reads one handshake out of the two records and the three segments, and the exchange completes */
-    for (int mode = EXTERIA_HELLO_RECORD; mode <= EXTERIA_HELLO_RECORD_MIDDLE; ++mode) {
+    for (int mode = NOSHI_HELLO_RECORD; mode <= NOSHI_HELLO_RECORD_MIDDLE; ++mode) {
         server_start(&s, p->leaf, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
         server_run(&s);
-        CHECK_EQ_INT(post(p, &s, "api.test.invalid", mode, 5000, &r, NULL, 0), EXTERIA_OK);
+        CHECK_EQ_INT(post(p, &s, "api.test.invalid", mode, 5000, &r, NULL, 0), NOSHI_OK);
         server_stop(&s);
         CHECK_EQ_INT(r.status, 200);
         CHECK_EQ_INT(r.body_len, 11);
-        exteria_https_response_free(&r);
+        noshi_https_response_free(&r);
     }
     /* the name is still checked on a cut hello: a certificate for another host is refused before a request byte is sent */
     server_start(&s, p->wrong_name, p->leaf_key, BEHAVE_ANSWER, (const uint8_t *)ok_reply, strlen(ok_reply));
     server_run(&s);
-    CHECK_EQ_INT(post(p, &s, "api.test.invalid", EXTERIA_HELLO_RECORD, 5000, &r, NULL, 0), EXTERIA_E_SECURITY);
+    CHECK_EQ_INT(post(p, &s, "api.test.invalid", NOSHI_HELLO_RECORD, 5000, &r, NULL, 0), NOSHI_E_SECURITY);
     server_stop(&s);
     CHECK_EQ_INT(s.request_len, 0);
-    exteria_https_response_free(&r);
+    noshi_https_response_free(&r);
 }
 
 static void bad_requests(pki *p) {
-    exteria_https_request q;
-    exteria_https_response r;
+    noshi_https_request q;
+    noshi_https_response r;
     static const char *const bad_header[] = {"X: a\r\nInjected: 1", NULL};
     static const char *const no_colon[] = {"nonsense", NULL};
     memset(&q, 0, sizeof(q));
@@ -651,35 +651,35 @@ static void bad_requests(pki *p) {
     q.roots_len = p->roots_len;
     q.timeout_ms = 1000;
     q.headers = bad_header;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.headers = no_colon;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.headers = NULL;
     q.roots_pem = NULL;
     q.roots_len = 0;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.roots_pem = "not a certificate";
     q.roots_len = 17;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.roots_pem = p->roots;
     q.roots_len = p->roots_len;
     q.host = "";
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.host = "a b";
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.host = "api.test.invalid";
     q.path = "x";
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.path = "/x\r\nHost: evil";
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.path = "/x";
     q.port = 0;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
     q.port = 443;
     q.timeout_ms = 0;
-    CHECK_EQ_INT(exteria_https_post(&q, &r), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_https_post(NULL, &r), EXTERIA_E_ARG);
-    exteria_https_response_free(NULL);
+    CHECK_EQ_INT(noshi_https_post(&q, &r), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_https_post(NULL, &r), NOSHI_E_ARG);
+    noshi_https_response_free(NULL);
 }
 
 int main(void) {

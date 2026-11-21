@@ -10,15 +10,15 @@
 		<string>ru</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-	<string>Exteria</string>
+	<string>Noshigram</string>
 	<key>CFBundleExecutable</key>
-	<string>Exteria</string>
+	<string>Noshigram</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.sqmrak.exteria</string>
+	<string>com.noshigram.app</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>Exteria</string>
+	<string>Noshigram</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -677,11 +677,11 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.sqmrak.exteria.tg</string>
+			<string>com.noshigram.app.tg</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>tg</string>
-				<string>exteria</string>
+				<string>noshigram</string>
 			</array>
 		</dict>
 	</array>
@@ -704,20 +704,20 @@
 		<string>brave</string>
 	</array>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Exteria records voice messages and the sound of round videos, and carries your voice in calls.</string>
+	<string>Noshigram records voice messages and the sound of round videos, and carries your voice in calls.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Exteria saves the photos and videos you ask it to keep.</string>
+	<string>Noshigram saves the photos and videos you ask it to keep.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Exteria sends the photos and videos you choose.</string>
+	<string>Noshigram sends the photos and videos you choose.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Exteria uses your location while you choose a point or search nearby places.</string>
+	<string>Noshigram uses your location while you choose a point or search nearby places.</string>
 	<key>NSLocationUsageDescription</key>
-	<string>Exteria uses your location while you choose a point or search nearby places.</string>
+	<string>Noshigram uses your location while you choose a point or search nearby places.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Exteria shares only the contact and phone number you choose.</string>
+	<string>Noshigram shares only the contact and phone number you choose.</string>
 	<key>NSFaceIDUsageDescription</key>
-	<string>Exteria opens the passcode lock with your face when you turn that on.</string>
+	<string>Noshigram opens the passcode lock with your face when you turn that on.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Exteria records round video messages and shows your picture in video calls.</string>
+	<string>Noshigram records round video messages and shows your picture in video calls.</string>
 </dict>
 </plist>

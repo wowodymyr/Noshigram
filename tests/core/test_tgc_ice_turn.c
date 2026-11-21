@@ -1,4 +1,4 @@
-#include "exteria_tgc_ice.h"
+#include "noshi_tgc_ice.h"
 #include "fake_turn.h"
 #include "test_util.h"
 
@@ -18,7 +18,7 @@ typedef struct packet {
 } packet;
 
 typedef struct world {
-    exteria_tgc_ice ice[AGENTS];
+    noshi_tgc_ice ice[AGENTS];
     server turn[AGENTS];
     packet queue[MAX_QUEUE];
     size_t queued;
@@ -69,10 +69,10 @@ static void on_candidate(void *ctx, const char *sdp) {
     if (w->candidate_count[c->agent] < 8) snprintf(w->candidates[c->agent][w->candidate_count[c->agent]++], 400, "%s", sdp);
 }
 
-static void on_state(void *ctx, exteria_tgc_ice_state state) {
+static void on_state(void *ctx, noshi_tgc_ice_state state) {
     context *c = (context *)ctx;
     c->w->state[c->agent] = (int)state;
-    if (state == EXTERIA_TGC_ICE_CONNECTED) ++c->w->connected_events[c->agent];
+    if (state == NOSHI_TGC_ICE_CONNECTED) ++c->w->connected_events[c->agent];
 }
 
 static void on_payload(void *ctx, const uint8_t *data, size_t len) {
@@ -129,22 +129,22 @@ static void step(world *w, uint64_t ms) {
                 wbuf answer;
                 if (server_answer(&w->turn[p.agent], p.data, p.len, &answer)) enqueue(w, 0, p.agent, p.index, answer.b, answer.len);
             } else {
-                exteria_tgc_ice_input(&w->ice[p.agent], p.index, p.data, p.len, w->now);
+                noshi_tgc_ice_input(&w->ice[p.agent], p.index, p.data, p.len, w->now);
             }
             i = 0;
         }
-        for (a = 0; a < AGENTS; ++a) exteria_tgc_ice_tick(&w->ice[a], w->now);
+        for (a = 0; a < AGENTS; ++a) noshi_tgc_ice_tick(&w->ice[a], w->now);
         for (a = 0; a < AGENTS; ++a) {
             while (w->delivered[a] < w->candidate_count[a]) {
-                exteria_tgc_ice_add_remote_candidate(&w->ice[1 - a], w->candidates[a][w->delivered[a]], w->now);
+                noshi_tgc_ice_add_remote_candidate(&w->ice[1 - a], w->candidates[a][w->delivered[a]], w->now);
                 ++w->delivered[a];
             }
         }
     }
 }
 
-static exteria_tgc_ice_reflector_config blocked_reflector(void) {
-    exteria_tgc_ice_reflector_config c;
+static noshi_tgc_ice_reflector_config blocked_reflector(void) {
+    noshi_tgc_ice_reflector_config c;
     int i;
     memset(&c, 0, sizeof(c));
     c.server_id = 1;
@@ -160,8 +160,8 @@ static exteria_tgc_ice_reflector_config blocked_reflector(void) {
 
 static world *make_world(uint64_t latency) {
     world *w = (world *)calloc(1, sizeof(*w));
-    exteria_tgc_ice_events ev;
-    exteria_tgc_ice_reflector_config reflector = blocked_reflector();
+    noshi_tgc_ice_events ev;
+    noshi_tgc_ice_reflector_config reflector = blocked_reflector();
     int a;
     w->latency = latency;
     for (a = 0; a < AGENTS; ++a) {
@@ -180,12 +180,12 @@ static world *make_world(uint64_t latency) {
         ev.local_candidate = on_candidate;
         ev.state = on_state;
         ev.payload = on_payload;
-        CHECK_EQ_INT(exteria_tgc_ice_init(&w->ice[a], a == 0, a == 0 ? 0x1111222233334444ull : 0x0102030405060708ull, a == 0 ? "aaaa" : "bbbb",
-                                          a == 0 ? "aaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbb", &reflector, 1, &ev), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tgc_ice_add_turn(&w->ice[a], SERVER_IP, SERVER_PORT, "reflector", "s3cret-pass"), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_ice_init(&w->ice[a], a == 0, a == 0 ? 0x1111222233334444ull : 0x0102030405060708ull, a == 0 ? "aaaa" : "bbbb",
+                                          a == 0 ? "aaaaaaaaaaaaaaaaaaaaaa" : "bbbbbbbbbbbbbbbbbbbbbb", &reflector, 1, &ev), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tgc_ice_add_turn(&w->ice[a], SERVER_IP, SERVER_PORT, "reflector", "s3cret-pass"), NOSHI_OK);
     }
-    CHECK_EQ_INT(exteria_tgc_ice_set_remote(&w->ice[0], "bbbb", "bbbbbbbbbbbbbbbbbbbbbb"), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_ice_set_remote(&w->ice[1], "aaaa", "aaaaaaaaaaaaaaaaaaaaaa"), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_set_remote(&w->ice[0], "bbbb", "bbbbbbbbbbbbbbbbbbbbbb"), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_set_remote(&w->ice[1], "aaaa", "aaaaaaaaaaaaaaaaaaaaaa"), NOSHI_OK);
     return w;
 }
 
@@ -195,8 +195,8 @@ static void connects_through_turn(void) {
     unsigned index = 9;
     uint32_t ip = 0;
     step(w, 8000);
-    CHECK_EQ_INT(w->state[0], EXTERIA_TGC_ICE_CONNECTED);
-    CHECK_EQ_INT(w->state[1], EXTERIA_TGC_ICE_CONNECTED);
+    CHECK_EQ_INT(w->state[0], NOSHI_TGC_ICE_CONNECTED);
+    CHECK_EQ_INT(w->state[1], NOSHI_TGC_ICE_CONNECTED);
     CHECK_EQ_INT(w->connected_events[0], 1);
     CHECK_EQ_INT(w->connected_events[1], 1);
     /* each announced its relay address, with the address the server saw it at as the related one */
@@ -205,16 +205,16 @@ static void connects_through_turn(void) {
     CHECK(strstr(w->candidates[0][0], "91.108.13.23 49512 typ relay") != NULL);
     CHECK(strstr(w->candidates[1][0], "91.108.14.9 50001 typ relay") != NULL);
     /* the pair is a TURN one: server number reflector_count + 0, and the address of the other relay */
-    CHECK_EQ_INT(exteria_tgc_ice_selected(&w->ice[0], &index, &ip), 1);
+    CHECK_EQ_INT(noshi_tgc_ice_selected(&w->ice[0], &index, &ip), 1);
     CHECK_EQ_INT(index, 1);
     CHECK_EQ_INT(ip, 0x5b6c0e09u);
-    CHECK_EQ_INT(exteria_tgc_ice_selected(&w->ice[1], &index, &ip), 1);
+    CHECK_EQ_INT(noshi_tgc_ice_selected(&w->ice[1], &index, &ip), 1);
     CHECK_EQ_INT(ip, 0x5b6c0d17u);
     CHECK(has_grant(&w->turn[0], 0x5b6c0e09u));
     CHECK(has_grant(&w->turn[1], 0x5b6c0d17u));
 
-    CHECK_EQ_INT(exteria_tgc_ice_send(&w->ice[0], ping, sizeof(ping) - 1), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_ice_send(&w->ice[1], pong, sizeof(pong) - 1), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_send(&w->ice[0], ping, sizeof(ping) - 1), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_send(&w->ice[1], pong, sizeof(pong) - 1), NOSHI_OK);
     step(w, 300);
     CHECK_EQ_INT(w->got_count[1], 1);
     CHECK(w->got_len[1][0] == sizeof(ping) - 1 && memcmp(w->got[1][0], ping, sizeof(ping) - 1) == 0);
@@ -223,8 +223,8 @@ static void connects_through_turn(void) {
 
     /* long enough for the permissions to be asked for again (after four minutes) and the allocation to be refreshed, with the pair alive all the time */
     step(w, 700000);
-    CHECK_EQ_INT(w->state[0], EXTERIA_TGC_ICE_CONNECTED);
-    CHECK_EQ_INT(w->state[1], EXTERIA_TGC_ICE_CONNECTED);
+    CHECK_EQ_INT(w->state[0], NOSHI_TGC_ICE_CONNECTED);
+    CHECK_EQ_INT(w->state[1], NOSHI_TGC_ICE_CONNECTED);
     CHECK_EQ_INT(w->connected_events[0], 1);
     CHECK(w->turn[0].permissions >= 2);
     free(w);
@@ -233,37 +233,37 @@ static void connects_through_turn(void) {
 static void other_candidates_are_handled(void) {
     world *w = make_world(30);
     /* a private address, a TCP one, an IPv6 one, a garbage line: none of them makes a pair, and none of them harms */
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 192.168.1.5 50000 typ host generation 0", 1), EXTERIA_E_UNSUPPORTED);
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 tcp 1518280447 91.108.9.9 9 typ host tcptype active", 1), EXTERIA_E_UNSUPPORTED);
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 2001:db8::1 50000 typ host", 1), EXTERIA_E_UNSUPPORTED);
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "not a candidate", 1), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 300.1.1.1 50000 typ host", 1), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 192.168.1.5 50000 typ host generation 0", 1), NOSHI_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 tcp 1518280447 91.108.9.9 9 typ host tcptype active", 1), NOSHI_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 2001:db8::1 50000 typ host", 1), NOSHI_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "not a candidate", 1), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:1 1 udp 2122260223 300.1.1.1 50000 typ host", 1), NOSHI_E_UNSUPPORTED);
     CHECK_EQ_INT(w->ice[0].pairs[0].used, 0);
     /* a public one pairs with the TURN server, and a second line for the same address adds nothing */
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:7 1 udp 1686052607 151.241.141.11 35594 typ srflx raddr 10.0.0.2 rport 35594 generation 0", 1), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:7 1 udp 1686052607 151.241.141.11 35594 typ srflx raddr 10.0.0.2 rport 35594 generation 0", 1), NOSHI_OK);
     CHECK_EQ_INT(w->ice[0].pairs[0].used, 1);
     CHECK_EQ_INT(w->ice[0].pairs[0].turn, 1);
     CHECK_EQ_INT(w->ice[0].pairs[0].remote_ip, 0x97f18d0bu);
     CHECK_EQ_INT(w->ice[0].pairs[0].remote_port, 35594);
-    CHECK_EQ_INT(exteria_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:7 1 udp 1686052607 151.241.141.11 35594 typ srflx raddr 10.0.0.2 rport 35594 generation 0", 1), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_add_remote_candidate(&w->ice[0], "candidate:7 1 udp 1686052607 151.241.141.11 35594 typ srflx raddr 10.0.0.2 rport 35594 generation 0", 1), NOSHI_OK);
     CHECK_EQ_INT(w->ice[0].pairs[1].used, 0);
     free(w);
 }
 
 static void add_turn_refusals(void) {
-    exteria_tgc_ice ice;
-    exteria_tgc_ice_events ev;
-    exteria_tgc_ice_reflector_config reflector = blocked_reflector();
+    noshi_tgc_ice ice;
+    noshi_tgc_ice_events ev;
+    noshi_tgc_ice_reflector_config reflector = blocked_reflector();
     unsigned i;
     memset(&ev, 0, sizeof(ev));
     ev.send = on_ice_send;
-    CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 1, 1, "a", "b"), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_ice_init(&ice, 1, 5, "aaaa", "aaaaaaaaaaaaaaaaaaaaaa", &reflector, 1, &ev), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 0, 1, "a", "b"), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 1, 0, "a", "b"), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 1, 1, "", "b"), EXTERIA_E_ARG);
-    for (i = 0; i < EXTERIA_TGC_ICE_MAX_TURNS; ++i) CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 0x5b6c0d17u + i, 598, "u", "p"), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_ice_add_turn(&ice, 0x5b6c0d17u, 598, "u", "p"), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 1, 1, "a", "b"), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_ice_init(&ice, 1, 5, "aaaa", "aaaaaaaaaaaaaaaaaaaaaa", &reflector, 1, &ev), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 0, 1, "a", "b"), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 1, 0, "a", "b"), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 1, 1, "", "b"), NOSHI_E_ARG);
+    for (i = 0; i < NOSHI_TGC_ICE_MAX_TURNS; ++i) CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 0x5b6c0d17u + i, 598, "u", "p"), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_ice_add_turn(&ice, 0x5b6c0d17u, 598, "u", "p"), NOSHI_E_LIMIT);
 }
 
 int main(void) {

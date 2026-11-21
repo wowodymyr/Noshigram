@@ -1,0 +1,41 @@
+#import <UIKit/UIKit.h>
+
+#include "noshi_passcode.h"
+
+/* where a passcode is typed, for the lock screen and for the setting of a code; it only collects the code */
+@interface NoshiPasscodeEntryView : UIView
+
+/* the pad of four digits, or the field of a password; set before the view shows, or the typed part is dropped */
+@property (nonatomic, assign) noshi_passcode_type type;
+@property (nonatomic, copy) NSString *title;
+/* the line under the title: a hint, or why the last try failed */
+@property (nonatomic, copy) NSString *message;
+/* off while a wait runs: the pad and the field take no input */
+/* the height of the bar the owner draws its buttons in; the words start below it, so a button never sits beside the title */
+@property (nonatomic, assign) CGFloat topInset;
+@property (nonatomic, assign) BOOL inputEnabled;
+/* a pin is full, or the person pressed done on a password; main thread */
+@property (nonatomic, copy) void (^submit)(NSString *code);
+
+/* the name of the sensor on a button beside the code, nil for no button; pressing it calls biometric, main thread */
+@property (nonatomic, copy) NSString *biometricTitle;
+/* set before the title: the button shows the fingerprint picture and keeps the name for VoiceOver. face id has no picture of its own, so it keeps the name as text */
+@property (nonatomic, assign) BOOL biometricFingerprint;
+@property (nonatomic, copy) void (^biometric)(void);
+
+/* the lock screen sits on the accent of the theme: white ink and translucent white keys in place of the card colors */
+@property (nonatomic, assign) BOOL accented;
+
+/* drops what was typed */
+- (void)reset;
+/* the dots shake sideways, and what was typed is dropped */
+- (void)rejectCode;
+/* the keyboard of a password opens; the pad needs nothing */
+- (void)focus;
+/* refuses input for this many seconds and counts them down in the line under the title; input comes back by itself */
+- (void)holdForSeconds:(NSUInteger)seconds;
+
+@end
+
+/* the line of the passcode screens for this key (passcode.enter and the like), in the words of the kind: a password is not called a code */
+NSString *NoshiPasscodeText(NSString *key, noshi_passcode_type type);

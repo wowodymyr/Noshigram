@@ -1,0 +1,22 @@
+#import <Foundation/Foundation.h>
+
+#import "noshi_session.h"
+
+/* AyuMoments, the part that keeps messages: what the other side deleted stays in the chat, marked, and what a
+   message said before an edit stays as a version */
+@interface NoshiSession (Saved)
+
+/* tells the part that handles the updates what the settings keep, now, and again after every new account */
+- (void)setSavingSettingsFromDefaults;
+/* the kept deleted messages and the kept versions together */
+- (void)countSavedMessages:(void (^)(NSInteger count, NSString *errorName))completion;
+- (void)deleteSavedMessage:(int32_t)messageId ofDialog:(NoshiDialog *)dialog completion:(void (^)(NSString *errorName))completion;
+- (void)clearSavedMessages:(void (^)(NSString *errorName))completion;
+/* every kept deleted message of one chat; the kept versions of edits stay */
+- (void)clearSavedDeletedOfDialog:(NoshiDialog *)dialog completion:(void (^)(NSString *errorName))completion;
+/* the kept deleted messages of a chat with ids from low to high, as NoshiMessage items with deletedLocally set */
+- (void)loadSavedDeletedOfDialog:(NoshiDialog *)dialog from:(int32_t)low to:(int32_t)high completion:(void (^)(NSArray *messages))completion;
+/* what a message said before its edits, the oldest version first, as NoshiMessage items */
+- (void)loadEditVersionsOfMessage:(int32_t)messageId dialog:(NoshiDialog *)dialog completion:(void (^)(NSArray *versions))completion;
+
+@end

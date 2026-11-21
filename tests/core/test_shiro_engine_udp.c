@@ -1,6 +1,6 @@
-#include "exteria_clock.h"
-#include "exteria_shiro_engine.h"
-#include "exteria_udp.h"
+#include "noshi_clock.h"
+#include "noshi_shiro_engine.h"
+#include "noshi_udp.h"
 #include "shiro_responder.h"
 #include "test_util.h"
 
@@ -22,7 +22,7 @@ typedef struct server {
     int fd;
     uint16_t port;
     responder r;
-    exteria_wg_session session;
+    noshi_wg_session session;
     struct sockaddr_in client;
     socklen_t client_len;
     int have_session;
@@ -31,11 +31,11 @@ typedef struct server {
 
 typedef struct watch {
     pthread_mutex_t lock;
-    exteria_shiro_state state;
-    exteria_status reason;
+    noshi_shiro_state state;
+    noshi_status reason;
 } watch;
 
-static void on_state(void *context, exteria_shiro_state state, exteria_status reason) {
+static void on_state(void *context, noshi_shiro_state state, noshi_status reason) {
     watch *w = (watch *)context;
     pthread_mutex_lock(&w->lock);
     w->state = state;
@@ -43,8 +43,8 @@ static void on_state(void *context, exteria_shiro_state state, exteria_status re
     pthread_mutex_unlock(&w->lock);
 }
 
-static exteria_shiro_state watched(watch *w) {
-    exteria_shiro_state s;
+static noshi_shiro_state watched(watch *w) {
+    noshi_shiro_state s;
     pthread_mutex_lock(&w->lock);
     s = w->state;
     pthread_mutex_unlock(&w->lock);
@@ -72,7 +72,7 @@ static void server_start(server *s, const uint8_t priv[32], const uint8_t client
 
 /* one datagram of the client's, or the plain bytes of a data message once the session exists; returns the plain length, 0 for nothing, -1 for a handshake */
 static long server_step(server *s, int wait_ms, uint8_t *plain, size_t cap) {
-    uint8_t raw[2048], response[EXTERIA_WG_RESPONSE_LEN];
+    uint8_t raw[2048], response[NOSHI_WG_RESPONSE_LEN];
     struct pollfd p;
     ssize_t n;
     p.fd = s->fd;
@@ -82,7 +82,7 @@ static long server_step(server *s, int wait_ms, uint8_t *plain, size_t cap) {
     s->client_len = sizeof(s->client);
     n = recvfrom(s->fd, raw, sizeof(raw), 0, (struct sockaddr *)&s->client, &s->client_len);
     if (n <= 0) return 0;
-    if (n == 148 && (exteria_get_u32le(raw) & 0xffu) == 1u) {
+    if (n == 148 && (noshi_get_u32le(raw) & 0xffu) == 1u) {
         if (responder_answer(&s->r, raw, response, 1, 2) != 0) return 0;
         sendto(s->fd, response, sizeof(response), 0, (struct sockaddr *)&s->client, s->client_len);
         memset(&s->session, 0, sizeof(s->session));
@@ -99,25 +99,25 @@ static long server_step(server *s, int wait_ms, uint8_t *plain, size_t cap) {
     if (!s->have_session) return 0;
     {
         size_t plain_len = 0;
-        if (exteria_wg_open(&s->session, raw, (size_t)n, plain, cap, &plain_len) != EXTERIA_OK) return 0;
+        if (noshi_wg_open(&s->session, raw, (size_t)n, plain, cap, &plain_len) != NOSHI_OK) return 0;
         return (long)plain_len;
     }
 }
 
 static void server_send_udp(server *s, uint32_t src_ip, uint16_t src_port, uint16_t dst_port, const char *text) {
-    uint8_t packet[EXTERIA_UDP_PACKET_MAX], sealed[EXTERIA_WG_MAX_DATAGRAM];
+    uint8_t packet[NOSHI_UDP_PACKET_MAX], sealed[NOSHI_WG_MAX_DATAGRAM];
     size_t packet_len = 0, sealed_len = 0;
-    CHECK_EQ_INT(exteria_udp_build(src_ip, src_port, CLIENT_ADDRESS, dst_port, 9, (const uint8_t *)text, strlen(text), packet, sizeof(packet), &packet_len), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_wg_seal(&s->session, packet, packet_len, sealed, sizeof(sealed), &sealed_len), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_udp_build(src_ip, src_port, CLIENT_ADDRESS, dst_port, 9, (const uint8_t *)text, strlen(text), packet, sizeof(packet), &packet_len), NOSHI_OK);
+    CHECK_EQ_INT(noshi_wg_seal(&s->session, packet, packet_len, sealed, sizeof(sealed), &sealed_len), NOSHI_OK);
     sendto(s->fd, sealed, sealed_len, 0, (struct sockaddr *)&s->client, s->client_len);
 }
 
 /* the next UDP packet the client sent through the tunnel, within wait_ms; keepalives and other messages are skipped */
-static int server_expect_udp(server *s, int wait_ms, exteria_udp_datagram *d, uint8_t *keep, size_t keep_cap) {
-    uint64_t end = exteria_system_clock.monotonic_ms(NULL) + (uint64_t)wait_ms;
-    while (exteria_system_clock.monotonic_ms(NULL) < end) {
+static int server_expect_udp(server *s, int wait_ms, noshi_udp_datagram *d, uint8_t *keep, size_t keep_cap) {
+    uint64_t end = noshi_system_clock.monotonic_ms(NULL) + (uint64_t)wait_ms;
+    while (noshi_system_clock.monotonic_ms(NULL) < end) {
         long n = server_step(s, 50, keep, keep_cap);
-        if (n > 0 && exteria_udp_parse(keep, (size_t)n, d) == EXTERIA_OK) return 1;
+        if (n > 0 && noshi_udp_parse(keep, (size_t)n, d) == NOSHI_OK) return 1;
     }
     return 0;
 }
@@ -132,25 +132,25 @@ static int wait_readable(int fd, int ms) {
 
 int main(void) {
     uint8_t client_priv[32], client_pub[32], server_priv[32], server_pub[32];
-    uint8_t plain[EXTERIA_WG_MAX_DATAGRAM], frame[EXTERIA_UDP_FRAME_HEADER + EXTERIA_UDP_MAX_PAYLOAD + 8];
-    exteria_warp_identity id;
-    exteria_shiro_events events;
-    exteria_shiro_engine *engine = NULL;
+    uint8_t plain[NOSHI_WG_MAX_DATAGRAM], frame[NOSHI_UDP_FRAME_HEADER + NOSHI_UDP_MAX_PAYLOAD + 8];
+    noshi_warp_identity id;
+    noshi_shiro_events events;
+    noshi_shiro_engine *engine = NULL;
     watch w;
     server s;
-    exteria_udp_datagram d;
+    noshi_udp_datagram d;
     size_t frame_len = 0;
     int fd = -1, fds[32], i;
     uint64_t end;
 
-    exteria_random(client_priv, 32);
+    noshi_random(client_priv, 32);
     client_priv[0] &= 248;
     client_priv[31] = (uint8_t)((client_priv[31] & 127) | 64);
-    exteria_x25519_public(client_priv, client_pub);
-    exteria_random(server_priv, 32);
+    noshi_x25519_public(client_priv, client_pub);
+    noshi_random(server_priv, 32);
     server_priv[0] &= 248;
     server_priv[31] = (uint8_t)((server_priv[31] & 127) | 64);
-    exteria_x25519_public(server_priv, server_pub);
+    noshi_x25519_public(server_priv, server_pub);
     server_start(&s, server_priv, client_pub);
 
     memset(&id, 0, sizeof(id));
@@ -162,27 +162,27 @@ int main(void) {
     id.port_count = 1;
 
     pthread_mutex_init(&w.lock, NULL);
-    w.state = EXTERIA_SHIRO_HANDSHAKING;
-    w.reason = EXTERIA_OK;
+    w.state = NOSHI_SHIRO_HANDSHAKING;
+    w.reason = NOSHI_OK;
     events.context = &w;
     events.state = on_state;
     events.trace = NULL;
-    CHECK_EQ_INT(exteria_shiro_engine_start(&engine, &id, id.endpoint_ip, id.ports[0], &events), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_shiro_engine_start(&engine, &id, id.endpoint_ip, id.ports[0], &events), NOSHI_OK);
     if (!engine) return 1;
 
     /* no datagram socket before the tunnel is up */
-    CHECK_EQ_INT(exteria_shiro_engine_open_udp(engine, &fd), EXTERIA_E_STATE);
+    CHECK_EQ_INT(noshi_shiro_engine_open_udp(engine, &fd), NOSHI_E_STATE);
     CHECK_EQ_INT(fd, -1);
 
-    end = exteria_system_clock.monotonic_ms(NULL) + 5000;
-    while (watched(&w) != EXTERIA_SHIRO_UP && exteria_system_clock.monotonic_ms(NULL) < end) server_step(&s, 20, plain, sizeof(plain));
-    CHECK_EQ_INT(watched(&w), EXTERIA_SHIRO_UP);
+    end = noshi_system_clock.monotonic_ms(NULL) + 5000;
+    while (watched(&w) != NOSHI_SHIRO_UP && noshi_system_clock.monotonic_ms(NULL) < end) server_step(&s, 20, plain, sizeof(plain));
+    CHECK_EQ_INT(watched(&w), NOSHI_SHIRO_UP);
 
-    CHECK_EQ_INT(exteria_shiro_engine_open_udp(engine, &fd), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_shiro_engine_open_udp(engine, &fd), NOSHI_OK);
     CHECK(fd >= 0);
 
     /* out: a framed datagram becomes a UDP packet from the address of the phone and a port of the tunnel's choosing */
-    CHECK_EQ_INT(exteria_udp_frame_encode(PEER_ADDRESS, PEER_PORT, (const uint8_t *)"ping", 4, frame, sizeof(frame), &frame_len), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_udp_frame_encode(PEER_ADDRESS, PEER_PORT, (const uint8_t *)"ping", 4, frame, sizeof(frame), &frame_len), NOSHI_OK);
     CHECK_EQ_INT(send(fd, frame, frame_len, 0), (ssize_t)frame_len);
     CHECK(server_expect_udp(&s, 3000, &d, plain, sizeof(plain)));
     CHECK_EQ_INT(d.src_ip, CLIENT_ADDRESS);
@@ -204,7 +204,7 @@ int main(void) {
             const uint8_t *payload = NULL;
             size_t payload_len = 0;
             CHECK(n > 0);
-            CHECK_EQ_INT(exteria_udp_frame_decode(frame, (size_t)(n > 0 ? n : 0), &ip, &port, &payload, &payload_len), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_udp_frame_decode(frame, (size_t)(n > 0 ? n : 0), &ip, &port, &payload, &payload_len), NOSHI_OK);
             CHECK_EQ_INT(ip, PEER_ADDRESS);
             CHECK_EQ_INT(port, PEER_PORT);
             CHECK_EQ_INT(payload_len, 4);
@@ -220,7 +220,7 @@ int main(void) {
             uint16_t port = 0;
             const uint8_t *payload = NULL;
             size_t payload_len = 0;
-            CHECK_EQ_INT(exteria_udp_frame_decode(frame, (size_t)(n > 0 ? n : 0), &ip, &port, &payload, &payload_len), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_udp_frame_decode(frame, (size_t)(n > 0 ? n : 0), &ip, &port, &payload, &payload_len), NOSHI_OK);
             CHECK_EQ_INT(ip, 0x01020304u);
             CHECK_EQ_INT(port, 9999);
         }
@@ -232,8 +232,8 @@ int main(void) {
 
     /* bad frames are dropped: too short, no destination, a payload over the limit; nothing of them reaches the server */
     {
-        static uint8_t big[EXTERIA_UDP_FRAME_HEADER + EXTERIA_UDP_MAX_PAYLOAD + 1];
-        uint8_t zero_dest[EXTERIA_UDP_FRAME_HEADER + 2] = {0, 0, 0, 0, 0, 0, 'h', 'i'};
+        static uint8_t big[NOSHI_UDP_FRAME_HEADER + NOSHI_UDP_MAX_PAYLOAD + 1];
+        uint8_t zero_dest[NOSHI_UDP_FRAME_HEADER + 2] = {0, 0, 0, 0, 0, 0, 'h', 'i'};
         memset(big, 'x', sizeof(big));
         memcpy(big, "\x08\x08\x08\x08\x0d\x96", 6);
         CHECK(send(fd, big, 3, 0) == 3);
@@ -244,30 +244,30 @@ int main(void) {
 
     /* the largest payload goes through whole */
     {
-        static uint8_t full[EXTERIA_UDP_MAX_PAYLOAD];
+        static uint8_t full[NOSHI_UDP_MAX_PAYLOAD];
         memset(full, 0x5a, sizeof(full));
-        CHECK_EQ_INT(exteria_udp_frame_encode(PEER_ADDRESS, PEER_PORT, full, sizeof(full), frame, sizeof(frame), &frame_len), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_udp_frame_encode(PEER_ADDRESS, PEER_PORT, full, sizeof(full), frame, sizeof(frame), &frame_len), NOSHI_OK);
         CHECK(send(fd, frame, frame_len, 0) == (ssize_t)frame_len);
         CHECK(server_expect_udp(&s, 3000, &d, plain, sizeof(plain)));
-        CHECK_EQ_INT(d.payload_len, EXTERIA_UDP_MAX_PAYLOAD);
+        CHECK_EQ_INT(d.payload_len, NOSHI_UDP_MAX_PAYLOAD);
         CHECK_MEM(d.payload, full, sizeof(full));
     }
 
     /* the sockets are limited, and a refused one leaves nothing behind */
     for (i = 0; i < 32; ++i) fds[i] = -1;
-    for (i = 0; i < 15; ++i) CHECK_EQ_INT(exteria_shiro_engine_open_udp(engine, &fds[i]), EXTERIA_OK);
+    for (i = 0; i < 15; ++i) CHECK_EQ_INT(noshi_shiro_engine_open_udp(engine, &fds[i]), NOSHI_OK);
     {
         int extra = 7;
-        CHECK_EQ_INT(exteria_shiro_engine_open_udp(engine, &extra), EXTERIA_E_LIMIT);
+        CHECK_EQ_INT(noshi_shiro_engine_open_udp(engine, &extra), NOSHI_E_LIMIT);
         CHECK_EQ_INT(extra, -1);
     }
     /* a socket that is closed makes room again, once the tunnel has noticed that its other end is gone */
     close(fd);
     fd = -1;
     for (i = 0; i < 15; ++i) close(fds[i]);
-    end = exteria_system_clock.monotonic_ms(NULL) + 3000;
-    while (exteria_system_clock.monotonic_ms(NULL) < end) {
-        if (exteria_shiro_engine_open_udp(engine, &fd) == EXTERIA_OK) break;
+    end = noshi_system_clock.monotonic_ms(NULL) + 3000;
+    while (noshi_system_clock.monotonic_ms(NULL) < end) {
+        if (noshi_shiro_engine_open_udp(engine, &fd) == NOSHI_OK) break;
         usleep(20000);
     }
     CHECK(fd >= 0);
@@ -279,28 +279,28 @@ int main(void) {
         int stream = -1;
         uint64_t drain_end;
         CHECK_EQ_INT(s.initiations, 1);
-        CHECK_EQ_INT(exteria_shiro_engine_open(engine, PEER_ADDRESS, 443, 700, &stream), EXTERIA_E_TIMEOUT);
-        drain_end = exteria_system_clock.monotonic_ms(NULL) + 400;
-        while (exteria_system_clock.monotonic_ms(NULL) < drain_end) server_step(&s, 20, plain, sizeof(plain));
+        CHECK_EQ_INT(noshi_shiro_engine_open(engine, PEER_ADDRESS, 443, 700, &stream), NOSHI_E_TIMEOUT);
+        drain_end = noshi_system_clock.monotonic_ms(NULL) + 400;
+        while (noshi_system_clock.monotonic_ms(NULL) < drain_end) server_step(&s, 20, plain, sizeof(plain));
         CHECK_EQ_INT(s.initiations, 1);
     }
 
     /* the two steps of a dial: the stream is queued at once, and a stop that comes while the caller waits ends the wait with an error and no stream, long before the deadline */
     {
         int wait_fd = -1, stream = -1;
-        uint64_t deadline = 0, began = exteria_system_clock.monotonic_ms(NULL);
-        CHECK_EQ_INT(exteria_shiro_engine_dial(engine, PEER_ADDRESS, 443, 20000, &wait_fd, &deadline), EXTERIA_OK);
+        uint64_t deadline = 0, began = noshi_system_clock.monotonic_ms(NULL);
+        CHECK_EQ_INT(noshi_shiro_engine_dial(engine, PEER_ADDRESS, 443, 20000, &wait_fd, &deadline), NOSHI_OK);
         CHECK(wait_fd >= 0);
         CHECK(deadline >= began + 19000);
         /* the engine is stopped while the wait has not begun; the queued stream is closed by the engine, so the wait sees the end of it */
-        exteria_shiro_engine_stop(engine);
+        noshi_shiro_engine_stop(engine);
         engine = NULL;
-        CHECK_EQ_INT(exteria_shiro_dial_finish(wait_fd, deadline, &stream), EXTERIA_E_IO);
+        CHECK_EQ_INT(noshi_shiro_dial_finish(wait_fd, deadline, &stream), NOSHI_E_IO);
         CHECK_EQ_INT(stream, -1);
-        CHECK(exteria_system_clock.monotonic_ms(NULL) < began + 3000);
+        CHECK(noshi_system_clock.monotonic_ms(NULL) < began + 3000);
     }
 
-    if (engine) exteria_shiro_engine_stop(engine);
+    if (engine) noshi_shiro_engine_stop(engine);
     close(s.fd);
     pthread_mutex_destroy(&w.lock);
     return test_finish("test_shiro_engine_udp");

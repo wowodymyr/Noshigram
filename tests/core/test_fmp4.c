@@ -1,5 +1,5 @@
 #include "test_util.h"
-#include "exteria_fmp4.h"
+#include "noshi_fmp4.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -255,7 +255,7 @@ static int read_track(const uint8_t *d, size_t len, uint32_t track_id, table *t)
 }
 
 static void temp_path(char *path, size_t cap, const char *tag) {
-    snprintf(path, cap, "/tmp/exteria-fmp4-%s-%d", tag, (int)getpid());
+    snprintf(path, cap, "/tmp/noshigram-fmp4-%s-%d", tag, (int)getpid());
 }
 
 static void check_samples(const uint8_t *d, size_t len, const table *t, const uint32_t *sizes, uint32_t count, const uint8_t *fills) {
@@ -294,8 +294,8 @@ static void test_remux(const char *moov_name) {
     temp_path(out, sizeof(out), "out");
     build_file(&file, moov_name);
     CHECK(write_file(in, &file));
-    CHECK_EQ_INT(exteria_fmp4_scan(in), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_fmp4_scan(in), NOSHI_OK);
+    CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_OK);
     result = read_file(out, &len);
     CHECK(result != NULL);
     if (result) {
@@ -316,7 +316,7 @@ static void test_remux(const char *moov_name) {
         CHECK_EQ_INT(video.sync_count, 3);
         CHECK(!audio.has_stss && !audio.has_ctts);
         /* no moof is left, and the file is one mdat after the movie box */
-        CHECK(exteria_fmp4_scan(out) == EXTERIA_E_NOTFOUND);
+        CHECK(noshi_fmp4_scan(out) == NOSHI_E_NOTFOUND);
         {
             size_t mdat = child(result, 0, len, "mdat", NULL);
             CHECK(mdat != SIZE_MAX);
@@ -346,8 +346,8 @@ static void test_refusals(void) {
         init_segment(&plain, "moov");
         mdat = open_box(&plain, "mdat"); zeros(&plain, 100); close_box(&plain, mdat);
         CHECK(write_file(in, &plain));
-        CHECK_EQ_INT(exteria_fmp4_scan(in), EXTERIA_E_NOTFOUND);
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_NOTFOUND);
+        CHECK_EQ_INT(noshi_fmp4_scan(in), NOSHI_E_NOTFOUND);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_NOTFOUND);
         CHECK(access(out, F_OK) != 0);
         free(plain.data);
     }
@@ -355,11 +355,11 @@ static void test_refusals(void) {
     /* cut in the middle of a box, at several places: never a crash, and no output left */
     for (cut = 1; cut < file.len; cut += 7) {
         bytes part = file;
-        exteria_status status;
+        noshi_status status;
         part.len = cut;
         CHECK(write_file(in, &part));
-        status = exteria_fmp4_remux(in, out);
-        if (status != EXTERIA_OK) CHECK(access(out, F_OK) != 0);
+        status = noshi_fmp4_remux(in, out);
+        if (status != NOSHI_OK) CHECK(access(out, F_OK) != 0);
         unlink(out);
     }
     /* a run that points past the end of the file */
@@ -370,7 +370,7 @@ static void test_refusals(void) {
         init_segment(&bad, "moov");
         fragment(&bad, &r, 1);
         CHECK(write_file(in, &bad));
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_MALFORMED);
         CHECK(access(out, F_OK) != 0);
         free(bad.data);
     }
@@ -382,7 +382,7 @@ static void test_refusals(void) {
         init_segment(&bad, "moov");
         fragment(&bad, &r, 1);
         CHECK(write_file(in, &bad));
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_MALFORMED);
         free(bad.data);
     }
     /* a fragment of a track that the movie box does not have */
@@ -393,7 +393,7 @@ static void test_refusals(void) {
         init_segment(&bad, "moov");
         fragment(&bad, &r, 1);
         CHECK(write_file(in, &bad));
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_MALFORMED);
         free(bad.data);
     }
     /* a fragment before the movie box */
@@ -404,7 +404,7 @@ static void test_refusals(void) {
         fragment(&bad, &r, 1);
         init_segment(&bad, "moov");
         CHECK(write_file(in, &bad));
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_UNSUPPORTED);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_UNSUPPORTED);
         free(bad.data);
     }
     /* a count of samples that the box cannot hold */
@@ -420,14 +420,14 @@ static void test_refusals(void) {
             if (!memcmp(bad.data + at + 4, "trun", 4)) { bad.data[at + 12] = 0x7f; break; }
         }
         CHECK(write_file(in, &bad));
-        CHECK_EQ_INT(exteria_fmp4_remux(in, out), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_fmp4_remux(in, out), NOSHI_E_MALFORMED);
         free(bad.data);
     }
     /* arguments */
-    CHECK_EQ_INT(exteria_fmp4_remux(NULL, out), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_fmp4_remux(in, in), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_fmp4_remux("/nonexistent/exteria-fmp4", out), EXTERIA_E_IO);
-    CHECK_EQ_INT(exteria_fmp4_scan("/nonexistent/exteria-fmp4"), EXTERIA_E_IO);
+    CHECK_EQ_INT(noshi_fmp4_remux(NULL, out), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_fmp4_remux(in, in), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_fmp4_remux("/nonexistent/noshigram-fmp4", out), NOSHI_E_IO);
+    CHECK_EQ_INT(noshi_fmp4_scan("/nonexistent/noshigram-fmp4"), NOSHI_E_IO);
     free(file.data);
     unlink(in);
     unlink(out);

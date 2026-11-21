@@ -1,4 +1,4 @@
-#include "exteria_text_split.h"
+#include "noshi_text_split.h"
 #include "test_util.h"
 
 #define MAX_PARTS 64
@@ -11,16 +11,16 @@ static size_t widen(const char *ascii, uint16_t *out, size_t cap) {
     return n;
 }
 
-static size_t split(const uint16_t *units, size_t len, size_t limit, exteria_text_part *parts) {
+static size_t split(const uint16_t *units, size_t len, size_t limit, noshi_text_part *parts) {
     size_t count = 0;
-    size_t total = exteria_text_split(units, len, limit, parts, MAX_PARTS, &count);
+    size_t total = noshi_text_split(units, len, limit, parts, MAX_PARTS, &count);
     CHECK_EQ_INT(count, total);
     return total;
 }
 
 static void test_short(void) {
     uint16_t units[64];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t n = widen("  hello  ", units, 64);
     CHECK_EQ_INT(split(units, n, 4096, parts), 1);
     CHECK_EQ_INT(parts[0].begin, 2);
@@ -28,13 +28,13 @@ static void test_short(void) {
     CHECK_EQ_INT(split(units, 0, 4096, parts), 0);
     n = widen("   \n ", units, 64);
     CHECK_EQ_INT(split(units, n, 4096, parts), 0);
-    CHECK_EQ_INT(exteria_text_split(units, n, 1, parts, MAX_PARTS, NULL), 0);
+    CHECK_EQ_INT(noshi_text_split(units, n, 1, parts, MAX_PARTS, NULL), 0);
 }
 
 /* the limit counts units, and a text of exactly the limit is one message */
 static void test_exact(void) {
     static uint16_t units[8192];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t i;
     for (i = 0; i < 4096; ++i) units[i] = 'a';
     CHECK_EQ_INT(split(units, 4096, 4096, parts), 1);
@@ -49,7 +49,7 @@ static void test_exact(void) {
 /* the order of the cuts: blank line, line break, space after a full stop, other white space */
 static void test_breaks(void) {
     uint16_t units[128];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t n = widen("aaaa bbbb\n\ncccc dddd", units, 128);
     CHECK_EQ_INT(split(units, n, 12, parts), 2);
     CHECK_EQ_INT(parts[0].end, 9);
@@ -73,7 +73,7 @@ static void test_breaks(void) {
 /* no break at all: the cut is at the limit and no unit is lost */
 static void test_hard(void) {
     uint16_t units[40];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t i, covered = 0, total;
     for (i = 0; i < 25; ++i) units[i] = 'x';
     total = split(units, 25, 10, parts);
@@ -86,7 +86,7 @@ static void test_hard(void) {
 /* a pair is never cut in two */
 static void test_surrogates(void) {
     uint16_t units[40];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t i, total;
     for (i = 0; i < 20; i += 2) {
         units[i] = 0xD83D;
@@ -104,19 +104,19 @@ static void test_surrogates(void) {
 /* only the capacity of the array is written, the count still says what the text needs */
 static void test_capacity(void) {
     uint16_t units[100];
-    exteria_text_part parts[2];
+    noshi_text_part parts[2];
     size_t count = 9, i;
     for (i = 0; i < 100; ++i) units[i] = 'y';
-    CHECK_EQ_INT(exteria_text_split(units, 100, 10, parts, 2, &count), 10);
+    CHECK_EQ_INT(noshi_text_split(units, 100, 10, parts, 2, &count), 10);
     CHECK_EQ_INT(count, 2);
-    CHECK_EQ_INT(exteria_text_split(units, 100, 10, NULL, 0, &count), 10);
+    CHECK_EQ_INT(noshi_text_split(units, 100, 10, NULL, 0, &count), 10);
     CHECK_EQ_INT(count, 0);
 }
 
 /* a long text of words and paragraphs: every piece fits, and the words come back in order */
 static void test_long(void) {
     static uint16_t units[20000];
-    exteria_text_part parts[MAX_PARTS];
+    noshi_text_part parts[MAX_PARTS];
     size_t n = 0, i, total, words = 0, back = 0;
     while (n < 19000) {
         const char *word = (n / 50) % 7 == 0 ? "para.\n" : "word ";

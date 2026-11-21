@@ -1,4 +1,4 @@
-import _exteria
+import _noshigram
 
 
 def add(a, b):
@@ -27,12 +27,12 @@ def spin():
 
 
 def service(name, payload):
-    return _exteria.service(name, payload)
+    return _noshigram.service(name, payload)
 
 
 def service_error(name):
     try:
-        _exteria.service(name, "{}")
+        _noshigram.service(name, "{}")
     except Exception as e:
         return type(e).__name__
     return "none"

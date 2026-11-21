@@ -1,6 +1,6 @@
 """what a library such as zwylib needs of the host: reflection over the shims, xposed hooks on them, the plugin controller and
 the hooks it fires, python subclasses of shim classes, and an .elyx library that neighbours import. zwylib itself is loaded
-when EXTERIA_ZWYLIB names its .elyx file"""
+when NOSHI_ZWYLIB names its .elyx file"""
 
 import json
 import os
@@ -21,7 +21,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
 PLUGINS = None
@@ -30,12 +30,12 @@ _saved = {}
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-zwylib-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-zwylib-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -49,7 +49,7 @@ def pump(until, seconds=5):
     while time.time() < end:
         while fake.timers:
             token, _delay = fake.timers.pop(0)
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         if until():
             return True
         time.sleep(0.01)
@@ -190,7 +190,7 @@ class Controller(unittest.TestCase):
     def tearDown(self):
         for hook in self.hooks:
             hook.unhook()
-        exteria_host.unload("upper")
+        noshi_host.unload("upper")
 
     def hook(self, cls, name, before):
         from base_plugin import MethodHook
@@ -212,9 +212,9 @@ class Controller(unittest.TestCase):
         unloads = []
         self.hook(PluginsController, "setPluginEnabled", lambda p: toggles.append((p.args[0], p.args[1])))
         self.hook(PythonPluginsEngine, "unloadPlugin", lambda p: unloads.append(p.args[0]))
-        self.assertTrue(exteria_host.load(self.path, "upper")["ok"])
+        self.assertTrue(noshi_host.load(self.path, "upper")["ok"])
         self.assertEqual(toggles, [("upper", True)])
-        exteria_host.unload("upper")
+        noshi_host.unload("upper")
         self.assertEqual(toggles, [("upper", True), ("upper", False)])
         self.assertEqual(unloads, ["upper"])
 
@@ -222,7 +222,7 @@ class Controller(unittest.TestCase):
         from app.exteraless.plugins.controller import PluginsController
         controller = PluginsController.getInstance()
         self.assertFalse(controller.plugins.containsKey("upper"))
-        exteria_host.load(self.path, "upper")
+        noshi_host.load(self.path, "upper")
         plugin = controller.plugins.get("upper")
         self.assertEqual(plugin.getName(), "Upper")
         self.assertEqual(plugin.getVersion(), "1.0")
@@ -234,7 +234,7 @@ class Controller(unittest.TestCase):
         self.assertIs(instances.get("upper"), plugin_loader.plugins["upper"].instance)
 
     def test_a_refused_plugin_still_answers_with_its_reason(self):
-        result = exteria_host.load(os.path.join(PLUGINS, "missing.plugin"), "missing")
+        result = noshi_host.load(os.path.join(PLUGINS, "missing.plugin"), "missing")
         self.assertFalse(result["ok"])
 
     def test_engine_knows_plugin_files(self):
@@ -251,11 +251,11 @@ class Controller(unittest.TestCase):
         from app.exteraless.plugins.controller import PluginsController
         from de.robv.android.xposed import XposedBridge
         controller = PluginsController.getInstance()
-        exteria_host.load(self.path, "upper")
+        noshi_host.load(self.path, "upper")
         unhook = XposedBridge.hookMethod(Controller.target_method(), self.callback())
         controller.addXposedHook("upper", unhook)
         self.assertIn(("setPluginEnabled"), [key[1] for key in XposedBridge._chains])
-        exteria_host.unload("upper")
+        noshi_host.unload("upper")
         self.assertNotIn("setPluginEnabled", [key[1] for key in XposedBridge._chains])
 
     @staticmethod
@@ -275,7 +275,7 @@ class Controller(unittest.TestCase):
         fake.language = "ru"
         try:
             self.assertEqual(LocaleController.getInstance().getCurrentLocaleInfo().pluralLangCode, "ru")
-            exteria_host.language_changed()
+            noshi_host.language_changed()
         finally:
             fake.language = "en"
         self.assertEqual(heard, ["ru"])
@@ -491,14 +491,14 @@ class ElyxLibrary(unittest.TestCase):
             f.write(NEIGHBOUR)
 
     def tearDown(self):
-        exteria_host.unload("neighbour")
-        exteria_host.unload("minilib")
+        noshi_host.unload("neighbour")
+        noshi_host.unload("minilib")
         for name in list(sys.modules):
             if name == "minilib" or name.startswith("minilib."):
                 del sys.modules[name]
 
     def test_the_entry_module_runs_from_the_elyx_plugins_link(self):
-        result = exteria_host.load(self.archive, "minilib")
+        result = noshi_host.load(self.archive, "minilib")
         self.assertTrue(result["ok"], result)
         run_from = fake.settings[("minilib", "file")].strip('"')
         self.assertIn(os.sep.join(["ElyxPlugins", "minilib", "src", "main.py"]), run_from)
@@ -507,30 +507,30 @@ class ElyxLibrary(unittest.TestCase):
         self.assertFalse([key for key in fake.settings if key[0] == "main"])
 
     def test_the_owner_of_a_file_under_the_link_is_its_plugin(self):
-        exteria_host.load(self.archive, "minilib")
+        noshi_host.load(self.archive, "minilib")
         path = os.path.join(PLUGINS, "ElyxPlugins", "minilib", "src", "api.py")
         self.assertEqual(plugin_loader._resolve_owner(path), "minilib")
 
     def test_a_neighbour_imports_the_library_as_a_package(self):
-        self.assertTrue(exteria_host.load(self.archive, "minilib")["ok"])
-        result = exteria_host.load(self.neighbour, "neighbour")
+        self.assertTrue(noshi_host.load(self.archive, "minilib")["ok"])
+        result = noshi_host.load(self.neighbour, "neighbour")
         self.assertTrue(result["ok"], result)
         self.assertEqual(json.loads(fake.settings[("neighbour", "owner")]), "neighbour")
         self.assertIn(os.sep.join(["ElyxPlugins", "minilib"]), json.loads(fake.settings[("neighbour", "library")]))
 
     def test_reloading_the_library_replaces_its_modules(self):
-        self.assertTrue(exteria_host.load(self.archive, "minilib")["ok"])
-        exteria_host.unload("minilib")
+        self.assertTrue(noshi_host.load(self.archive, "minilib")["ok"])
+        noshi_host.unload("minilib")
         for name in list(sys.modules):
             if name == "minilib" or name.startswith("minilib."):
                 del sys.modules[name]
         build_library(self.archive, dict(LIBRARY, **{"src/api.py": LIBRARY["src/api.py"] + "\nVERSION = 2\n"}))
-        self.assertTrue(exteria_host.load(self.archive, "minilib")["ok"])
+        self.assertTrue(noshi_host.load(self.archive, "minilib")["ok"])
         import minilib
         self.assertEqual(minilib.VERSION, 2)
 
 
-NEEDS_ZWYLIB = unittest.skipUnless(os.environ.get("EXTERIA_ZWYLIB"), "set EXTERIA_ZWYLIB to the zwylib .elyx file")
+NEEDS_ZWYLIB = unittest.skipUnless(os.environ.get("NOSHI_ZWYLIB"), "set NOSHI_ZWYLIB to the zwylib .elyx file")
 
 CLIENT = '''
 __id__ = "zwyclient"
@@ -568,13 +568,13 @@ class Zwylib(unittest.TestCase):
         cls.client = os.path.join(PLUGINS, "zwyclient.plugin")
         with open(cls.client, "w") as f:
             f.write(CLIENT)
-        result = exteria_host.load(os.environ["EXTERIA_ZWYLIB"], "zwylib")
+        result = noshi_host.load(os.environ["NOSHI_ZWYLIB"], "zwylib")
         assert result["ok"], result
 
     @classmethod
     def tearDownClass(cls):
-        exteria_host.unload("zwyclient")
-        exteria_host.unload("zwylib")
+        noshi_host.unload("zwyclient")
+        noshi_host.unload("zwylib")
 
     def test_the_hooks_on_the_plugin_engine_are_in_place(self):
         from de.robv.android.xposed import XposedBridge
@@ -582,23 +582,23 @@ class Zwylib(unittest.TestCase):
         self.assertEqual(names, ["applyLanguage", "setPluginEnabled", "unloadPlugin"])
 
     def test_commands_run_on_the_send_hook(self):
-        out = exteria_host.send_message_hook("zwylib", 0, {"message": ".zwylib cmds", "peer": 5, "replyToMsg": 0})
+        out = noshi_host.send_message_hook("zwylib", 0, {"message": ".zwylib cmds", "peer": 5, "replyToMsg": 0})
         self.assertEqual(out["strategy"], "MODIFY_FINAL")
         self.assertIn("zwylib cmds test", out["params"]["message"])
-        self.assertEqual(exteria_host.send_message_hook("zwylib", 0, {"message": "hello"})["strategy"], "DEFAULT")
+        self.assertEqual(noshi_host.send_message_hook("zwylib", 0, {"message": "hello"})["strategy"], "DEFAULT")
 
     def test_settings_of_the_library_belong_to_the_library(self):
-        self.assertTrue(exteria_host.settings("zwylib"))
+        self.assertTrue(noshi_host.settings("zwylib"))
         self.assertFalse([key for key in fake.settings if key[0] == "main"])
 
     def test_a_client_plugin_uses_the_library_and_is_cleaned_up_after(self):
         import zwylib
-        self.assertTrue(exteria_host.load(self.client, "zwyclient")["ok"])
+        self.assertTrue(noshi_host.load(self.client, "zwyclient")["ok"])
         self.assertEqual(json.loads(fake.settings[("zwyclient", "entry_owner")]), "zwyclient")
         self.assertTrue(pump(lambda: ("zwyclient", "async_ran") in fake.settings))
         self.assertIn("zwyclient", [task.plugin_id for task in zwylib._state.autoupdater.tasks])
         self.assertEqual(zwylib.locales_controller.generate_locale_class({"en": {"hello": "hi {name}"}}).hello(name="x"), "hi x")
-        exteria_host.unload("zwyclient")
+        noshi_host.unload("zwyclient")
         self.assertNotIn("zwyclient", [task.plugin_id for task in zwylib._state.autoupdater.tasks])
 
     def test_the_locale_follows_the_language_of_the_app(self):
@@ -607,11 +607,11 @@ class Zwylib(unittest.TestCase):
         self.assertEqual(table.hello, "hello")
         fake.language = "ru"
         try:
-            exteria_host.language_changed()
+            noshi_host.language_changed()
             self.assertEqual(table.hello, "privet")
         finally:
             fake.language = "en"
-            exteria_host.language_changed()
+            noshi_host.language_changed()
 
     def test_a_request_to_telegram_fails_loudly_and_does_not_hang(self):
         import zwylib
@@ -621,9 +621,9 @@ class Zwylib(unittest.TestCase):
 
     def test_unloading_and_loading_again_leaves_one_set_of_hooks(self):
         from de.robv.android.xposed import XposedBridge
-        exteria_host.unload("zwylib")
+        noshi_host.unload("zwylib")
         self.assertEqual(XposedBridge._chains, {})
-        self.assertTrue(exteria_host.load(os.environ["EXTERIA_ZWYLIB"], "zwylib")["ok"])
+        self.assertTrue(noshi_host.load(os.environ["NOSHI_ZWYLIB"], "zwylib")["ok"])
         self.assertEqual(len(XposedBridge._chains), 3)
 
 

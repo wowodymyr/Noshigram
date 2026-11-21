@@ -1,5 +1,5 @@
-#include "exteria_https.h"
-#include "exteria_geo.h"
+#include "noshi_https.h"
+#include "noshi_geo.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,19 +19,19 @@ int main(int argc, char **argv) {
     if (got!=(size_t)length || closed!=0) { free(roots);return 2; }
     const char *hosts[]={"tile.openstreetmap.org"};
     const char *paths[]={"/0/0/0.png"};
-    const char *headers[]={"User-Agent: Exteria/1.3.0-stable (com.sqmrak.exteria; iOS integration probe)","Accept: image/png","Accept-Encoding: identity",NULL};
+    const char *headers[]={"User-Agent: Noshigram/1.3.0-stable (com.noshigram.app; iOS integration probe)","Accept: image/png","Accept-Encoding: identity",NULL};
     int failed=0;
     for (size_t i=0;i<1;++i) {
-        exteria_https_request request;
-        exteria_https_response response;
+        noshi_https_request request;
+        noshi_https_response response;
         memset(&request,0,sizeof(request));
         request.host=hosts[i];request.path=paths[i];request.port=443;request.headers=headers;
         request.roots_pem=roots;request.roots_len=(size_t)length;request.timeout_ms=12000;
-        exteria_status status=exteria_https_get(&request,&response);
-        int png=status==EXTERIA_OK && response.status==200 && exteria_map_png_header(response.body,response.body_len);
-        printf("%s: TLS %s, HTTP %d, %zu bytes, 256x256 PNG header %s\n",hosts[i],exteria_status_name(status),response.status,response.body_len,png ? "yes":"no");
+        noshi_status status=noshi_https_get(&request,&response);
+        int png=status==NOSHI_OK && response.status==200 && noshi_map_png_header(response.body,response.body_len);
+        printf("%s: TLS %s, HTTP %d, %zu bytes, 256x256 PNG header %s\n",hosts[i],noshi_status_name(status),response.status,response.body_len,png ? "yes":"no");
         if (!png) failed=1;
-        exteria_https_response_free(&response);
+        noshi_https_response_free(&response);
     }
     free(roots);
     return failed;

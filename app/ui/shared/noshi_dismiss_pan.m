@@ -1,0 +1,102 @@
+#import "noshi_dismiss_pan.h"
+
+#import "noshi_platform.h"
+#import "noshi_weak_reference.h"
+#include <math.h>
+
+@interface NoshiDismissPan : UIPanGestureRecognizer <UIGestureRecognizerDelegate> {
+    /* the card outlives its owner while a slide out or a touch is still in flight, and a bare pointer was messaged after the owner was freed */
+    NoshiWeakReference *_owner;
+    SEL _action;
+    UIScrollView *_scroll;
+}
+- (id)initWithOwner:(id)owner action:(SEL)action;
+@end
+
+@implementation NoshiDismissPan
+
+/* the scroll view is kept while a touch is on it: the sheet may rebuild or close its lists before the finger lifts, and a bare pointer to a freed view
+   is read again by the delegate methods and by pulled: */
+- (void)setScroll:(UIScrollView *)scroll {
+    [scroll retain];
+    [_scroll release];
+    _scroll = scroll;
+}
+
+- (void)dealloc {
+    [_owner release];
+    [_scroll release];
+    [super dealloc];
+}
+
+- (id)initWithOwner:(id)owner action:(SEL)action {
+    self = [super initWithTarget:nil action:NULL];
+    if (!self) return nil;
+    _owner = [[NoshiWeakReference referenceTo:owner] retain];
+    _action = action;
+    self.delegate = self;
+    [self addTarget:self action:@selector(pulled:)];
+    return self;
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    [self setScroll:nil];
+    UIScrollView *found = nil;
+    for (UIView *view = touch.view; view && view != gesture.view; view = view.superview) {
+        if ([view isKindOfClass:[UISlider class]] || [view isKindOfClass:[UIDatePicker class]] ||
+            [view isKindOfClass:[UITextField class]] || [view isKindOfClass:[UITextView class]]) return NO;
+        /* a view that is a control of its own, such as the pad of a game, says so */
+        if ([view respondsToSelector:@selector(noshiBlocksDismissPan)] && [(id)view noshiBlocksDismissPan]) return NO;
+        if (!found && [view isKindOfClass:[UIScrollView class]]) found = (UIScrollView *)view;
+    }
+    [self setScroll:found];
+    return YES;
+}
+
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
+    id owner = _owner.target;
+    if (!owner) return NO;
+    if ([owner respondsToSelector:@selector(noshiCanDismissByPan)] && ![(id<NoshiDismissPanGuard>)owner noshiCanDismissByPan]) return NO;
+    CGPoint velocity = [self velocityInView:gesture.view];
+    return velocity.y > 0 && velocity.y > fabs(velocity.x) &&
+           (!_scroll || _scroll.contentOffset.y <= -_scroll.contentInset.top + 0.5);
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
+    (void)gesture;
+    return _scroll && other == _scroll.panGestureRecognizer;
+}
+
+- (void)pulled:(UIPanGestureRecognizer *)pan {
+    UIView *card = pan.view;
+    CGFloat distance = MAX(0, [pan translationInView:card.superview].y);
+    if (pan.state == UIGestureRecognizerStateBegan) {
+        /* the list at its top rubber-bands under the same finger as the card is pulled, and the two recognizers run in no fixed order, so a per-frame offset reset
+           left the rows twitching; turning its recognizer off and on cancels the touch for the list and leaves the card alone with the finger */
+        UIPanGestureRecognizer *listPan = _scroll.panGestureRecognizer;
+        listPan.enabled = NO;
+        listPan.enabled = YES;
+    } else if (pan.state == UIGestureRecognizerStateChanged) {
+        card.transform = CGAffineTransformMakeTranslation(0, distance);
+    } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
+        if (pan.state == UIGestureRecognizerStateEnded && (distance > 80 || [pan velocityInView:card.superview].y > 900)) {
+            id owner = [[_owner.target retain] autorelease];
+            SEL action = _action;
+            [self setScroll:nil];
+            if (owner) [owner performSelector:action];
+            return;
+        } else {
+            [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.2 delay:0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                             animations:^{ card.transform = CGAffineTransformIdentity; } completion:nil];
+        }
+        [self setScroll:nil];
+    }
+}
+
+@end
+
+void NoshiAddDismissPan(UIView *card, id target, SEL action) {
+    NoshiDismissPan *pan = [[[NoshiDismissPan alloc] initWithOwner:target action:action] autorelease];
+    [card addGestureRecognizer:pan];
+}

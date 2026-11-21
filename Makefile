@@ -6,22 +6,28 @@
 # (or in local/credentials.env)
 
 TARGET := iphone:clang:14.5:5.0
+# release flags by default: a theos debug build defines DEBUG, which turns on the self checks of rlottie
+DEBUG ?= 0
 ARCHS ?= armv7 arm64
 INSTALL_TARGET_PROCESSES = Noshigram
 
 -include local/credentials.env
 
 DEPS ?= $(CURDIR)/deps
-SDK_LIB = $(THEOS)/sdks/iPhoneOS14.5.sdk/usr/lib
+# the 14.5 sdk dropped the ios 5 start file, the 9.3 sdk of theos/sdks still has it
+CRT_V7 ?= $(THEOS)/sdks/iPhoneOS9.3.sdk/usr/lib/crt1.3.1.o
 
 include $(THEOS)/makefiles/common.mk
+
+# the headers theos vendors for tweaks shadow the sdk (MobileCoreServices among them), the app reads the sdk only
+THEOS_VENDOR_INCLUDE_PATH := $(shell mkdir -p build/novendor && touch build/novendor/.git && cd build/novendor && pwd)
 
 # host side: tests and the tl tables, the ios toolchain cannot build host programs
 PYTHON  ?= python3
 SCHEMAS := schemas/api.tl schemas/mtproto.tl schemas/secret.tl
 TLGEN   := $(PYTHON) tools/tlgen.py
 
-.PHONY: test test-icons test-video sanitize generate check-generated credentials
+.PHONY: test test-icons test-video sanitize generate check-generated credentials stage-resources
 
 test:
 	$(MAKE) -C tests test
@@ -47,7 +53,12 @@ check-generated:
 credentials:
 	@bash scripts/gen_credentials.sh build/generated/noshi_credentials.h
 
-before-all:: credentials
+# the flat resources of the bundle and its Info.plist, copied into the .app by theos
+stage-resources:
+	@bash scripts/stage_bundle.sh build/bundle
+	@cp packaging/Info.plist build/bundle/Info.plist
+
+before-all:: credentials stage-resources
 
 # ---- sources -------------------------------------------------------------------------------------------
 
@@ -80,7 +91,7 @@ $(foreach f,$(OPUS_FILES),$(eval $(f)_CFLAGS = -std=c99 -w -DOPUS_BUILD -DFIXED_
 $(foreach f,$(ZBAR_FILES),$(eval $(f)_CFLAGS = -std=gnu99 -w -DNOSHI_ZBAR_IOS -Ithird_party/zbar/include \
     -Ithird_party/zbar/zbar -Ithird_party/zbar/zbar/decoder -Ithird_party/zbar/zbar/qrcode))
 # the portable raster path: the neon asm needs a build of its own
-$(foreach f,$(RLOTTIE_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -fno-exceptions -fno-rtti -U__ARM_NEON__ \
+$(foreach f,$(RLOTTIE_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -fno-exceptions -fno-rtti -U__ARM_NEON__ -UDEBUG \
     -include limits -include cstdint -D_LIBCPP_DISABLE_AVAILABILITY -Ithird_party/rlottie/config \
     -Ithird_party/rlottie/inc -Ithird_party/rlottie/src/vector -Ithird_party/rlottie/src/vector/freetype \
     -Ithird_party/rlottie/src/vector/pixman -Ithird_party/rlottie/src/lottie -Ithird_party/rlottie/src/binding/c))
@@ -88,7 +99,7 @@ $(foreach f,$(RLOTTIE_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -fno-exceptions 
 $(foreach f,$(TGVOIP_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -DTGVOIP_NO_DSP -DTGVOIP_LOG_VERBOSITY=2 \
     -D_LIBCPP_DISABLE_AVAILABILITY -Ithird_party/libtgvoip -Ithird_party/opus/include -Iapp/net -Icore/base))
 $(foreach f,$(CORE_FILES),$(eval $(f)_CFLAGS = $(STRICT_C)))
-$(foreach f,$(APP_FILES),$(eval $(f)_CFLAGS = -std=gnu99 -fno-objc-arc -fblocks -Wall -Wextra -Wno-unused-parameter \
+$(foreach f,$(APP_FILES),$(eval $(f)_CFLAGS = -std=gnu99 -fno-objc-arc -fblocks -Wall -Wextra -Wno-unused-parameter -Wno-error \
     $(addprefix -I,$(APP_DIRS)) -Ibuild/generated -Ithird_party/rlottie/inc -Ithird_party/libwebp \
     -Ithird_party/libtgvoip -Ithird_party/zbar/include))
 
@@ -107,23 +118,18 @@ Noshigram_LDFLAGS = $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libssl.a $(DEPS)/$(THEOS_C
     $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavformat.a $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavcodec.a \
     $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libswresample.a $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavutil.a \
     $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libvpx.a -Wl,-dead_strip
+Noshigram_RESOURCE_DIRS = build/bundle
 Noshigram_CODESIGN_FLAGS = -Spackaging/entitlements.plist
 
+# arm64 starts at ios 7; the slice flags come before the deployment flags of theos, the instance flags after them
+Noshigram_CFLAGS += $(if $(filter arm64,$(THEOS_CURRENT_ARCH)),-target arm64-apple-ios7.0)
+Noshigram_LDFLAGS += $(if $(filter arm64,$(THEOS_CURRENT_ARCH)),-target arm64-apple-ios7.0)
+
 # ios 5 needs the crt1.3.1.o start file, which ld64 picks by name only with the default start files
-armv7_LDFLAGS = -nostartfiles $(SDK_LIB)/crt1.3.1.o
+armv7_LDFLAGS = -nostartfiles $(CRT_V7)
 
 include $(THEOS_MAKE_PATH)/application.mk
 
 # the share sheet extension starts at _NSExtensionMain and needs ios 8, it is built by its own makefile
 SUBPROJECTS += extension/share
 include $(THEOS_MAKE_PATH)/aggregate.mk
-
-# the flat resources of the bundle, staged by the same script for the deb and the ipa
-Noshigram_RESOURCE_STAGE = $(THEOS_STAGING_DIR)/Applications/Noshigram.app
-ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
-Noshigram_RESOURCE_STAGE = $(THEOS_STAGING_DIR)/var/jb/Applications/Noshigram.app
-endif
-
-internal-stage::
-	$(ECHO_NOTHING)bash scripts/stage_bundle.sh "$(Noshigram_RESOURCE_STAGE)"$(ECHO_END)
-	$(ECHO_NOTHING)cp packaging/Info.plist "$(Noshigram_RESOURCE_STAGE)/Info.plist"$(ECHO_END)

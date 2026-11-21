@@ -1,12 +1,12 @@
 #include "test_util.h"
-#include "exteria_qr.h"
+#include "noshi_qr.h"
 #include "qr_vectors.h"
 
-static uint8_t modules[EXTERIA_QR_MAX_MODULES];
+static uint8_t modules[NOSHI_QR_MAX_MODULES];
 
 static void check_vector(const char *text, int side, int mask, const char *const *rows) {
     int got_side = 0, got_mask = -1, x, y, wrong = 0;
-    CHECK_EQ_INT(exteria_qr_encode((const uint8_t *)text, strlen(text), modules, sizeof(modules), &got_side, &got_mask), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_qr_encode((const uint8_t *)text, strlen(text), modules, sizeof(modules), &got_side, &got_mask), NOSHI_OK);
     CHECK_EQ_INT(got_side, side);
     CHECK_EQ_INT(got_mask, mask);
     for (y = 0; y < side; ++y)
@@ -29,7 +29,7 @@ static void test_structure(void) {
     uint8_t data[213];
     memset(data, 'x', sizeof(data));
     for (i = 0; i < (int)(sizeof(lengths) / sizeof(lengths[0])); ++i) {
-        CHECK_EQ_INT(exteria_qr_encode(data, (size_t)lengths[i], modules, sizeof(modules), &side, NULL), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_qr_encode(data, (size_t)lengths[i], modules, sizeof(modules), &side, NULL), NOSHI_OK);
         CHECK(side >= 21 && side <= 57 && (side - 17) % 4 == 0);
         for (y = 0; y < 7; ++y) {
             for (x = 0; x < 7; ++x) {
@@ -51,55 +51,55 @@ static void test_limits(void) {
     uint8_t data[214];
     int side = 5, mask = 5;
     memset(data, 'a', sizeof(data));
-    CHECK_EQ_INT(exteria_qr_encode(data, 213, modules, sizeof(modules), &side, &mask), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_qr_encode(data, 213, modules, sizeof(modules), &side, &mask), NOSHI_OK);
     CHECK_EQ_INT(side, 57);
-    CHECK_EQ_INT(exteria_qr_encode(data, 214, modules, sizeof(modules), &side, &mask), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_qr_encode(data, 214, modules, sizeof(modules), &side, &mask), NOSHI_E_LIMIT);
     CHECK_EQ_INT(side, 0);
     CHECK_EQ_INT(mask, 0);
-    CHECK_EQ_INT(exteria_qr_encode(data, 0, modules, sizeof(modules), &side, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_qr_encode(NULL, 3, modules, sizeof(modules), &side, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_qr_encode(data, 3, NULL, sizeof(modules), &side, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_qr_encode(data, 3, modules, EXTERIA_QR_MAX_MODULES - 1, &side, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_qr_encode(data, 3, modules, sizeof(modules), NULL, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode(data, 0, modules, sizeof(modules), &side, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode(NULL, 3, modules, sizeof(modules), &side, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode(data, 3, NULL, sizeof(modules), &side, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode(data, 3, modules, NOSHI_QR_MAX_MODULES - 1, &side, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode(data, 3, modules, sizeof(modules), NULL, NULL), NOSHI_E_ARG);
     /* the same input always gives the same symbol, and a symbol of a different input differs */
     {
-        static uint8_t again[EXTERIA_QR_MAX_MODULES];
+        static uint8_t again[NOSHI_QR_MAX_MODULES];
         int side_a, side_b;
-        CHECK_EQ_INT(exteria_qr_encode(data, 40, modules, sizeof(modules), &side_a, NULL), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_qr_encode(data, 40, again, sizeof(again), &side_b, NULL), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_qr_encode(data, 40, modules, sizeof(modules), &side_a, NULL), NOSHI_OK);
+        CHECK_EQ_INT(noshi_qr_encode(data, 40, again, sizeof(again), &side_b, NULL), NOSHI_OK);
         CHECK_EQ_INT(side_a, side_b);
         CHECK_MEM(modules, again, (size_t)side_a * (size_t)side_a);
         data[39] = 'b';
-        CHECK_EQ_INT(exteria_qr_encode(data, 40, again, sizeof(again), &side_b, NULL), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_qr_encode(data, 40, again, sizeof(again), &side_b, NULL), NOSHI_OK);
         CHECK(memcmp(modules, again, (size_t)side_a * (size_t)side_a) != 0);
     }
 }
 
 /* a symbol made larger than the data needs: the side follows the version, the data is the same, and the fixed parts are where they are */
 static void test_min_version(void) {
-    static uint8_t again[EXTERIA_QR_MAX_MODULES];
+    static uint8_t again[NOSHI_QR_MAX_MODULES];
     const char *text = "https://t.me/sqmrak";
     int side = 0, plain_side = 0, version;
-    CHECK_EQ_INT(exteria_qr_encode((const uint8_t *)text, strlen(text), again, sizeof(again), &plain_side, NULL), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_qr_encode((const uint8_t *)text, strlen(text), again, sizeof(again), &plain_side, NULL), NOSHI_OK);
     CHECK_EQ_INT(plain_side, 25);
-    CHECK_EQ_INT(exteria_qr_encode_min_version((const uint8_t *)text, strlen(text), 1, modules, sizeof(modules), &side, NULL), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_qr_encode_min_version((const uint8_t *)text, strlen(text), 1, modules, sizeof(modules), &side, NULL), NOSHI_OK);
     CHECK_EQ_INT(side, plain_side);
     CHECK_MEM(modules, again, (size_t)side * (size_t)side);
-    for (version = 2; version <= EXTERIA_QR_MAX_VERSION; ++version) {
+    for (version = 2; version <= NOSHI_QR_MAX_VERSION; ++version) {
         int x, y;
-        CHECK_EQ_INT(exteria_qr_encode_min_version((const uint8_t *)text, strlen(text), version, modules, sizeof(modules), &side, NULL), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_qr_encode_min_version((const uint8_t *)text, strlen(text), version, modules, sizeof(modules), &side, NULL), NOSHI_OK);
         CHECK_EQ_INT(side, 17 + 4 * version);
         for (x = 8; x < side - 8; ++x) CHECK_EQ_INT(modules[6 * side + x], x % 2 == 0);
         for (y = 8; y < side - 8; ++y) CHECK_EQ_INT(modules[y * side + 6], y % 2 == 0);
         CHECK_EQ_INT(modules[(side - 8) * side + 8], 1);
     }
     /* a version that is too large or too small is refused, and data that does not fit in the version it needs still is */
-    CHECK_EQ_INT(exteria_qr_encode_min_version((const uint8_t *)text, strlen(text), 0, modules, sizeof(modules), &side, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_qr_encode_min_version((const uint8_t *)text, strlen(text), EXTERIA_QR_MAX_VERSION + 1, modules, sizeof(modules), &side, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode_min_version((const uint8_t *)text, strlen(text), 0, modules, sizeof(modules), &side, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_qr_encode_min_version((const uint8_t *)text, strlen(text), NOSHI_QR_MAX_VERSION + 1, modules, sizeof(modules), &side, NULL), NOSHI_E_ARG);
     {
         uint8_t data[214];
         memset(data, 'q', sizeof(data));
-        CHECK_EQ_INT(exteria_qr_encode_min_version(data, 214, EXTERIA_QR_MAX_VERSION, modules, sizeof(modules), &side, NULL), EXTERIA_E_LIMIT);
+        CHECK_EQ_INT(noshi_qr_encode_min_version(data, 214, NOSHI_QR_MAX_VERSION, modules, sizeof(modules), &side, NULL), NOSHI_E_LIMIT);
     }
 }
 

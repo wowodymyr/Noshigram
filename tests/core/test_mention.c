@@ -1,17 +1,17 @@
-#include "exteria_mention.h"
+#include "noshi_mention.h"
 #include "test_util.h"
 
 static void scan_ok(const char *text, size_t caret, size_t start, const char *query) {
-    exteria_mention_token token;
-    CHECK_EQ_INT(exteria_mention_scan(text, caret, &token), 1);
+    noshi_mention_token token;
+    CHECK_EQ_INT(noshi_mention_scan(text, caret, &token), 1);
     CHECK_EQ_INT(token.start, start);
     CHECK_EQ_INT(token.end, caret);
     CHECK(strcmp(token.query, query) == 0);
 }
 
 static void scan_none(const char *text, size_t caret) {
-    exteria_mention_token token;
-    CHECK_EQ_INT(exteria_mention_scan(text, caret, &token), 0);
+    noshi_mention_token token;
+    CHECK_EQ_INT(noshi_mention_scan(text, caret, &token), 0);
     CHECK_EQ_INT(token.start, 0);
     CHECK_EQ_INT(token.query[0], 0);
 }
@@ -41,12 +41,12 @@ static void test_scan(void) {
         char text[80];
         memset(text, 'a', sizeof(text));
         text[0] = '@';
-        text[EXTERIA_MENTION_QUERY_MAX + 1] = 0;
-        scan_none(text, EXTERIA_MENTION_QUERY_MAX + 1);
-        text[EXTERIA_MENTION_QUERY_MAX] = 0;
-        scan_ok(text, EXTERIA_MENTION_QUERY_MAX, 0, text + 1);
+        text[NOSHI_MENTION_QUERY_MAX + 1] = 0;
+        scan_none(text, NOSHI_MENTION_QUERY_MAX + 1);
+        text[NOSHI_MENTION_QUERY_MAX] = 0;
+        scan_ok(text, NOSHI_MENTION_QUERY_MAX, 0, text + 1);
     }
-    CHECK_EQ_INT(exteria_mention_scan(NULL, 0, NULL), 0);
+    CHECK_EQ_INT(noshi_mention_scan(NULL, 0, NULL), 0);
 }
 
 int main(void) {

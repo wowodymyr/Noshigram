@@ -1,11 +1,11 @@
-"""a stand-in for the app side of _exteria.service, used by the plugin tests: it answers the services and records the ui operations"""
+"""a stand-in for the app side of _noshigram.service, used by the plugin tests: it answers the services and records the ui operations"""
 
 import json
 import os
 import sys
 import types
 
-fake = types.ModuleType("_exteria")
+fake = types.ModuleType("_noshigram")
 fake.calls = []
 fake.ops = []
 fake.settings = {}
@@ -47,7 +47,7 @@ fake.saved = {"messages": [], "music": [], "next_id": 100, "calls": [], "errors"
 
 
 class Music:
-    """a stand-in for the music player of the app and its plugin services (exteria_plugin_music.m), with the same rules: a song that starts is a new
+    """a stand-in for the music player of the app and its plugin services (noshi_plugin_music.m), with the same rules: a song that starts is a new
     playback, a player that was taken out keeps its number and plays on until it is released, a volume set to a player that is gone is refused"""
 
     def __init__(self):
@@ -88,17 +88,17 @@ class Music:
 
     def app_starts(self, index):
         """a tap in the app: the plugins are asked first, as the music player asks them"""
-        import exteria_host
+        import noshi_host
         self.index = index
-        if exteria_host.music_play(index):
+        if noshi_host.music_play(index):
             return
         self.start(index)
 
     def app_pauses(self):
-        import exteria_host
+        import noshi_host
         if self.state != "playing":
             return
-        if exteria_host.music_pause():
+        if noshi_host.music_pause():
             return
         self.state = "paused"
         self.log.append(("pause", None))
@@ -259,11 +259,11 @@ def _account(name, data):
 
 def deliver():
     """the answers of the app that are waiting, to python; the ones that ask for more in turn are delivered too. True when there was any"""
-    import exteria_host
+    import noshi_host
     delivered = False
     while fake.saved["inbox"]:
         token, error, answer = fake.saved["inbox"].pop(0)
-        exteria_host.account_result(token, error, answer)
+        noshi_host.account_result(token, error, answer)
         delivered = True
     return delivered
 
@@ -452,4 +452,4 @@ def service(name, payload):
 
 
 fake.service = service
-sys.modules["_exteria"] = fake
+sys.modules["_noshigram"] = fake

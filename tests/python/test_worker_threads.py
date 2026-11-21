@@ -15,7 +15,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 import requests  # noqa: E402
 from java.io import File  # noqa: E402
 from org.telegram.messenger import ApplicationLoader, DispatchQueue, SendMessagesHelper  # noqa: E402
@@ -143,7 +143,7 @@ class Queues(unittest.TestCase):
         while time.monotonic() < end and not until():
             while fake.timers:
                 token, _delay = fake.timers.pop(0)
-                exteria_host.run_token(token)
+                noshi_host.run_token(token)
             time.sleep(0.005)
         return until()
 
@@ -198,18 +198,18 @@ class MessageMenu(unittest.TestCase):
         self.path = os.path.join(fake.plugins_dir, "voice.plugin")
 
     def tearDown(self):
-        exteria_host.unload("voice")
+        noshi_host.unload("voice")
 
     def test_a_message_item_gets_the_message_and_plays_a_sound_from_a_queue(self):
         with tempfile.TemporaryDirectory() as folder:
             fake.cache_dir = folder
             try:
-                self.assertTrue(exteria_host.load(self.path, "voice")["ok"])
+                self.assertTrue(noshi_host.load(self.path, "voice")["ok"])
                 menu = [item for name, item in fake.calls if name == "menu.add"]
                 self.assertEqual((menu[0]["item"]["menu_type"], menu[0]["item"]["priority"]), ("MESSAGE_CONTEXT_MENU", 5))
                 from app.exteraless import plugins as bridge
                 item_id = next(key[1] for key in bridge._menu_callbacks if key[0] == "voice")
-                exteria_host.menu_click("voice", item_id, {"message": {"id": 41, "text": "hello there", "out": False, "dialog": 777}})
+                noshi_host.menu_click("voice", item_id, {"message": {"id": 41, "text": "hello there", "out": False, "dialog": 777}})
                 self.assertEqual(fake.settings[("voice", "text")], '"hello there"')
                 self.assertEqual(fake.settings[("voice", "id")], "41")
                 queue = Queues("test_runs_in_order_with_a_delay_off_the_main_thread")

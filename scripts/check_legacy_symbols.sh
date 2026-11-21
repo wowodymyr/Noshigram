@@ -3,8 +3,8 @@
 set -euo pipefail
 
 BIN="${1:?usage: check_legacy_symbols.sh <fat executable>}"
-TC="${EXTERIA_TC:?set EXTERIA_TC to the ios toolchain bin directory}"
-SDK5="${EXTERIA_SDK_V5:?set EXTERIA_SDK_V5 to an iphoneos 5.x sdk}"
+TC="${NOSHI_TC:?set NOSHI_TC to the ios toolchain bin directory}"
+SDK5="${NOSHI_SDK_V5:?set NOSHI_SDK_V5 to an iphoneos 5.x sdk}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 

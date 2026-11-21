@@ -1,7 +1,7 @@
 call tones of the original telegram for ios (ringback, connecting, busy, failed, ended)
 
 files: resources/sounds/voip_ringback.caf, voip_connecting.mp3, voip_busy.caf, voip_fail.caf, voip_end.caf
-source: exteria-lol/references/Onegram/Telegraph/Resources at revision d2a27cc617f2c0bfb13d278e12ae5961c2da5999 (the legacy telegram ios client, licensed GPLv2 with its openssl exception), copied unchanged
+source: noshigram-lol/references/Onegram/Telegraph/Resources at revision d2a27cc617f2c0bfb13d278e12ae5961c2da5999 (the legacy telegram ios client, licensed GPLv2 with its openssl exception), copied unchanged
 checksums (sha256):
 09c1b40e6985cc651d31e7ff39053f20bdf0220fe0f74e1b76a968f4339e9753  voip_busy.caf
 d149da31793a6acc4d29fe4006e280b2a66099abc8d00f18262ffe0add942aa3  voip_connecting.mp3

@@ -87,13 +87,13 @@ class Timed(unittest.TestCase):
         self.animation._clock = self._clock
 
     def run_timers(self, step):
-        import exteria_host
+        import noshi_host
         for _ in range(200):
             if not fakeapp.fake.timers:
                 return
             token, _delay = fakeapp.fake.timers.pop(0)
             self.now[0] += step
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
 
     def test_value_animator_reaches_the_end_and_reports(self):
         values, events = [], []
@@ -297,8 +297,8 @@ class Pickers(unittest.TestCase):
         fakeapp.fake.picks.clear()
 
     def answer(self, chosen):
-        import exteria_host
-        exteria_host.pick_result(fakeapp.fake.picks[-1]["token"], chosen)
+        import noshi_host
+        noshi_host.pick_result(fakeapp.fake.picks[-1]["token"], chosen)
 
     def test_group_create_picker_returns_signed_ids_and_closes(self):
         from android.os import Bundle
@@ -317,7 +317,7 @@ class Pickers(unittest.TestCase):
         self.assertEqual(len(got), 1)
 
     def test_going_back_from_the_picker_ends_it_without_a_choice(self):
-        import exteria_host
+        import noshi_host
         from android.os import Bundle
         from org.telegram.ui import BaseFragment, DialogsActivity, GroupCreateActivity
         for make in (GroupCreateActivity, DialogsActivity):
@@ -329,10 +329,10 @@ class Pickers(unittest.TestCase):
             picker.onFragmentDestroy = lambda gone=gone: gone.append(1)
             BaseFragment().presentFragment(picker)
             token = fakeapp.fake.picks[-1]["token"]
-            exteria_host.pick_cancelled(token)
+            noshi_host.pick_cancelled(token)
             self.assertEqual((got, gone), ([], [1]), make.__name__)
-            exteria_host.pick_cancelled(token)
-            exteria_host.pick_result(token, [{"id": 7, "kind": 1}])
+            noshi_host.pick_cancelled(token)
+            noshi_host.pick_result(token, [{"id": 7, "kind": 1}])
             self.assertEqual((got, gone), ([], [1]), "an answer after the end is dropped")
 
     def test_a_hook_on_the_adapter_narrows_the_kinds(self):

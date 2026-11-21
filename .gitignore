@@ -1,9 +1,9 @@
+*.a
 build/
+deps/
 local/
 *.o
-*.a
-__pycache__/
-deps/
-.theos/
-packages/
 obj/
+packages/
+__pycache__/
+.theos/

@@ -1,11 +1,11 @@
 #include "test_util.h"
-#include "exteria_article.h"
+#include "noshi_article.h"
 
 static void check_html(const char *input, const char *expected) {
     uint8_t output[4096];
     size_t written = 0;
     size_t length = strlen(input);
-    CHECK_EQ_INT(exteria_article_readonly((const uint8_t *)input, length, output, sizeof(output), &written), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_article_readonly((const uint8_t *)input, length, output, sizeof(output), &written), NOSHI_OK);
     CHECK_EQ_INT(written, strlen(expected));
     CHECK(!memcmp(output, expected, written));
 }
@@ -23,13 +23,13 @@ int main(void) {
     check_html("<p>текст <a href='https://example.com'>link</a><img src='/file.jpg'></p>",
                "<p>текст <a href='https://example.com'>link</a><img src='/file.jpg'></p>");
     check_html("", "");
-    CHECK_EQ_INT(exteria_article_readonly((const uint8_t *)"<script>x", 9, output, sizeof(output), &written), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_article_readonly((const uint8_t *)"<script>x", 9, output, sizeof(output), &written), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(written, 0);
-    CHECK_EQ_INT(exteria_article_readonly((const uint8_t *)"<script src='x", 14, output, sizeof(output), &written), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_article_readonly((const uint8_t *)"<script src='x", 14, output, sizeof(output), &written), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(written, 0);
-    CHECK_EQ_INT(exteria_article_readonly((const uint8_t *)"hello", 5, output, 4, &written), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_article_readonly((const uint8_t *)"hello", 5, output, 4, &written), NOSHI_E_LIMIT);
     CHECK_EQ_INT(written, 0);
-    CHECK_EQ_INT(exteria_article_readonly(NULL, 1, output, sizeof(output), &written), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_article_readonly((const uint8_t *)"x", 1, output, sizeof(output), NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_article_readonly(NULL, 1, output, sizeof(output), &written), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_article_readonly((const uint8_t *)"x", 1, output, sizeof(output), NULL), NOSHI_E_ARG);
     return test_finish("test_article");
 }

@@ -1,5 +1,5 @@
-#include "exteria_tgc_srtp.h"
-#include "exteria_rtp.h"
+#include "noshi_tgc_srtp.h"
+#include "noshi_rtp.h"
 #include "test_util.h"
 
 /* packets protected by libsrtp 2.6.0 (the reference implementation, built from the copy in twelve) with the RFC
@@ -185,9 +185,9 @@ static const uint8_t master_key[16] = {0xE1,0xF9,0x7A,0x0D,0x3E,0x01,0x8B,0xE0,0
 static const uint8_t master_salt[14] = {0x0E,0xC6,0x75,0xAD,0x49,0x8A,0xFE,0xEB,0xB6,0x96,0x0B,0x3A,0xAB,0xE6};
 
 static void key_derivation(void) {
-    exteria_tgc_srtp s;
+    noshi_tgc_srtp s;
     uint8_t want[20];
-    CHECK_EQ_INT(exteria_tgc_srtp_init(&s, master_key, master_salt), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(&s, master_key, master_salt), NOSHI_OK);
     /* RFC 3711 appendix B.3 */
     test_hex("C61E7A93744F39EE10734AFE3FF7A087", want, 16);
     CHECK_MEM(s.rtp_key, want, 16);
@@ -200,28 +200,28 @@ static void key_derivation(void) {
     CHECK(memcmp(s.rtcp_salt, s.rtp_salt, 14) != 0);
     CHECK(memcmp(s.rtcp_auth, s.rtp_auth, 20) != 0);
     CHECK(memcmp(s.rtcp_key, s.rtcp_salt, 14) != 0);
-    CHECK_EQ_INT(exteria_tgc_srtp_init(NULL, master_key, master_salt), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_srtp_init(&s, NULL, master_salt), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_srtp_init(&s, master_key, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(NULL, master_key, master_salt), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(&s, NULL, master_salt), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(&s, master_key, NULL), NOSHI_E_ARG);
     CHECK_EQ_INT(s.rtp_key[0], 0);
 }
 
 static void protect_matches_libsrtp(void) {
-    exteria_tgc_srtp s;
+    noshi_tgc_srtp s;
     uint8_t buf[1600];
     size_t n = 0;
     int i;
-    CHECK_EQ_INT(exteria_tgc_srtp_init(&s, master_key, master_salt), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(&s, master_key, master_salt), NOSHI_OK);
     for (i = 0; i < VEC_RTP; ++i) {
         memcpy(buf, rtp_vectors[i].plain, rtp_vectors[i].plain_len);
-        CHECK_EQ_INT(exteria_tgc_srtp_protect(&s, buf, rtp_vectors[i].plain_len, sizeof(buf), &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_protect(&s, buf, rtp_vectors[i].plain_len, sizeof(buf), &n), NOSHI_OK);
         CHECK_EQ_INT(n, rtp_vectors[i].prot_len);
         if (n == rtp_vectors[i].prot_len && memcmp(buf, rtp_vectors[i].prot, n) != 0) fprintf(stderr, "  rtp vector %d differs\n", i);
         CHECK(n == rtp_vectors[i].prot_len && memcmp(buf, rtp_vectors[i].prot, n) == 0);
     }
     for (i = 0; i < VEC_RTCP; ++i) {
         memcpy(buf, rtcp_vectors[i].plain, rtcp_vectors[i].plain_len);
-        CHECK_EQ_INT(exteria_tgc_srtcp_protect(&s, buf, rtcp_vectors[i].plain_len, sizeof(buf), &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtcp_protect(&s, buf, rtcp_vectors[i].plain_len, sizeof(buf), &n), NOSHI_OK);
         CHECK_EQ_INT(n, rtcp_vectors[i].prot_len);
         if (n == rtcp_vectors[i].prot_len && memcmp(buf, rtcp_vectors[i].prot, n) != 0) fprintf(stderr, "  rtcp vector %d differs\n", i);
         CHECK(n == rtcp_vectors[i].prot_len && memcmp(buf, rtcp_vectors[i].prot, n) == 0);
@@ -229,54 +229,54 @@ static void protect_matches_libsrtp(void) {
 }
 
 static void unprotect_opens_libsrtp(void) {
-    exteria_tgc_srtp s;
+    noshi_tgc_srtp s;
     uint8_t buf[1600];
     size_t n = 0;
     int i;
-    CHECK_EQ_INT(exteria_tgc_srtp_init(&s, master_key, master_salt), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_init(&s, master_key, master_salt), NOSHI_OK);
     for (i = 0; i < VEC_RTP; ++i) {
         memcpy(buf, rtp_vectors[i].prot, rtp_vectors[i].prot_len);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&s, buf, rtp_vectors[i].prot_len, &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&s, buf, rtp_vectors[i].prot_len, &n), NOSHI_OK);
         CHECK_EQ_INT(n, rtp_vectors[i].plain_len);
         CHECK(n == rtp_vectors[i].plain_len && memcmp(buf, rtp_vectors[i].plain, n) == 0);
     }
     for (i = 0; i < VEC_RTCP; ++i) {
         memcpy(buf, rtcp_vectors[i].prot, rtcp_vectors[i].prot_len);
-        CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&s, buf, rtcp_vectors[i].prot_len, &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&s, buf, rtcp_vectors[i].prot_len, &n), NOSHI_OK);
         CHECK_EQ_INT(n, rtcp_vectors[i].plain_len);
         CHECK(n == rtcp_vectors[i].plain_len && memcmp(buf, rtcp_vectors[i].plain, n) == 0);
     }
     /* each of them once only */
     for (i = 0; i < VEC_RTP; ++i) {
         memcpy(buf, rtp_vectors[i].prot, rtp_vectors[i].prot_len);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&s, buf, rtp_vectors[i].prot_len, &n), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&s, buf, rtp_vectors[i].prot_len, &n), NOSHI_E_RETRY);
         CHECK_EQ_INT(n, 0);
     }
     for (i = 0; i < VEC_RTCP; ++i) {
         memcpy(buf, rtcp_vectors[i].prot, rtcp_vectors[i].prot_len);
-        CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&s, buf, rtcp_vectors[i].prot_len, &n), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&s, buf, rtcp_vectors[i].prot_len, &n), NOSHI_E_RETRY);
     }
 }
 
 /* two contexts of one key: what one protects the other unprotects, across a rollover and in a different order */
 static void rollover_and_order(void) {
-    exteria_tgc_srtp tx, rx;
+    noshi_tgc_srtp tx, rx;
     uint8_t pkt[2][1600], plain[1600];
     uint16_t seq;
     size_t n = 0, plain_len, i;
     uint32_t sent = 0;
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
     /* 3 laps of the sequence space would be 196608 packets; start near the wrap and go across it twice */
     for (seq = 65000; sent < 140000; ++seq, ++sent) {
-        exteria_rtp_write_header(plain, sizeof(plain), 100, 0, seq, sent * 3000u, 0x55667788u);
+        noshi_rtp_write_header(plain, sizeof(plain), 100, 0, seq, sent * 3000u, 0x55667788u);
         plain_len = 12 + 8;
         for (i = 12; i < plain_len; ++i) plain[i] = (uint8_t)(seq + i);
         memcpy(pkt[0], plain, plain_len);
-        CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt[0], plain_len, sizeof(pkt[0]), &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt[0], plain_len, sizeof(pkt[0]), &n), NOSHI_OK);
         if (sent % 997 == 0 || (sent > 540 && sent < 560) || (sent > 66500 && sent < 66600)) {
             size_t m = 0;
-            CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt[0], n, &m), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt[0], n, &m), NOSHI_OK);
             CHECK_EQ_INT(m, plain_len);
             CHECK(memcmp(pkt[0], plain, plain_len) == 0);
         } else {
@@ -287,23 +287,23 @@ static void rollover_and_order(void) {
     CHECK_EQ_INT(tx.streams[0].roc, 3);
 
     /* a burst delivered out of order around the wrap: each opens once, in any order inside the window */
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
     {
         uint8_t many[12][64];
         size_t lens[12];
         static const int order[12] = {0, 1, 3, 2, 4, 5, 6, 7, 11, 8, 10, 9};
         int k;
         for (k = 0; k < 12; ++k) {
-            exteria_rtp_write_header(many[k], sizeof(many[k]), 96, 0, (uint16_t)(65530 + k), 100u * (unsigned)k, 0x1111u);
+            noshi_rtp_write_header(many[k], sizeof(many[k]), 96, 0, (uint16_t)(65530 + k), 100u * (unsigned)k, 0x1111u);
             many[k][12] = (uint8_t)k;
-            CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, many[k], 13, sizeof(many[k]), &lens[k]), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, many[k], 13, sizeof(many[k]), &lens[k]), NOSHI_OK);
         }
         for (k = 0; k < 12; ++k) {
             uint8_t copy[64];
             size_t m = 0;
             memcpy(copy, many[order[k]], lens[order[k]]);
-            CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[order[k]], &m), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[order[k]], &m), NOSHI_OK);
             CHECK_EQ_INT(m, 13);
             CHECK_EQ_INT(copy[12], order[k]);
         }
@@ -311,60 +311,60 @@ static void rollover_and_order(void) {
             uint8_t copy[64];
             size_t m = 0;
             memcpy(copy, many[k], lens[k]);
-            CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[k], &m), EXTERIA_E_RETRY);
+            CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[k], &m), NOSHI_E_RETRY);
         }
     }
 }
 
 static void replay_window(void) {
-    exteria_tgc_srtp tx, rx;
+    noshi_tgc_srtp tx, rx;
     uint8_t pkt[300][40];
     size_t lens[300], m = 0;
     int i;
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
     for (i = 0; i < 300; ++i) {
-        exteria_rtp_write_header(pkt[i], 40, 111, 0, (uint16_t)(i + 1), (uint32_t)i, 0x2222u);
+        noshi_rtp_write_header(pkt[i], 40, 111, 0, (uint16_t)(i + 1), (uint32_t)i, 0x2222u);
         pkt[i][12] = (uint8_t)i;
-        CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt[i], 13, 40, &lens[i]), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt[i], 13, 40, &lens[i]), NOSHI_OK);
     }
     /* 200 is the newest; 73 packets back is still inside the window of 128, and 128 back is not */
     {
         uint8_t copy[40];
         memcpy(copy, pkt[199], lens[199]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[199], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[199], &m), NOSHI_OK);
         memcpy(copy, pkt[72], lens[72]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[72], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[72], &m), NOSHI_OK);
         memcpy(copy, pkt[71], lens[71]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[71], &m), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[71], &m), NOSHI_E_RETRY);
         memcpy(copy, pkt[0], lens[0]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[0], &m), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[0], &m), NOSHI_E_RETRY);
         /* a jump past the window forgets everything older but keeps the newest */
         memcpy(copy, pkt[299], lens[299]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[299], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[299], &m), NOSHI_OK);
         memcpy(copy, pkt[199], lens[199]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[199], &m), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[199], &m), NOSHI_E_RETRY);
         memcpy(copy, pkt[250], lens[250]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[250], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[250], &m), NOSHI_OK);
         /* the skipped slots read as unseen after a short jump: 260 and 262 arrive, then 261 */
         memcpy(copy, pkt[260], lens[260]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[260], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[260], &m), NOSHI_OK);
         memcpy(copy, pkt[261], lens[261]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[261], &m), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[261], &m), NOSHI_OK);
         memcpy(copy, pkt[261], lens[261]);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, lens[261], &m), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, lens[261], &m), NOSHI_E_RETRY);
     }
 }
 
 static void tampering_and_failures(void) {
-    exteria_tgc_srtp tx, rx;
+    noshi_tgc_srtp tx, rx;
     uint8_t pkt[64], copy[64];
     size_t n = 0, m = 0, i;
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
-    exteria_rtp_write_header(pkt, sizeof(pkt), 111, 1, 77, 5, 0x3333u);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
+    noshi_rtp_write_header(pkt, sizeof(pkt), 111, 1, 77, 5, 0x3333u);
     memcpy(pkt + 12, "payload!", 8);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt, 20, sizeof(pkt), &n), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt, 20, sizeof(pkt), &n), NOSHI_OK);
     CHECK_EQ_INT(n, 30);
     /* every byte covered by the tag, and the tag itself: a changed bit is refused and the state is left alone */
     for (i = 0; i < n; ++i) {
@@ -372,89 +372,89 @@ static void tampering_and_failures(void) {
         copy[i] ^= 0x04;
         m = 99;
         {
-            exteria_status s = exteria_tgc_srtp_unprotect(&rx, copy, n, &m);
+            noshi_status s = noshi_tgc_srtp_unprotect(&rx, copy, n, &m);
             /* the version bits and the length checks may refuse it earlier, as malformed; the ssrc bytes pick another stream, which also fails the tag */
-            CHECK(s == EXTERIA_E_SECURITY || s == EXTERIA_E_MALFORMED);
+            CHECK(s == NOSHI_E_SECURITY || s == NOSHI_E_MALFORMED);
             CHECK_EQ_INT(m, 0);
         }
     }
     memcpy(copy, pkt, n);
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, n, &m), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, n, &m), NOSHI_OK);
     CHECK_EQ_INT(m, 20);
     CHECK(memcmp(copy + 12, "payload!", 8) == 0);
     /* a packet that is too short for a header and a tag, or no RTP at all */
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt, 21, &m), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt, 0, &m), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt, 21, &m), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt, 0, &m), NOSHI_E_MALFORMED);
     memset(copy, 0, sizeof(copy));
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, 40, &m), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, 40, &m), NOSHI_E_MALFORMED);
     /* protect: capacity, a short or malformed packet */
-    exteria_rtp_write_header(copy, sizeof(copy), 111, 0, 1, 1, 0x4444u);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, copy, 12, 21, &n), EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, copy, 12, 22, &n), EXTERIA_OK);
+    noshi_rtp_write_header(copy, sizeof(copy), 111, 0, 1, 1, 0x4444u);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, copy, 12, 21, &n), NOSHI_E_LIMIT);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, copy, 12, 22, &n), NOSHI_OK);
     CHECK_EQ_INT(n, 22);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, copy, 11, 64, &n), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, copy, 11, 64, &n), NOSHI_E_MALFORMED);
     copy[0] = 0x40;
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, copy, 12, 64, &n), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(NULL, copy, 12, 64, &n), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, NULL, 12, 64, &n), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, copy, 40, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, copy, 12, 64, &n), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(NULL, copy, 12, 64, &n), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, NULL, 12, 64, &n), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, copy, 40, NULL), NOSHI_E_ARG);
     /* the keys of the other direction do not open it */
     {
-        exteria_tgc_srtp other;
+        noshi_tgc_srtp other;
         uint8_t other_salt[14];
         memcpy(other_salt, master_salt, 14);
         other_salt[0] ^= 1;
-        exteria_tgc_srtp_init(&other, master_key, other_salt);
+        noshi_tgc_srtp_init(&other, master_key, other_salt);
         memcpy(copy, pkt, 30);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&other, copy, 30, &m), EXTERIA_E_SECURITY);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&other, copy, 30, &m), NOSHI_E_SECURITY);
     }
 }
 
 static void stream_table(void) {
-    exteria_tgc_srtp tx, rx;
+    noshi_tgc_srtp tx, rx;
     uint8_t pkt[40];
     size_t n = 0, m = 0;
     uint32_t ssrc;
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
-    for (ssrc = 1; ssrc <= EXTERIA_TGC_SRTP_STREAMS; ++ssrc) {
-        exteria_rtp_write_header(pkt, sizeof(pkt), 111, 0, 1, 1, ssrc);
-        CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt, n, &m), EXTERIA_OK);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
+    for (ssrc = 1; ssrc <= NOSHI_TGC_SRTP_STREAMS; ++ssrc) {
+        noshi_rtp_write_header(pkt, sizeof(pkt), 111, 0, 1, 1, ssrc);
+        CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt, n, &m), NOSHI_OK);
     }
     /* a sender more than the table holds does not fit, on either end, but the others go on */
-    exteria_rtp_write_header(pkt, sizeof(pkt), 111, 0, 1, 1, 99);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), EXTERIA_E_LIMIT);
+    noshi_rtp_write_header(pkt, sizeof(pkt), 111, 0, 1, 1, 99);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), NOSHI_E_LIMIT);
     {
-        exteria_tgc_srtp other;
+        noshi_tgc_srtp other;
         uint8_t again[40];
         size_t k = 0;
-        exteria_tgc_srtp_init(&other, master_key, master_salt);
-        exteria_rtp_write_header(again, sizeof(again), 111, 0, 1, 1, 99);
-        CHECK_EQ_INT(exteria_tgc_srtp_protect(&other, again, 12, sizeof(again), &k), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, again, k, &m), EXTERIA_E_LIMIT);
+        noshi_tgc_srtp_init(&other, master_key, master_salt);
+        noshi_rtp_write_header(again, sizeof(again), 111, 0, 1, 1, 99);
+        CHECK_EQ_INT(noshi_tgc_srtp_protect(&other, again, 12, sizeof(again), &k), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, again, k, &m), NOSHI_E_LIMIT);
     }
-    exteria_rtp_write_header(pkt, sizeof(pkt), 111, 0, 2, 2, 3);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt, n, &m), EXTERIA_OK);
+    noshi_rtp_write_header(pkt, sizeof(pkt), 111, 0, 2, 2, 3);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt, n, &m), NOSHI_OK);
     /* a sender that left gives its place back, on both ends, and the new one starts from a fresh stream */
-    exteria_tgc_srtp_forget(&tx, 1);
-    exteria_tgc_srtp_forget(&rx, 1);
-    exteria_tgc_srtp_forget(NULL, 1);
-    exteria_rtp_write_header(pkt, sizeof(pkt), 111, 0, 7, 7, 99);
-    CHECK_EQ_INT(exteria_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_srtp_unprotect(&rx, pkt, n, &m), EXTERIA_OK);
+    noshi_tgc_srtp_forget(&tx, 1);
+    noshi_tgc_srtp_forget(&rx, 1);
+    noshi_tgc_srtp_forget(NULL, 1);
+    noshi_rtp_write_header(pkt, sizeof(pkt), 111, 0, 7, 7, 99);
+    CHECK_EQ_INT(noshi_tgc_srtp_protect(&tx, pkt, 12, sizeof(pkt), &n), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_srtp_unprotect(&rx, pkt, n, &m), NOSHI_OK);
 }
 
 static void rtcp_rules(void) {
-    exteria_tgc_srtp tx, rx;
+    noshi_tgc_srtp tx, rx;
     uint8_t pkt[64], copy[64];
     size_t n = 0, m = 0, i;
-    exteria_tgc_srtp_init(&tx, master_key, master_salt);
-    exteria_tgc_srtp_init(&rx, master_key, master_salt);
-    CHECK_EQ_INT(exteria_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 0x01020304u), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_srtcp_protect(&tx, pkt, EXTERIA_RTCP_PLI_LEN, sizeof(pkt), &n), EXTERIA_OK);
-    CHECK_EQ_INT(n, EXTERIA_RTCP_PLI_LEN + EXTERIA_TGC_SRTCP_TRAILER_LEN);
+    noshi_tgc_srtp_init(&tx, master_key, master_salt);
+    noshi_tgc_srtp_init(&rx, master_key, master_salt);
+    CHECK_EQ_INT(noshi_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 0x01020304u), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_srtcp_protect(&tx, pkt, NOSHI_RTCP_PLI_LEN, sizeof(pkt), &n), NOSHI_OK);
+    CHECK_EQ_INT(n, NOSHI_RTCP_PLI_LEN + NOSHI_TGC_SRTCP_TRAILER_LEN);
     /* the first 8 bytes stay in the clear, the rest is encrypted, and the index word says so */
     CHECK_MEM(pkt, "\x81\xCE\x00\x02\x0A\x0B\x0C\x0D", 8);
     CHECK(memcmp(pkt + 8, "\x01\x02\x03\x04", 4) != 0);
@@ -463,32 +463,32 @@ static void rtcp_rules(void) {
     for (i = 0; i < n; ++i) {
         memcpy(copy, pkt, n);
         copy[i] ^= 0x10;
-        CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, copy, n, &m) == EXTERIA_OK, 0);
+        CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, copy, n, &m) == NOSHI_OK, 0);
     }
     memcpy(copy, pkt, n);
-    CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, copy, n, &m), EXTERIA_OK);
-    CHECK_EQ_INT(m, EXTERIA_RTCP_PLI_LEN);
+    CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, copy, n, &m), NOSHI_OK);
+    CHECK_EQ_INT(m, NOSHI_RTCP_PLI_LEN);
     CHECK_MEM(copy + 8, "\x01\x02\x03\x04", 4);
     memcpy(copy, pkt, n);
-    CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, copy, n, &m), EXTERIA_E_RETRY);
+    CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, copy, n, &m), NOSHI_E_RETRY);
     /* indexes count up for every packet of the context */
-    exteria_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 0x01020304u);
-    CHECK_EQ_INT(exteria_tgc_srtcp_protect(&tx, pkt, EXTERIA_RTCP_PLI_LEN, sizeof(pkt), &n), EXTERIA_OK);
+    noshi_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 0x01020304u);
+    CHECK_EQ_INT(noshi_tgc_srtcp_protect(&tx, pkt, NOSHI_RTCP_PLI_LEN, sizeof(pkt), &n), NOSHI_OK);
     CHECK_EQ_INT(pkt[15], 0x02);
-    CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, pkt, n, &m), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, pkt, n, &m), NOSHI_OK);
     /* too short, wrong version, capacity */
-    CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, pkt, 21, &m), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, pkt, 21, &m), NOSHI_E_MALFORMED);
     pkt[0] = 0x01;
-    CHECK_EQ_INT(exteria_tgc_srtcp_unprotect(&rx, pkt, 26, &m), EXTERIA_E_MALFORMED);
-    exteria_rtcp_write_pli(pkt, sizeof(pkt), 1, 2);
-    CHECK_EQ_INT(exteria_tgc_srtcp_protect(&tx, pkt, 12, 25, &n), EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(exteria_tgc_srtcp_protect(&tx, pkt, 7, 64, &n), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_srtcp_unprotect(&rx, pkt, 26, &m), NOSHI_E_MALFORMED);
+    noshi_rtcp_write_pli(pkt, sizeof(pkt), 1, 2);
+    CHECK_EQ_INT(noshi_tgc_srtcp_protect(&tx, pkt, 12, 25, &n), NOSHI_E_LIMIT);
+    CHECK_EQ_INT(noshi_tgc_srtcp_protect(&tx, pkt, 7, 64, &n), NOSHI_E_MALFORMED);
     tx.rtcp_streams[0].rtcp_index = 0x7FFFFFFFu;
-    exteria_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 2);
-    CHECK_EQ_INT(exteria_tgc_srtcp_protect(&tx, pkt, 12, 64, &n), EXTERIA_E_STATE);
-    exteria_tgc_srtp_wipe(&tx);
+    noshi_rtcp_write_pli(pkt, sizeof(pkt), 0x0A0B0C0Du, 2);
+    CHECK_EQ_INT(noshi_tgc_srtcp_protect(&tx, pkt, 12, 64, &n), NOSHI_E_STATE);
+    noshi_tgc_srtp_wipe(&tx);
     CHECK_EQ_INT(tx.rtp_key[0], 0);
-    exteria_tgc_srtp_wipe(NULL);
+    noshi_tgc_srtp_wipe(NULL);
 }
 
 int main(void) {

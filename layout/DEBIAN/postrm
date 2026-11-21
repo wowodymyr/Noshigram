@@ -1,0 +1,26 @@
+#!/bin/sh
+# removal rebuilds the app cache so the icon goes, the switch for internal apps is taken back in prerm
+
+case "$1" in
+  remove|purge)
+    if [ -x /var/jb/usr/bin/dpkg ] && [ ! -x /usr/bin/dpkg ]; then
+      JBROOT=/var/jb
+    else
+      JBROOT=
+    fi
+    UICACHE=${JBROOT}/usr/bin/uicache
+    [ -x "$UICACHE" ] || UICACHE=/usr/bin/uicache
+    INSTALL_CACHE=/var/mobile/Library/Caches/com.apple.mobile.installation.plist
+    SU=/bin/su
+    [ -x "$SU" ] || SU=/usr/bin/su
+    if [ -x "$UICACHE" ]; then
+      if [ -z "$JBROOT" ] && [ -f "$INSTALL_CACHE" ] && [ -x "$SU" ]; then
+        ( "$SU" - mobile -c "$UICACHE" >/dev/null 2>&1 || "$UICACHE" >/dev/null 2>&1 || true ) </dev/null &
+      else
+        ( "$UICACHE" >/dev/null 2>&1 || true ) </dev/null &
+      fi
+    fi
+    ;;
+esac
+
+exit 0

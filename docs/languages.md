@@ -1,6 +1,6 @@
 # languages
 
-how to add a language to exteria. there are two ways: a `.strings` file that anyone can load on the phone, and a language built into the app.
+how to add a language to noshigram. there are two ways: a `.strings` file that anyone can load on the phone, and a language built into the app.
 
 ## the file
 
@@ -20,7 +20,7 @@ start from a template: settings, language, then "English template" or "Russian t
 
 ## load it on the phone
 
-1. copy the file to the Documents folder of Exteria with file sharing, or send it to the phone any other way that ends in a place the file browser can reach
+1. copy the file to the Documents folder of Noshigram with file sharing, or send it to the phone any other way that ends in a place the file browser can reach
 2. settings, language, "Import a language", choose the file
 3. the new row appears in the list; tap it to use it
 
@@ -62,17 +62,17 @@ so a file with another base needs `.one` and `.other` only; a `.few` key in it i
 
 a refused file says why: unreadable (not a valid `.strings` file), too large, a name with no letters or digits, too many languages, or no text of the app in it.
 
-where the file is kept: `Application Support/Exteria/Languages/<code>.lproj/Localizable.strings`, the list of names in the user defaults.
+where the file is kept: `Application Support/Noshigram/Languages/<code>.lproj/Localizable.strings`, the list of names in the user defaults.
 
 ## a language built into the app
 
 for a language that ships in the ipa. this changes code, so it needs a build.
 
 1. make `resources/localization/<code>.lproj/Localizable.strings`, with `<code>` a real language code (`de`, `pl`). the build copies every `lproj` of that folder into the app
-2. add the code to the list in `ExteriaInterfaceLanguageCodes` in `app/translate/exteria_language.m`; the language screen lists them in that order
+2. add the code to the list in `NoshiInterfaceLanguageCodes` in `app/translate/noshi_language.m`; the language screen lists them in that order
 3. add it to `CFBundleLocalizations` in `packaging/Info.plist`
-4. if its plural rules are not "one and other", add them to `ExteriaPluralForm` in `app/ui/shared/exteria_plural.m` and write the forms your rules name
-5. put `language.name` and `language.english` nowhere: a bundled language is named by the system (`ExteriaNativeLanguageName`), only custom ones carry their own name
+4. if its plural rules are not "one and other", add them to `NoshiPluralForm` in `app/ui/shared/noshi_plural.m` and write the forms your rules name
+5. put `language.name` and `language.english` nowhere: a bundled language is named by the system (`NoshiNativeLanguageName`), only custom ones carry their own name
 
 the same rules as for a file apply: keys of `en.lproj`, placeholders in the same order. a missing key shows the english text, not the key, but a bundled language should be complete. check that no key is missing:
 

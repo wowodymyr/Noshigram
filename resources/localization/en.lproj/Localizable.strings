@@ -1,15 +1,15 @@
-"welcome.title.0" = "Exteria";
+"welcome.title.0" = "Noshigram";
 "welcome.title.1" = "Fast";
 "welcome.title.2" = "Free";
 "welcome.title.3" = "Secure";
 "welcome.title.4" = "Powerful";
 "welcome.title.5" = "Cloud-Based";
 "welcome.message.0" = "The world's fastest messaging app.\nIt is free and secure.";
-"welcome.message.1" = "Exteria delivers messages faster than\nany other application.";
-"welcome.message.2" = "Exteria provides free unlimited cloud storage for chats and media.";
-"welcome.message.3" = "Exteria keeps your messages safe\nfrom hacker attacks.";
-"welcome.message.4" = "Exteria has no limits on\nthe size of your media and chats.";
-"welcome.message.5" = "Exteria lets you access your messages\nfrom multiple devices.";
+"welcome.message.1" = "Noshigram delivers messages faster than\nany other application.";
+"welcome.message.2" = "Noshigram provides free unlimited cloud storage for chats and media.";
+"welcome.message.3" = "Noshigram keeps your messages safe\nfrom hacker attacks.";
+"welcome.message.4" = "Noshigram has no limits on\nthe size of your media and chats.";
+"welcome.message.5" = "Noshigram lets you access your messages\nfrom multiple devices.";
 "welcome.start" = "Start Messaging";
 "notice.ok" = "OK";
 
@@ -57,12 +57,12 @@
 "error.code.invalid" = "The code is not correct.";
 "error.code.expired" = "The code has expired. Request a new one.";
 "error.password.invalid" = "The password is not correct.";
-"error.api" = "This copy of Exteria is not allowed to sign in.";
+"error.api" = "This copy of Noshigram is not allowed to sign in.";
 "error.timeout" = "The server did not answer in time.";
 "error.internal" = "Something went wrong. Please try again.";
 "error.storage" = "The account could not be saved on this device.";
 "error.offline" = "Cannot connect to Telegram. Check the network and try again.";
-"error.unsupported" = "This account needs an e-mail confirmation or a recovery step that Exteria does not support yet.";
+"error.unsupported" = "This account needs an e-mail confirmation or a recovery step that Noshigram does not support yet.";
 "error.unknown" = "Sign in failed: %@";
 
 "tab.chats" = "Chats";
@@ -70,7 +70,7 @@
 "tab.calls" = "Calls";
 "tab.settings" = "Settings";
 "chats.search" = "Search chats";
-"chats.title" = "Exteria";
+"chats.title" = "Noshigram";
 "connecting.title" = "Connecting";
 "updating.title" = "Updating";
 "chats.filter.all" = "All";
@@ -100,7 +100,7 @@
 "list.load.error" = "Could not load the list: %@";
 "list.empty" = "Nothing here yet";
 "settings.signout" = "Log Out";
-"settings.signout.confirm" = "Do you want to log out of Exteria on this device?";
+"settings.signout.confirm" = "Do you want to log out of Noshigram on this device?";
 "preview.photo" = "Photo";
 "preview.video" = "Video";
 "preview.videomessage" = "Video message";
@@ -126,7 +126,7 @@
 "release.cancel" = "Cancel";
 "release.restart" = "Restart";
 "release.retry" = "Try again";
-"release.updating" = "Updating Exteria";
+"release.updating" = "Updating Noshigram";
 "release.preparing" = "Getting ready...";
 "release.progress" = "%@ of %@ MB";
 "release.installing" = "Installing...";
@@ -206,7 +206,7 @@
 "chat.deleted.readonly" = "This account was deleted, so you cannot write to it";
 "chat.replies.open" = "Open chat";
 "chat.replies.unavailable" = "The chat could not be opened";
-"chat.unsupported" = "Exteria does not support this message format :(";
+"chat.unsupported" = "Noshigram does not support this message format :(";
 "chat.yesterday" = "Yesterday";
 "chat.reaction.choose" = "Your reaction";
 "chat.reaction.loading" = "Loading reactions...";
@@ -219,7 +219,7 @@
 "chat.reaction.multiple" = "You can set multiple reactions with Telegram Premium.";
 "contacts.nochat" = "This contact cannot be messaged from here yet";
 "profile.signout" = "Log Out";
-"profile.signout.confirm" = "Do you want to log out of Exteria on this device?";
+"profile.signout.confirm" = "Do you want to log out of Noshigram on this device?";
 "settings.section.look" = "Appearance";
 "settings.section.storage" = "Storage";
 "settings.section.about" = "About";
@@ -264,7 +264,7 @@
 "attach.location.failed" = "Could not send: no location";
 "attach.location.denied" = "Location access is off";
 "attach.gallery.unavailable" = "The photo library is not available";
-"attach.gallery.denied" = "No access to the photos. On ios 5, turn location services on for Exteria in the settings.";
+"attach.gallery.denied" = "No access to the photos. On ios 5, turn location services on for Noshigram in the settings.";
 "attach.gallery.system" = "Choose in the system gallery";
 "attach.failed" = "The file could not be prepared";
 "menu.day" = "Day mode";
@@ -704,7 +704,7 @@
 "chat.period.minutes" = "%d minutes";
 "channel.action.join" = "Join";
 "channel.action.message" = "Message";
-"channel.join.webview" = "This channel asks for a check on a web page, which Exteria cannot open";
+"channel.join.webview" = "This channel asks for a check on a web page, which Noshigram cannot open";
 "channel.join.toomuch" = "You have joined as many channels and groups as Telegram allows";
 "channel.join.denied" = "You cannot join this channel";
 "profile.action.message" = "Message";
@@ -862,11 +862,11 @@
 "plural.months.other" = "%d months";
 "plural.years.one" = "%d year";
 "plural.years.other" = "%d years";
-"settings.exteria" = "Exteria settings";
-"settings.exteria.info" = "Make the client your own";
-"settings.exteria.chats" = "Chats";
-"settings.exteria.chats.info" = "Messages, menus and confirmations";
-"about.name" = "exteria";
+"settings.noshigram" = "Noshigram settings";
+"settings.noshigram.info" = "Make the client your own";
+"settings.noshigram.chats" = "Chats";
+"settings.noshigram.chats.info" = "Messages, menus and confirmations";
+"about.name" = "noshigram";
 "about.categories" = "Categories";
 "about.main" = "General";
 "about.look" = "Appearance";
@@ -914,27 +914,27 @@
 "language.link.alert.custom" = "You are about to apply a custom language pack (%1$@) that is %2$d%% complete.\n\nThis will translate the entire interface.\n\nYou can change your language back at any time in Settings.";
 "language.link.same" = "You are already using this language pack (%@). You can change your language at any time in Settings.";
 "language.link.nodata.title" = "Insufficient data";
-"language.link.nodata" = "Unfortunately, this language pack (%@) doesn't contain data for Exteria.";
-"language.link.nodata.custom" = "Unfortunately, this custom language pack (%@) doesn't contain data for Exteria.";
+"language.link.nodata" = "Unfortunately, this language pack (%@) doesn't contain data for Noshigram.";
+"language.link.nodata.custom" = "Unfortunately, this custom language pack (%@) doesn't contain data for Noshigram.";
 "language.link.unsupported" = "There is no such language.";
 "plugins.fault" = "Switched off after errors: %@";
 "plugins.starting" = "Starting…";
 "plugins.fault.line" = " (line %@)";
-"plugins.fault.module.android" = "Uses “%@” from Android, which Exteria does not have yet";
-"plugins.fault.module" = "Needs the Python module “%@”, which Exteria does not have";
-"plugins.fault.class" = "Needs the class “%@”, which Exteria does not have yet";
-"plugins.fault.name" = "“%@” has nothing called “%@” in Exteria";
+"plugins.fault.module.android" = "Uses “%@” from Android, which Noshigram does not have yet";
+"plugins.fault.module" = "Needs the Python module “%@”, which Noshigram does not have";
+"plugins.fault.class" = "Needs the class “%@”, which Noshigram does not have yet";
+"plugins.fault.name" = "“%@” has nothing called “%@” in Noshigram";
 "plugins.fault.syntax.line" = "Syntax error in line %@";
 "plugins.fault.syntax" = "Syntax error";
 "plugins.fault.time" = "Took too long to start";
 "plugins.fault.permission" = "Needs the permission “%@”";
 "plugins.fault.notallowed" = "Not allowed: %@";
 "plugins.fault.file" = "A file it needs is missing: %@";
-"plugins.fault.unsupported" = "Uses something Exteria does not support: %@";
+"plugins.fault.unsupported" = "Uses something Noshigram does not support: %@";
 "plugins.fault.generic" = "Error: %@%@";
 "plugins.fail.title" = "%@ did not start";
 "plugins.fail.android" = "It calls Android classes that this app does not have: %@.";
-"plugins.notice.android" = "Part of it may not work: Exteria lacks classes of the Android client (%ld): %@.";
+"plugins.notice.android" = "Part of it may not work: Noshigram lacks classes of the Android client (%ld): %@.";
 "plugins.fail.android.many" = "It makes too many Android calls: %ld of the %ld Android classes it uses are missing here, for example %@. Only a small part of the Android interface is rebuilt, so it cannot start.";
 "plugins.fail.library" = "It needs another plugin or library, “%@”, that is missing or switched off. Turn that one on first.";
 "plugins.fail.feature" = "It uses something this app does not offer: %@.";
@@ -945,7 +945,7 @@
 "about.channel" = "Channel";
 "about.source" = "Source code";
 "about.person.unavailable" = "Could not load this team member’s profile.";
-"about.team" = "Exteria development team";
+"about.team" = "Noshigram development team";
 "about.testers" = "Official testers";
 "about.tester" = "Official tester";
 "about.developers" = "Developers";
@@ -960,7 +960,7 @@
 "settings.devices" = "Devices";
 "settings.devices.info" = "Manage active sessions";
 "settings.photo" = "Change photo";
-"settings.version.line" = "exteria v%@ %@";
+"settings.version.line" = "noshigram v%@ %@";
 "devices.scan.timeout" = "No login code found\nfill the frame with the code and hold the device still";
 "devices.scan.denied" = "Camera access is off\nTurn it on in Settings > Privacy > Camera";
 "tr.title" = "Translator";
@@ -1847,7 +1847,7 @@
 "memory.kind.music" = "Music";
 "memory.kind.stickers" = "Stickers and emoji";
 "memory.kind.other" = "Other";
-"memory.share" = "Exteria takes %@ of the space on the device.";
+"memory.share" = "Noshigram takes %@ of the space on the device.";
 "settings.cache.clear.all" = "Clear the whole cache";
 "netusage.title" = "Network usage";
 "netusage.wifi" = "Wi-Fi";
@@ -1884,7 +1884,7 @@
 "time.zone.auto" = "Automatic";
 "time.zone.auto.info" = "Use the device time zone.";
 "time.zone.manual" = "UTC Offset";
-"time.zone.manual.info" = "Display times in Exteria with the selected UTC offset. The device clock stays the same. Select a new offset manually for daylight saving time.";
+"time.zone.manual.info" = "Display times in Noshigram with the selected UTC offset. The device clock stays the same. Select a new offset manually for daylight saving time.";
 "general.zalgo" = "Filter \"Zalgo\"";
 "general.zalgo.info" = "Removes stacked combining marks that break text layout: Z̷͍͌ā̸̜l̸̞̂g̷͍̝o̶̩̓ becomes Zalgo.";
 "general.profile.header" = "Profile";
@@ -1904,7 +1904,7 @@
 "calls.video" = "%@ (video)";
 "calls.callback" = "Call back";
 "calls.openchat" = "Open chat";
-"settings.exteria.look" = "Appearance";
+"settings.noshigram.look" = "Appearance";
 "look.layout.header" = "Bottom bar";
 "tabedit.title" = "Edit bottom bar";
 "tabedit.preview" = "Preview";
@@ -2001,7 +2001,7 @@
 "more.other" = "Other";
 "more.boykisser" = "Boykissers";
 "more.reset" = "Reset settings";
-"more.reset.info" = "All the settings of Exteria go back to their defaults. Accounts and chats are not touched.";
+"more.reset.info" = "All the settings of Noshigram go back to their defaults. Accounts and chats are not touched.";
 "more.reset.footer" = "The reset does not touch accounts, messages or files.";
 "more.delete" = "Delete account";
 "more.delete.confirm" = "The Telegram account will be deleted for good with its messages and contacts. It cannot be brought back.";
@@ -2014,14 +2014,14 @@
 "more.delete.recent" = "The deletion is already asked for. Wait for the end of the delay or cancel it in Telegram.";
 "more.delete.done" = "The account is deleted.";
 "shiro.endpoint" = "Automatic endpoint";
-"developer.title" = "Exteria developer";
-"developer.notice" = "Took part in the development of Exteria";
+"developer.title" = "Noshigram developer";
+"developer.notice" = "Took part in the development of Noshigram";
 "developer.someone" = "This person";
 "chatset.quickreaction" = "Quick reaction";
 "chatset.quickreaction.info" = "Double-tap a message to send your chosen reaction.";
 "chatset.quickreaction.enable" = "Double-tap reaction";
 "chatset.quickreaction.off" = "Off";
-"chatset.quickreaction.preview.in" = "hey, I found another bug in Exteria";
+"chatset.quickreaction.preview.in" = "hey, I found another bug in Noshigram";
 "chatset.quickreaction.preview.quote" = "hey, did something happen?";
 "chatset.quickreaction.preview.out" = "Doing well!";
 "chatset.premium.header" = "Premium elements";
@@ -2043,10 +2043,10 @@
 "gifts.folder.remove" = "Remove from the folder “%@”";
 "gifts.folder.none" = "You have no folders yet. Make one in the list of gifts.";
 "developer.senko" = "Developer of Senko";
-"developer.tester" = "Tested Exteria";
+"developer.tester" = "Tested Noshigram";
 "developer.official_tester" = "Official tester of @sqmrak";
-"developer.bug_hunter.notice" = "Exteria's most elite tester";
-"developer.lead" = "Lead developer of Exteria";
+"developer.bug_hunter.notice" = "Noshigram's most elite tester";
+"developer.lead" = "Lead developer of Noshigram";
 "proxy.title" = "Proxy";
 "proxy.confirm" = "Connect to %1$@ proxy %2$s:%3$u?";
 "proxy.enable" = "Connect";
@@ -2113,7 +2113,7 @@
 "shiro.why.account.tls" = "Could not create a Shiro account: the secure connection to Cloudflare failed its check :( Most often the date and time of the device are wrong. Fix them and tap “Try again”. If the time is right, your network swaps the certificate: try another network or an outside VPN.";
 "shiro.why.account.refused" = "Cloudflare refused to create a Shiro account (code %d) ;( This usually passes: try later, or register once through an outside VPN.";
 "shiro.why.account.answer" = "Cloudflare answered the registration in a way the app did not expect, so no Shiro account was made :( Tap “Try again”; if it does not help, copy the logs and send them to the developer.";
-"shiro.why.account.roots" = "The app did not find the certificates to check Cloudflare with, so no Shiro account was made ;( Reinstall Exteria, and if that does not help, send the logs to the developer.";
+"shiro.why.account.roots" = "The app did not find the certificates to check Cloudflare with, so no Shiro account was made ;( Reinstall Noshigram, and if that does not help, send the logs to the developer.";
 "shiro.why.account.other" = "The Shiro account was not made, and the reason is unclear :( Tap “Try again”, try another network, or register once through an outside VPN. If it keeps failing, copy the logs and send them to the developer.";
 "shiro.why.server" = "Could not connect to Cloudflare ;( It looks like your network blocks its address. Tap “Try again”, and if that does not help, try another network (Wi‑Fi or mobile) or an outside VPN.";
 "shiro.why.key" = "Cloudflare answered, but the key of the Shiro account did not fit :( Tap “Try again”: the account will be made anew.";
@@ -2157,7 +2157,7 @@
 "passcode.to.pin" = "Use 4 digits";
 "passcode.biometric.touch" = "Touch ID";
 "passcode.biometric.face" = "Face ID";
-"passcode.biometric.reason" = "Unlock Exteria";
+"passcode.biometric.reason" = "Unlock Noshigram";
 "passcode.biometric.info" = "Open the app with %@ instead of typing the passcode. The passcode still works if it fails.";
 
 "map.send.title" = "Send location";
@@ -2192,7 +2192,7 @@
 "invite.error.sent" = "The request to join was sent to the admins";
 "invite.error.member" = "You are already a member";
 "invite.error.full" = "This chat cannot take more members";
-"invite.error.webview" = "This chat asks for a check that Exteria cannot show";
+"invite.error.webview" = "This chat asks for a check that Noshigram cannot show";
 "chat.search.field" = "Search";
 "chat.search.searching" = "Searching…";
 "chat.search.position" = "%lu of %lu";
@@ -2201,7 +2201,7 @@
 
 "attach.file.search" = "Search this folder";
 "attach.file.media" = "Media";
-"attach.file.app" = "Exteria documents";
+"attach.file.app" = "Noshigram documents";
 "attach.file.mobile" = "User files";
 "attach.file.root" = "File system";
 "attach.file.folder" = "Folder";
@@ -2258,7 +2258,7 @@
 "rating.ok" = "OK";
 
 "update.page.title" = "Update";
-"update.page.info" = "Semi-automatic Exteria update";
+"update.page.info" = "Semi-automatic Noshigram update";
 "update.page.installed" = "Installed";
 "update.page.latest" = "Latest";
 "update.page.checking" = "Checking…";
@@ -2295,7 +2295,7 @@
 "group.return" = "Voice chat · %@";
 "group.notice.finished" = "The voice chat has ended.";
 "group.notice.nocall" = "There is no voice chat in this chat now.";
-"group.notice.unsupported" = "This call cannot be opened in Exteria: it is an encrypted conference or a live stream.";
+"group.notice.unsupported" = "This call cannot be opened in Noshigram: it is an encrypted conference or a live stream.";
 "group.notice.removed" = "You were removed from the voice chat.";
 "group.notice.failed" = "Could not connect to the voice chat.";
 "group.notice.failed.detail" = "Could not connect to the voice chat (%@).";
@@ -2368,9 +2368,9 @@
 "theme.import.title" = "Import theme";
 "theme.import.type" = "Choose a .tgios-theme file.";
 "theme.import.read" = "The theme file could not be read.";
-"theme.import.empty" = "Copy a .tgios-theme file to Exteria Documents, or open it from another app.";
+"theme.import.empty" = "Copy a .tgios-theme file to Noshigram Documents, or open it from another app.";
 "theme.import.busy" = "Finish the current preview before opening another theme.";
-"theme.import.active" = "Imported theme is active. Tap a built-in card to return to Exteria colors.";
+"theme.import.active" = "Imported theme is active. Tap a built-in card to return to Noshigram colors.";
 "theme.import.size" = "The theme file is too large.";
 "theme.import.format" = "The theme file is damaged or has an unsupported structure.";
 "theme.import.color" = "The theme has an invalid color: %1$@ = %2$@";
@@ -2405,7 +2405,7 @@
 "developer.readall.none" = "Nothing is unread.";
 "developer.readall.done" = "Marked as read: %lu, failed: %lu.";
 "developer.readall.failed" = "The list did not load: %@";
-"developer.unlocked" = "The developer settings are open. They are now in the settings of Exteria.";
+"developer.unlocked" = "The developer settings are open. They are now in the settings of Noshigram.";
 "developer.already" = "The developer settings are already open.";
 "developer.popup.crash" = "Crash report";
 "developer.popup.crash.info" = "The question whether to send the report to the lead developer";
@@ -2492,7 +2492,7 @@
 "logs.files" = "Files";
 "logs.files.info" = "Only the end of a long log is shown, the archive carries up to 2 MB of each.";
 "logs.export" = "Send all to the developer";
-"logs.export.info" = "exteria-[username].zip with every log and a note about the phone goes to @sqmrak as a file";
+"logs.export.info" = "noshigram-[username].zip with every log and a note about the phone goes to @sqmrak as a file";
 "logs.export.failed" = "The logs could not be packed.";
 "logs.export.sent" = "Your logs were sent to the main developer.";
 "logs.export.unsent" = "The logs could not be sent to the developer. Check the connection and try again.";
@@ -2518,7 +2518,7 @@
 "language.custom.remove" = "Remove";
 "language.custom.pick" = "Choose a language";
 "language.custom.search" = "Search files";
-"language.custom.empty.files" = "Copy a .strings file to Exteria Documents first.";
+"language.custom.empty.files" = "Copy a .strings file to Noshigram Documents first.";
 "language.custom.unreadable" = "The file could not be read as a .strings file.";
 "language.custom.large" = "The file is too large.";
 "language.custom.name" = "The name of the file has no letters or digits to name the language by.";
@@ -2577,7 +2577,7 @@
 "chats.edit" = "Edit";
 "chats.select.hint" = "Select chats";
 "share.to" = "Send to";
-"share.error.unreadable" = "The file could not be read. Open it from a place Exteria can reach, or copy it first.";
+"share.error.unreadable" = "The file could not be read. Open it from a place Noshigram can reach, or copy it first.";
 "chat.msg.details.listened" = "Listened: %@";
 "chat.msg.details.notlistened" = "Not listened yet";
 "chat.msg.details.listenedunknown" = "Listened";
@@ -2585,9 +2585,9 @@
 "chat.menu.videocall" = "Video call";
 "browser.settings.default" = "Open links in";
 "browser.settings.system" = "Safari / system browser";
-"browser.settings.system.info" = "Telegram links open in Exteria. On newer iOS versions the system browser may not be Safari.";
+"browser.settings.system.info" = "Telegram links open in Noshigram. On newer iOS versions the system browser may not be Safari.";
 "browser.settings.open.failed" = "Could not open the selected browser. Check that it is installed.";
-"developer.videofix" = "Big thanks for ExteriaVideoFix :3";
+"developer.videofix" = "Big thanks for NoshiVideoFix :3";
 "developer.mark.videofix" = "VideoFix";
 "video.edit.start" = "Start";
 "video.edit.end" = "End";
@@ -2613,7 +2613,7 @@
 "developer.flaw_seer.notice.1415625115" = "Sees bugs even in dreams :D";
 "developer.flaw_seer.notice.5586697397" = "Found bugs even in native Telegram 0_0";
 "chat.send.toolong" = "The text is too long to send, it would need more than 256 messages.";
-"plugins.import.denied" = "The Documents folder of the app is closed to it, so nothing can be written there. Reinstall the Exteria package, or run: chown -R mobile /var/mobile/Documents";
+"plugins.import.denied" = "The Documents folder of the app is closed to it, so nothing can be written there. Reinstall the Noshigram package, or run: chown -R mobile /var/mobile/Documents";
 "settings.remove" = "Remove";
 "plugins.remove.failed" = "The plugin file could not be deleted.";
 "plugins.fault.off" = "Switched off after errors";

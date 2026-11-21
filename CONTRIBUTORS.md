@@ -1,6 +1,6 @@
-# contributing to exteria
+# contributing to noshigram
 
-how to build exteria and how to work in it. user features are in [README.md](README.md), plugins in [docs/plugins.md](docs/plugins.md), languages in [docs/languages.md](docs/languages.md).
+how to build noshigram and how to work in it. user features are in [README.md](README.md), plugins in [docs/plugins.md](docs/plugins.md), languages in [docs/languages.md](docs/languages.md).
 
 ## rules
 
@@ -35,7 +35,7 @@ local/      credentials.env, never committed
 in `app/`:
 
 - `lifecycle`: delegate, passcode lock, notifications, updater, crash log
-- `net`: the objective-c face of the core: `exteria_session*.m` (one file per area of the api), models, caches, call engines, shiro
+- `net`: the objective-c face of the core: `noshi_session*.m` (one file per area of the api), models, caches, call engines, shiro
 - `features`: screens, by area (`chats`, `auth`, `calls`, `stories`, `settings` and so on)
 - `ui/shared`, `ui/classic`: views, theme, symbols, text layout. classic is the ios 5 and 6 look
 - `media`: players, recorders, editors, viewers
@@ -60,9 +60,9 @@ the backend is the c core in `core/`. it is one static set of files, linked into
 - `pyhost`, `dexnative`: cpython host for plugins and the native part of the dex runtime
 - `base`: status codes, arena, byte buffers, release check, zip
 
-how a call goes: a screen asks `ExteriaSession` (`app/net`), which calls the core client, which builds a tl request, sends it over mtproto and returns a status. the answer is parsed in the core into a plain struct, and the session turns it into a model for the screen. results come back on the main thread.
+how a call goes: a screen asks `NoshiSession` (`app/net`), which calls the core client, which builds a tl request, sends it over mtproto and returns a status. the answer is parsed in the core into a plain struct, and the session turns it into a model for the screen. results come back on the main thread.
 
-the core returns specific statuses (`exteria_status.h`), not booleans. a function that writes a buffer takes its capacity. lengths from the network are capped before an allocation.
+the core returns specific statuses (`noshi_status.h`), not booleans. a function that writes a buffer takes its capacity. lengths from the network are capped before an allocation.
 
 ## build
 
@@ -70,15 +70,15 @@ needs a linux or macos host, the ios toolchain (clang with ldid), two sdks, open
 
 env, all overrideable, none has a default path:
 
-- `EXTERIA_TC`: toolchain `bin` directory
-- `EXTERIA_SDK_V7`: legacy sdk for the armv7 link (ios 6.1 works)
-- `EXTERIA_SDK_V64`: current sdk for arm64
-- `EXTERIA_OPENSSL_V7`, `EXTERIA_OPENSSL_V64`: openssl prefixes
-- `EXTERIA_VIDEO_V7`, `EXTERIA_VIDEO_V64`: ffmpeg and libvpx prefixes (from `EXTERIA_FFMPEG_SOURCE` and `EXTERIA_LIBVPX_SOURCE`, see `resources/licenses/video_stickers.txt`)
-- `EXTERIA_PYTHON_V7`, `EXTERIA_PYTHON_V64`, `EXTERIA_PYTHON_BUNDLE`: made by `scripts/build_python.sh`
+- `NOSHI_TC`: toolchain `bin` directory
+- `NOSHI_SDK_V7`: legacy sdk for the armv7 link (ios 6.1 works)
+- `NOSHI_SDK_V64`: current sdk for arm64
+- `NOSHI_OPENSSL_V7`, `NOSHI_OPENSSL_V64`: openssl prefixes
+- `NOSHI_VIDEO_V7`, `NOSHI_VIDEO_V64`: ffmpeg and libvpx prefixes (from `NOSHI_FFMPEG_SOURCE` and `NOSHI_LIBVPX_SOURCE`, see `resources/licenses/video_stickers.txt`)
+- `NOSHI_PYTHON_V7`, `NOSHI_PYTHON_V64`, `NOSHI_PYTHON_BUNDLE`: made by `scripts/build_python.sh`
 - `MEOW_LDID`: optional, meow takes the ldid of the toolchain when it is left out
-- `EXTERIA_CRT_V7`: optional crt for the armv7 link
-- `EXTERIA_API_ID`, `EXTERIA_API_HASH`: from `local/credentials.env`, `source` it before `meow build`. they go into a generated header in `build/` and never into the repository
+- `NOSHI_CRT_V7`: optional crt for the armv7 link
+- `NOSHI_API_ID`, `NOSHI_API_HASH`: from `local/credentials.env`, `source` it before `meow build`. they go into a generated header in `build/` and never into the repository
 
 order:
 
@@ -89,13 +89,13 @@ make test
 meow build                           # the ipa, its sha256 and the deb for /var/jb
 ```
 
-the build is [meow](https://github.com/sqmrak/meow), `meow.toml` holds the compile graph, the ipa, the deb and their checks. `meow plan` shows what is stale, `meow why` says why, `meow build ipa` and `meow build deb` build one package. output: `build/ios/Exteria-v<version>.ipa`, `build/ios/Exteria-v<version>.ipa.sha256`, `build/ios/exteria_<version>.deb`. a full build takes about ten minutes, a header change rebuilds only the sources that include it.
+the build is [meow](https://github.com/sqmrak/meow), `meow.toml` holds the compile graph, the ipa, the deb and their checks. `meow plan` shows what is stale, `meow why` says why, `meow build ipa` and `meow build deb` build one package. output: `build/ios/Noshigram-v<version>.ipa`, `build/ios/Noshigram-v<version>.ipa.sha256`, `build/ios/noshi_<version>.deb`. a full build takes about ten minutes, a header change rebuilds only the sources that include it.
 
 after the build, check the artifact and not only the exit code. meow checks both slices, the deployment targets, the linked libraries and the signature of the binaries before it packs them, and the layout of the ipa and the deb after. also:
 
-- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime (needs `EXTERIA_SDK_V5`)
-- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers (needs `EXTERIA_SDK_V6`)
-- `lipo -info build/fat/Exteria` shows armv7 and arm64
+- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime (needs `NOSHI_SDK_V5`)
+- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers (needs `NOSHI_SDK_V6`)
+- `lipo -info build/fat/Noshigram` shows armv7 and arm64
 - `unzip -l` on the ipa, `dpkg-deb -c` on the deb: layout, permissions, `Info.plist` version
 - the version in `packaging/deb/control` is the source, `meow build version` fails when `packaging/Info.plist` or the extension plist differ. the file names and the release tag agree with it. do not bump it outside a release
 
@@ -104,8 +104,8 @@ after the build, check the artifact and not only the exit code. meow checks both
 ```bash
 make test
 make -C tests test \
-  EXTERIA_PYTHON_HOST_PREFIX=<cpython 3.11 prefix> EXTERIA_PYTHON_STDLIB=<its Lib directory> \
-  EXTERIA_PYTHON_HOST=<python3.11>
+  NOSHI_PYTHON_HOST_PREFIX=<cpython 3.11 prefix> NOSHI_PYTHON_STDLIB=<its Lib directory> \
+  NOSHI_PYTHON_HOST=<python3.11>
 make sanitize        # the c tests under asan and ubsan
 make test-video      # decoders under sanitizers, needs ffmpeg libraries, pkg-config, libvpx
 make test-icons
@@ -131,19 +131,19 @@ make test-icons
 jailbroken devices only. the ipa is signed with ldid.
 
 ```bash
-meow install --host <device-ip> --legacy build/ios/exteria_<version>.deb
+meow install --host <device-ip> --legacy build/ios/noshi_<version>.deb
 ```
 
 - the postinst makes `mobile:wheel` the owner of the bundle. a root-owned bundle breaks the icon change on ios 6, since the app rewrites its own `Info.plist` as `mobile`
-- on ios 5 and 6 the postinst runs `/Applications/Exteria.app/Exteria --system-notifications on` before `uicache` (see the install section of the readme)
+- on ios 5 and 6 the postinst runs `/Applications/Noshigram.app/Noshigram --system-notifications on` before `uicache` (see the install section of the readme)
 - old sshd needs `-o HostKeyAlgorithms=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1 -o Ciphers=+aes128-cbc,aes256-cbc` on the command line, and `scp -O`. keep these out of `~/.ssh/config`. `meow install --legacy` passes them for the deb install
-- crash log: `/var/mobile/Library/Caches/exteria-crash.log`. system reports: `/var/mobile/Library/Logs/CrashReporter`
-- a tester's `build <hex>` line is the `LC_UUID` of the slice. match it with `llvm-dwarfdump --uuid` on the binary of that exact build, then `python3 scripts/symbolicate_crash.py crash.log /path/to/Exteria --arch armv7`
+- crash log: `/var/mobile/Library/Caches/noshigram-crash.log`. system reports: `/var/mobile/Library/Logs/CrashReporter`
+- a tester's `build <hex>` line is the `LC_UUID` of the slice. match it with `llvm-dwarfdump --uuid` on the binary of that exact build, then `python3 scripts/symbolicate_crash.py crash.log /path/to/Noshigram --arch armv7`
 - keep the ipa or deb of every build you hand out, or the crash cannot be named later
 
 ## plugins
 
-python and the shims live in `python/shim`, the sdk in `third_party/exteraless` (changes in its `PATCHES`), the host in `core/pyhost`, the services in `app/platform/exteria_plugin*.m`. [docs/plugins.md](docs/plugins.md) lists what works, what does not and what was never run on a phone. a new shim class comes with a test in `tests/python`, and its line in that file.
+python and the shims live in `python/shim`, the sdk in `third_party/exteraless` (changes in its `PATCHES`), the host in `core/pyhost`, the services in `app/platform/noshi_plugin*.m`. [docs/plugins.md](docs/plugins.md) lists what works, what does not and what was never run on a phone. a new shim class comes with a test in `tests/python`, and its line in that file.
 
 ## do not
 

@@ -1,0 +1,810 @@
+#import "noshi_text_layout.h"
+
+#import <CoreText/CoreText.h>
+#include <stdint.h>
+
+#import "noshi_custom_emoji.h"
+#import "noshi_emoji_store.h"
+#import "noshi_font_fallback.h"
+#import "noshi_theme.h"
+
+/* the attributes the layout keeps on the characters for itself */
+static NSString *const NoshiLinkAttribute = @"NoshiLink";
+static NSString *const NoshiEmojiAttribute = @"NoshiEmoji";
+static NSString *const NoshiCustomEmojiAttribute = @"NoshiCustomEmoji";
+static NSString *const NoshiStrikeAttribute = @"NoshiStrike";
+/* the value is the offset where the entity of the quote starts, so two quotes that touch stay two blocks */
+static NSString *const NoshiQuoteAttribute = @"NoshiQuote";
+static NSString *const NoshiQuoteFoldableAttribute = @"NoshiQuoteFoldable";
+static NSString *const NoshiSpoilerAttribute = @"NoshiSpoiler";
+static NSString *const NoshiMonoAttribute = @"NoshiMono";
+static NSString *const NoshiMonoEntityAttribute = @"NoshiMonoEntity";
+NSString *const NoshiSpoilerTarget = @"noshigram-spoiler:";
+
+/* a quote is set in from the left edge by its bar, which is drawn in that room */
+#define QUOTE_INDENT 11.0
+#define QUOTE_BAR 3.0
+/* a folded quote keeps this many lines, as in the other clients, and the row under it holds the arrow */
+#define QUOTE_FOLD_LINES 3
+#define QUOTE_FOOTER 20.0
+
+/* an emoji picture is a little wider than the letters around it, as the system's own emoji are */
+#define EMOJI_SCALE 1.25
+
+static CTFontRef NoshiCreateFont(UIFont *font, CGFloat size) {
+    /* the system font is San Francisco from ios 9 and its name starts with a dot; CoreText resolves it by name
+       only up to ios 12, and from ios 13 hands back Times, so the text of a bubble came out in a serif face */
+    if ([font respondsToSelector:@selector(fontDescriptor)]) return CTFontCreateCopyWithAttributes((CTFontRef)font, size, NULL, NULL);
+    CTFontRef created = CTFontCreateWithName((CFStringRef)font.fontName, size, NULL);
+    if (!created) created = CTFontCreateWithName(CFSTR("HelveticaNeue"), size, NULL);
+    return created;
+}
+
+static CTFontRef NoshiCreateItalic(CTFontRef base) {
+    CGAffineTransform skew = CGAffineTransformMake(1, 0, 0.2, 1, 0, 0);
+    return CTFontCreateCopyWithAttributes(base, CTFontGetSize(base), &skew, NULL);
+}
+
+static CGFloat NoshiEmojiSide(void *refcon) { return (CGFloat)(((uintptr_t)refcon >> 16) & 0xffff) / 100.0; }
+static CGFloat NoshiEmojiAscent(void *refcon) { return NoshiEmojiSide(refcon) * 0.82; }
+static CGFloat NoshiEmojiDescent(void *refcon) { return NoshiEmojiSide(refcon) * 0.23; }
+static CGFloat NoshiEmojiWidth(void *refcon) { return (CGFloat)((uintptr_t)refcon & 0xffff) / 100.0; }
+static void NoshiEmojiRelease(void *refcon) { (void)refcon; }
+
+/* the run delegate carries height and width in hundredths of a point */
+static CTRunDelegateRef NoshiCreateEmojiDelegate(CGFloat side, CGFloat width) {
+    CTRunDelegateCallbacks callbacks;
+    memset(&callbacks, 0, sizeof(callbacks));
+    callbacks.version = kCTRunDelegateCurrentVersion;
+    callbacks.getAscent = NoshiEmojiAscent;
+    callbacks.getDescent = NoshiEmojiDescent;
+    callbacks.getWidth = NoshiEmojiWidth;
+    callbacks.dealloc = NoshiEmojiRelease;
+    uintptr_t dimensions = ((uintptr_t)(side * 100) << 16) | (uintptr_t)(width * 100);
+    return CTRunDelegateCreate(&callbacks, (void *)dimensions);
+}
+
+/* an address is underlined, as in the original client; names, tags and commands are only colored */
+static void NoshiUnderline(NSMutableAttributedString *string, NSRange range) {
+    int single = kCTUnderlineStyleSingle;
+    CFNumberRef style = CFNumberCreate(NULL, kCFNumberIntType, &single);
+    [string addAttribute:(id)kCTUnderlineStyleAttributeName value:(id)style range:range];
+    CFRelease(style);
+}
+
+static NSString *NoshiLinkTarget(NoshiTextEntity *entity, NSString *text) {
+    if (entity.url.length) return entity.url;
+    NSString *shown = [text substringWithRange:entity.range];
+    if (entity.style == NoshiTextStyleLink) {
+        return [shown rangeOfString:@"://"].location == NSNotFound ? [@"http://" stringByAppendingString:shown] : shown;
+    }
+    /* a name opens the profile of whoever owns it; a name written with a user's real name instead of a @username has nothing to open */
+    if (entity.style == NoshiTextStyleMention && [shown hasPrefix:@"@"] && shown.length > 1) return [@"noshigram-mention:" stringByAppendingString:[shown substringFromIndex:1]];
+    if (entity.style == NoshiTextStyleBotCommand) return [@"noshigram-command:" stringByAppendingString:shown];
+    if (entity.style == NoshiTextStyleMentionName && entity.userId > 0) return [NSString stringWithFormat:@"noshigram-user:%lld", entity.userId];
+    if (entity.style == NoshiTextStyleDate && entity.date > 0) return [NSString stringWithFormat:@"noshigram-date:%d:%u", (int)entity.date, (unsigned)entity.flags];
+    return nil;
+}
+
+@implementation NoshiTextLayout
+
+@synthesize size = _size;
+@synthesize lastLineWidth = _lastLineWidth;
+@synthesize lineCount = _lineCount;
+@synthesize hasSpoilers = _hasSpoilers;
+@synthesize spoilersRevealed = _spoilersRevealed;
+
+/* the attributed string with its styles; emoji are not touched yet */
+static NSMutableAttributedString *NoshiStyledString(NSString *text, NSArray *entities, UIFont *font, UIColor *color, UIColor *linkColor) {
+    CGFloat size = font.pointSize;
+    CTFontRef regular = NoshiCreateFont(font, size);
+    CTFontRef bold = NoshiCreateFont(NoshiFontSemibold(size), size);
+    CTFontRef italic = NoshiCreateItalic(regular);
+    CTFontRef code = CTFontCreateWithName(CFSTR("Courier"), size - 1, NULL);
+    NSMutableAttributedString *string = [[[NSMutableAttributedString alloc] initWithString:text] autorelease];
+    NSRange all = NSMakeRange(0, text.length);
+    [string addAttribute:(id)kCTFontAttributeName value:(id)regular range:all];
+    [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)color.CGColor range:all];
+    for (NoshiTextEntity *entity in entities) {
+        NSRange range = entity.range;
+        if (range.location + range.length > text.length) continue;
+        switch (entity.style) {
+        case NoshiTextStyleBold: [string addAttribute:(id)kCTFontAttributeName value:(id)bold range:range]; break;
+        case NoshiTextStyleItalic: [string addAttribute:(id)kCTFontAttributeName value:(id)italic range:range]; break;
+        case NoshiTextStyleCode:
+        case NoshiTextStylePre:
+            [string addAttribute:(id)kCTFontAttributeName value:(id)code range:range];
+            [string addAttribute:NoshiMonoAttribute value:[NSNumber numberWithBool:YES] range:range];
+            [string addAttribute:NoshiMonoEntityAttribute value:entity range:range];
+            break;
+        case NoshiTextStyleUnderline: {
+            int single = kCTUnderlineStyleSingle;
+            CFNumberRef style = CFNumberCreate(NULL, kCFNumberIntType, &single);
+            [string addAttribute:(id)kCTUnderlineStyleAttributeName value:(id)style range:range];
+            CFRelease(style);
+            break;
+        }
+        case NoshiTextStyleStrike: [string addAttribute:NoshiStrikeAttribute value:[NSNumber numberWithBool:YES] range:range]; break;
+        case NoshiTextStyleSpoiler: [string addAttribute:NoshiSpoilerAttribute value:[NSNumber numberWithBool:YES] range:range]; break;
+        /* a quote is shaped when the lines are broken; it is marked here, because an emoji that is set as one character moves every index after it, which
+           the range of the entity would not follow */
+        case NoshiTextStyleQuote:
+            [string addAttribute:NoshiQuoteAttribute value:[NSNumber numberWithUnsignedInteger:range.location] range:range];
+            if (entity.flags & NOSHI_ENTITY_COLLAPSED) [string addAttribute:NoshiQuoteFoldableAttribute value:[NSNumber numberWithBool:YES] range:range];
+            break;
+        case NoshiTextStyleCustomEmoji: break;
+        case NoshiTextStyleDate: {
+            int single = kCTUnderlineStyleSingle;
+            CFNumberRef style = CFNumberCreate(NULL, kCFNumberIntType, &single);
+            [string addAttribute:(id)kCTUnderlineStyleAttributeName value:(id)style range:range];
+            CFRelease(style);
+            [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)linkColor.CGColor range:range];
+            NSString *target = NoshiLinkTarget(entity, text);
+            if (target) [string addAttribute:NoshiLinkAttribute value:target range:range];
+            break;
+        }
+        case NoshiTextStyleMentionName:
+        case NoshiTextStyleMention: {
+            [string addAttribute:(id)kCTFontAttributeName value:(id)bold range:range];
+            /* the accent is the fill of an outgoing bubble and of its quote plate, so a mention in the caller's accent vanished there; every other link takes the caller's color */
+            [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)linkColor.CGColor range:range];
+            NSString *target = NoshiLinkTarget(entity, text);
+            if (target) [string addAttribute:NoshiLinkAttribute value:target range:range];
+            break;
+        }
+        case NoshiTextStyleLink:
+        case NoshiTextStyleBotCommand:
+        case NoshiTextStyleHashtag: {
+            [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)linkColor.CGColor range:range];
+            if (entity.style == NoshiTextStyleLink) NoshiUnderline(string, range);
+            NSString *target = NoshiLinkTarget(entity, text);
+            if (target) [string addAttribute:NoshiLinkAttribute value:target range:range];
+            break;
+        }
+        }
+    }
+    CFRelease(regular);
+    CFRelease(bold);
+    CFRelease(italic);
+    CFRelease(code);
+    return string;
+}
+
+/* one run of the text that becomes a picture: an ordinary emoji, or a custom one with the ordinary emoji it stands for kept as the
+   picture to show until its own has loaded */
+typedef struct {
+    NSUInteger start;
+    NSUInteger length;
+    size_t entry;
+    long long document;
+} NoshiEmojiMark;
+
+static const size_t NoshiNoEntry = (size_t)-1;
+
+static int NoshiMarkOrder(const void *a, const void *b) {
+    NSUInteger x = ((const NoshiEmojiMark *)a)->start, y = ((const NoshiEmojiMark *)b)->start;
+    return x < y ? 1 : x > y ? -1 : 0;
+}
+
+/* every emoji becomes one placeholder character each with its own room, back to front so earlier ranges stay put */
+/* the marks come back as pairs of start and length in the original text, the first mark first */
+static NSData *NoshiPlaceEmoji(NSMutableAttributedString *string, NSString *text, NSArray *entities, CGFloat fontSize) {
+    NSMutableData *placed = [NSMutableData data];
+    NSUInteger length = text.length;
+    uint16_t *units = malloc(sizeof(uint16_t) * (length ? length : 1));
+    noshi_emoji_span *spans = malloc(sizeof(noshi_emoji_span) * (length ? length : 1));
+    NoshiEmojiMark *marks = malloc(sizeof(NoshiEmojiMark) * (length ? length : 1));
+    if (units && spans && marks) {
+        [text getCharacters:units range:NSMakeRange(0, length)];
+        size_t count = noshi_emoji_scan(units, length, spans, length);
+        size_t total = 0;
+        for (NoshiTextEntity *entity in entities) {
+            NSRange range = entity.range;
+            if (entity.style != NoshiTextStyleCustomEmoji || !entity.documentId || range.length == 0 || range.location + range.length > length) continue;
+            BOOL overlaps = NO;
+            for (size_t k = 0; k < total; ++k) {
+                if (marks[k].document && range.location < marks[k].start + marks[k].length && marks[k].start < range.location + range.length) overlaps = YES;
+            }
+            if (overlaps || total >= length) continue;
+            marks[total].start = range.location;
+            marks[total].length = range.length;
+            marks[total].document = entity.documentId;
+            marks[total].entry = NoshiNoEntry;
+            for (size_t i = 0; i < count; ++i) {
+                if (spans[i].start >= range.location && spans[i].start + spans[i].length <= range.location + range.length &&
+                    NoshiEmojiHasPicture(spans[i].entry)) {
+                    marks[total].entry = spans[i].entry;
+                    break;
+                }
+            }
+            ++total;
+        }
+        size_t customs = total;
+        for (size_t i = 0; i < count; ++i) {
+            BOOL inside = NO;
+            for (size_t k = 0; k < customs; ++k) {
+                if (spans[i].start < marks[k].start + marks[k].length && marks[k].start < spans[i].start + spans[i].length) inside = YES;
+            }
+            if (inside || !NoshiEmojiHasPicture(spans[i].entry) || total >= length) continue;
+            marks[total].start = spans[i].start;
+            marks[total].length = spans[i].length;
+            marks[total].entry = spans[i].entry;
+            marks[total].document = 0;
+            ++total;
+        }
+        qsort(marks, total, sizeof(*marks), NoshiMarkOrder);
+        for (size_t i = total; i > 0; --i) {
+            NSUInteger pair[2] = {marks[i - 1].start, marks[i - 1].length};
+            [placed appendBytes:pair length:sizeof(pair)];
+        }
+        for (size_t i = 0; i < total; ++i) {
+            const NoshiEmojiMark *mark = &marks[i];
+            [string replaceCharactersInRange:NSMakeRange(mark->start, mark->length) withString:@"\uFFFC"];
+            NSRange place = NSMakeRange(mark->start, 1);
+            /* the picture is drawn over this character; a font that has no glyph for it (Rubik, a font of the person's own) would show its empty-glyph mark, a letter or a box, under the picture */
+            [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)[UIColor clearColor].CGColor range:place];
+            CGFloat side = fontSize * EMOJI_SCALE;
+            CTRunDelegateRef delegate = NoshiCreateEmojiDelegate(side, side);
+            [string addAttribute:(id)kCTRunDelegateAttributeName value:(id)delegate range:place];
+            CFRelease(delegate);
+            if (mark->entry != NoshiNoEntry) [string addAttribute:NoshiEmojiAttribute value:[NSNumber numberWithUnsignedInteger:mark->entry] range:place];
+            if (mark->document) [string addAttribute:NoshiCustomEmojiAttribute value:[NSNumber numberWithLongLong:mark->document] range:place];
+        }
+    }
+    free(units);
+    free(spans);
+    free(marks);
+    return placed;
+}
+
+/* a cheap look before the detector is asked: an address has "://", a "www.", or a dot with letters or digits on both sides; most messages have none of these, and
+   the detector is slow on an old phone, where every row of a chat that opens is laid out at once */
+static BOOL NoshiMayHaveAddress(NSString *text) {
+    NSUInteger length = text.length;
+    if (length < 4 || length > 6000) return NO;
+    unichar stack[256];
+    unichar *units = length <= 256 ? stack : malloc(length * sizeof(unichar));
+    if (!units) return NO;
+    [text getCharacters:units range:NSMakeRange(0, length)];
+    BOOL may = NO;
+    for (NSUInteger i = 1; i + 1 < length && !may; ++i) {
+        unichar c = units[i];
+        if (c == '.') {
+            unichar before = units[i - 1], after = units[i + 1];
+            BOOL joined = before > ' ' && after > ' ' && before != '.' && after != '.' && !(before == ',' || before == ';' || before == ':' || before == '!' || before == '?' || before == ')') &&
+                          ((after >= 'a' && after <= 'z') || (after >= 'A' && after <= 'Z') || after >= 0x80);
+            if (joined) may = YES;
+        } else if (c == ':' && units[i + 1] == '/') {
+            may = YES;
+        }
+    }
+    if (units != stack) free(units);
+    return may;
+}
+
+/* addresses written in the words without an entity (a message that has not come back from the server yet, a caption the server left alone) are links as well */
+static void NoshiAddDetectedLinks(NSMutableAttributedString *string, NSString *text, UIColor *linkColor) {
+    if (!NoshiMayHaveAddress(text)) return;
+    /* the finds of a text are kept, since the same row is laid out again for every width and every rebuild of the list */
+    static NSCache *found;
+    static NSDataDetector *detector;
+    NSArray *matches = nil;
+    @synchronized([NSDataDetector class]) {
+        if (!found) {
+            found = [[NSCache alloc] init];
+            found.countLimit = 300;
+        }
+        matches = [[[found objectForKey:text] retain] autorelease];
+        if (!matches) {
+            if (!detector) detector = [[NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:NULL] retain];
+            if (!detector) return;
+            NSMutableArray *kept = [NSMutableArray array];
+            for (NSTextCheckingResult *match in [detector matchesInString:text options:0 range:NSMakeRange(0, text.length)]) {
+                NSString *scheme = match.URL.scheme.lowercaseString;
+                if (!match.URL || !match.range.length) continue;
+                if (!([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"] || [scheme isEqualToString:@"mailto"])) continue;
+                [kept addObject:[NSArray arrayWithObjects:[NSValue valueWithRange:match.range], match.URL.absoluteString, nil]];
+            }
+            matches = kept;
+            [found setObject:matches forKey:text];
+        }
+    }
+    for (NSArray *match in matches) {
+        NSRange range = [[match objectAtIndex:0] rangeValue];
+        if (NSMaxRange(range) > string.length) continue;
+        __block BOOL taken = NO;
+        [string enumerateAttributesInRange:range options:0 usingBlock:^(NSDictionary *attributes, NSRange where, BOOL *stop) {
+            (void)where;
+            if ([attributes objectForKey:NoshiLinkAttribute] || [attributes objectForKey:NoshiMonoAttribute] || [attributes objectForKey:NoshiSpoilerAttribute]) { taken = YES; *stop = YES; }
+        }];
+        if (taken) continue;
+        [string addAttribute:(id)kCTForegroundColorAttributeName value:(id)linkColor.CGColor range:range];
+        NoshiUnderline(string, range);
+        [string addAttribute:NoshiLinkAttribute value:[match objectAtIndex:1] range:range];
+    }
+}
+
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush {
+    return [self layoutForText:text entities:entities font:font color:color linkColor:linkColor width:width maxLines:maxLines flush:flush
+                  dropsUndrawable:NO];
+}
+
++ (NoshiTextLayout *)layoutForName:(NSString *)name font:(UIFont *)font color:(UIColor *)color width:(CGFloat)width {
+    return [self layoutForName:name entities:nil font:font color:color width:width];
+}
+
++ (NoshiTextLayout *)layoutForName:(NSString *)name entities:(NSArray *)entities font:(UIFont *)font color:(UIColor *)color width:(CGFloat)width {
+    return [self layoutForText:name entities:entities font:font color:color linkColor:color width:width maxLines:1 flush:0 dropsUndrawable:YES];
+}
+
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush dropsUndrawable:(BOOL)drops {
+    return [self layoutForText:text entities:entities font:font color:color linkColor:linkColor width:width maxLines:maxLines flush:flush
+                  dropsUndrawable:drops expandedQuotes:nil];
+}
+
++ (NoshiTextLayout *)layoutForText:(NSString *)text entities:(NSArray *)entities font:(UIFont *)font
+                               color:(UIColor *)color linkColor:(UIColor *)linkColor width:(CGFloat)width
+                            maxLines:(NSUInteger)maxLines flush:(CGFloat)flush dropsUndrawable:(BOOL)drops expandedQuotes:(NSIndexSet *)expanded {
+    NoshiTextLayout *layout = [[[NoshiTextLayout alloc] init] autorelease];
+    NSMutableAttributedString *string = NoshiStyledString(text, entities, font, color, linkColor);
+    /* before the emoji become single characters, so the offsets of the matches are those of the text */
+    if (!drops && linkColor) NoshiAddDetectedLinks(string, text, linkColor);
+    NSData *marks = NoshiPlaceEmoji(string, text, entities, font.pointSize);
+    CTFontRef base = NoshiCreateFont(font, font.pointSize);
+    if (base) {
+        /* the entities are offsets into the original text, so only a label that has none may lose characters */
+        if (drops) NoshiDropUndrawableCharacters(string, base);
+        NoshiApplyFontFallback(string, base, font.pointSize);
+        CFRelease(base);
+    }
+    layout->_string = [string retain];
+    layout->_marks = [marks retain];
+    layout->_text = [text copy];
+    layout->_ink = [color retain];
+    layout->_width = width;
+    layout->_expandedQuotes = [expanded copy];
+    layout->_hasSpoilers = NO;
+    for (NoshiTextEntity *entity in entities) {
+        if (entity.style == NoshiTextStyleSpoiler && NSMaxRange(entity.range) <= text.length) layout->_hasSpoilers = YES;
+    }
+
+    CTLineBreakMode breakMode = kCTLineBreakByWordWrapping;
+    CTParagraphStyleSetting settings[] = {{kCTParagraphStyleSpecifierLineBreakMode, sizeof(breakMode), &breakMode}};
+    CTParagraphStyleRef paragraph = CTParagraphStyleCreate(settings, 1);
+    [string addAttribute:(id)kCTParagraphStyleAttributeName value:(id)paragraph range:NSMakeRange(0, string.length)];
+    CFRelease(paragraph);
+
+    CTTypesetterRef typesetter = CTTypesetterCreateWithAttributedString((CFAttributedStringRef)string);
+    CFIndex length = (CFIndex)string.length;
+    NSUInteger capacity = 16;
+    layout->_lines = calloc(capacity, sizeof(CTLineRef));
+    layout->_origins = calloc(capacity, sizeof(CGPoint));
+    layout->_ascents = calloc(capacity, sizeof(CGFloat));
+    layout->_descents = calloc(capacity, sizeof(CGFloat));
+    layout->_quoted = calloc(capacity, sizeof(BOOL));
+    layout->_toggles = calloc(capacity, sizeof(NSInteger));
+    layout->_footers = calloc(capacity, sizeof(CGFloat));
+    CGFloat baseline = 0, widest = 0, previousDescent = 0;
+    CFIndex start = 0;
+    /* the quote the lines are in now: its name, where it ends, the lines it has taken and whether the person can fold it */
+    NSInteger blockId = -1;
+    CFIndex blockEnd = 0;
+    NSUInteger blockLines = 0, blockFirst = 0;
+    BOOL blockFoldable = NO, blockOpen = NO, blockCut = NO;
+    while (start < length && layout->_lines && layout->_origins && layout->_ascents && layout->_descents && layout->_quoted && layout->_toggles && layout->_footers) {
+        NSRange quoteRange = NSMakeRange(0, 0);
+        NSNumber *quoteId = [string attribute:NoshiQuoteAttribute atIndex:(NSUInteger)start longestEffectiveRange:&quoteRange inRange:NSMakeRange(0, string.length)];
+        BOOL quoted = quoteId != nil;
+        if (!quoted) blockId = -1;
+        else if ((NSInteger)quoteId.unsignedIntegerValue != blockId) {
+            blockId = (NSInteger)quoteId.unsignedIntegerValue;
+            blockEnd = (CFIndex)NSMaxRange(quoteRange);
+            blockLines = 0;
+            blockFirst = layout->_lineCount;
+            blockCut = NO;
+            blockFoldable = [string attribute:NoshiQuoteFoldableAttribute atIndex:(NSUInteger)start effectiveRange:NULL] != nil;
+            blockOpen = [expanded containsIndex:(NSUInteger)blockId];
+        }
+        CGFloat indent = quoted ? QUOTE_INDENT : 0, room = MAX(20, width - indent);
+        if (layout->_lineCount == capacity) {
+            capacity *= 2;
+            layout->_lines = realloc(layout->_lines, capacity * sizeof(CTLineRef));
+            layout->_origins = realloc(layout->_origins, capacity * sizeof(CGPoint));
+            layout->_ascents = realloc(layout->_ascents, capacity * sizeof(CGFloat));
+            layout->_descents = realloc(layout->_descents, capacity * sizeof(CGFloat));
+            layout->_quoted = realloc(layout->_quoted, capacity * sizeof(BOOL));
+            layout->_toggles = realloc(layout->_toggles, capacity * sizeof(NSInteger));
+            layout->_footers = realloc(layout->_footers, capacity * sizeof(CGFloat));
+            if (!layout->_lines || !layout->_origins || !layout->_ascents || !layout->_descents || !layout->_quoted || !layout->_toggles || !layout->_footers) break;
+        }
+        CFIndex fit = CTTypesetterSuggestLineBreak(typesetter, start, room);
+        if (fit <= 0) break;
+        BOOL lastAllowed = maxLines && layout->_lineCount + 1 == maxLines;
+        /* a folded quote ends on its third line, which takes the rest of the quote and ends in an ellipsis, as the text cut to a number of lines does */
+        BOOL foldHere = quoted && blockFoldable && !blockOpen && blockLines + 1 == QUOTE_FOLD_LINES && start + fit < blockEnd;
+        CTLineRef line;
+        if ((lastAllowed && start + fit < length) || foldHere) {
+            CFIndex cutEnd = lastAllowed && start + fit < length ? length : blockEnd;
+            if (cutEnd == blockEnd && !(lastAllowed && start + fit < length)) blockCut = YES;
+            /* the rest of the text goes into one line that is cut to the width and ends in an ellipsis */
+            CTLineRef rest = CTTypesetterCreateLine(typesetter, CFRangeMake(start, cutEnd - start));
+            NSMutableDictionary *tokenAttributes = [NSMutableDictionary dictionaryWithDictionary:[string attributesAtIndex:(NSUInteger)start effectiveRange:NULL]];
+            /* an emoji at the start must not turn the truncation ellipsis into another emoji */
+            [tokenAttributes removeObjectForKey:(id)kCTRunDelegateAttributeName];
+            [tokenAttributes removeObjectForKey:NoshiEmojiAttribute];
+            [tokenAttributes removeObjectForKey:NoshiCustomEmojiAttribute];
+            CFAttributedStringRef token = CFAttributedStringCreate(NULL, (CFStringRef)@"\u2026", (CFDictionaryRef)tokenAttributes);
+            CTLineRef ellipsis = CTLineCreateWithAttributedString(token);
+            CFRelease(token);
+            line = CTLineCreateTruncatedLine(rest, room, kCTLineTruncationEnd, ellipsis);
+            CFRelease(ellipsis);
+            CFRelease(rest);
+            if (!line) line = CTTypesetterCreateLine(typesetter, CFRangeMake(start, fit));
+            fit = cutEnd - start;
+        } else {
+            line = CTTypesetterCreateLine(typesetter, CFRangeMake(start, fit));
+        }
+        CGFloat ascent, descent, leading;
+        CGFloat lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading) - CTLineGetTrailingWhitespaceWidth(line);
+        baseline += (layout->_lineCount ? previousDescent : 0) + ascent + (layout->_lineCount ? leading : 0);
+        double offset = CTLineGetPenOffsetForFlush(line, flush, room) + indent;
+        NSUInteger i = layout->_lineCount++;
+        layout->_lines[i] = line;
+        layout->_quoted[i] = quoted;
+        layout->_toggles[i] = -1;
+        layout->_footers[i] = 0;
+        layout->_origins[i] = CGPointMake((CGFloat)offset, baseline);
+        layout->_ascents[i] = ascent;
+        layout->_descents[i] = descent;
+        previousDescent = descent;
+        lineWidth += indent;
+        if (lineWidth > widest) widest = lineWidth;
+        layout->_lastLineWidth = ceil(lineWidth);
+        start += fit;
+        if (quoted) {
+            ++blockLines;
+            /* the arrow row stands under the last line of a quote that is longer than the lines a fold keeps, open or folded */
+            if (start >= blockEnd && blockFoldable && (blockCut || blockLines > QUOTE_FOLD_LINES)) {
+                for (NSUInteger k = blockFirst; k <= i; ++k) layout->_toggles[k] = blockId;
+                layout->_footers[i] = QUOTE_FOOTER;
+                baseline += QUOTE_FOOTER;
+            }
+        }
+    }
+    CFRelease(typesetter);
+    layout->_size = CGSizeMake(ceil(widest), ceil(baseline + previousDescent) + 1);
+    return layout;
+}
+
+- (void)dealloc {
+    [_highlight release];
+    [_highlightRanges release];
+    [_marks release];
+    [_text release];
+    for (NSUInteger i = 0; i < _lineCount; ++i) CFRelease(_lines[i]);
+    free(_lines);
+    free(_origins);
+    free(_ascents);
+    free(_descents);
+    free(_quoted);
+    free(_toggles);
+    free(_footers);
+    [_expandedQuotes release];
+    [_ink release];
+    [_string release];
+    [super dealloc];
+}
+
+/* the boxes of the runs that carry an attribute on one line, in the coordinates of the text box */
+- (NSArray *)boxesOfAttribute:(NSString *)name inLine:(NSUInteger)i {
+    NSMutableArray *boxes = [NSMutableArray array];
+    CFArrayRef runs = CTLineGetGlyphRuns(_lines[i]);
+    for (CFIndex j = 0; j < CFArrayGetCount(runs); ++j) {
+        CTRunRef run = CFArrayGetValueAtIndex(runs, j);
+        if (![(NSDictionary *)CTRunGetAttributes(run) objectForKey:name]) continue;
+        CGPoint position;
+        CGFloat ascent, descent;
+        CTRunGetPositions(run, CFRangeMake(0, 1), &position);
+        CGFloat width = CTRunGetTypographicBounds(run, CFRangeMake(0, 0), &ascent, &descent, NULL);
+        [boxes addObject:[NSValue valueWithCGRect:CGRectMake(_origins[i].x + position.x, _origins[i].y - ascent, width, ascent + descent)]];
+    }
+    return boxes;
+}
+
+- (void)drawAtPoint:(CGPoint)origin {
+    [self drawAtPoint:origin hidingCustomEmoji:0];
+}
+
+- (void)drawAtPoint:(CGPoint)origin hidingCustomEmoji:(long long)hiddenDocument {
+    if (!_lineCount) return;
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    BOOL covered = _hasSpoilers && !_spoilersRevealed;
+    UIColor *ink = _ink ? _ink : [UIColor blackColor];
+    /* the words of a search stand on a plate, under the letters, so a result is found at a glance among the messages around it */
+    if (_highlight.length && !covered) {
+        [[UIColor colorWithRed:1.0f green:0.80f blue:0.18f alpha:0.62f] setFill];
+        for (NSValue *value in [self highlightRanges]) {
+            NSRange range = [value rangeValue];
+            NSUInteger from = [self layoutIndexOfTextIndex:range.location], to = [self layoutIndexOfTextIndex:NSMaxRange(range)];
+            if (to <= from) to = from + 1;
+            for (NSValue *box in [self rectsForRange:NSMakeRange(from, to - from)]) {
+                CGRect plate = CGRectInset(CGRectOffset(box.CGRectValue, origin.x, origin.y), -1.5f, -0.5f);
+                [[UIBezierPath bezierPathWithRoundedRect:plate cornerRadius:3] fill];
+            }
+        }
+    }
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        CGRect line = CGRectMake(origin.x, origin.y + _origins[i].y - _ascents[i], _width, _ascents[i] + _descents[i] + _footers[i]);
+        if (_quoted[i]) {
+            /* a plate over the whole quote, one line at a time, with its bar on the left edge of the first and last line cut round */
+            [[ink colorWithAlphaComponent:0.08] setFill];
+            CGContextFillRect(context, line);
+            [[ink colorWithAlphaComponent:0.55] setFill];
+            CGContextFillRect(context, CGRectMake(origin.x, line.origin.y, QUOTE_BAR, line.size.height));
+        }
+        if (_footers[i] > 0) {
+            /* the arrow points down on a folded quote and up on an open one */
+            BOOL open = [_expandedQuotes containsIndex:(NSUInteger)_toggles[i]];
+            CGFloat centerX = origin.x + _width - 16, centerY = line.origin.y + line.size.height - _footers[i] / 2, lean = open ? 2.5f : -2.5f;
+            UIBezierPath *arrow = [UIBezierPath bezierPath];
+            [arrow moveToPoint:CGPointMake(centerX - 5, centerY + lean)];
+            [arrow addLineToPoint:CGPointMake(centerX, centerY - lean)];
+            [arrow addLineToPoint:CGPointMake(centerX + 5, centerY + lean)];
+            arrow.lineWidth = 1.8f;
+            arrow.lineCapStyle = kCGLineCapRound;
+            arrow.lineJoinStyle = kCGLineJoinRound;
+            [[ink colorWithAlphaComponent:0.7] setStroke];
+            [arrow stroke];
+        }
+        for (NSValue *box in [self boxesOfAttribute:NoshiMonoAttribute inLine:i]) {
+            CGRect rect = [box CGRectValue];
+            [[ink colorWithAlphaComponent:0.12] setFill];
+            [[UIBezierPath bezierPathWithRoundedRect:CGRectInset(CGRectOffset(rect, origin.x, origin.y), -1, 0) cornerRadius:3] fill];
+        }
+        NSArray *spoilers = covered ? [self boxesOfAttribute:NoshiSpoilerAttribute inLine:i] : nil;
+        CGContextSaveGState(context);
+        if (spoilers.count) {
+            /* the glyphs of a covered spoiler are never drawn: the clip is the whole line less the spoiler boxes */
+            CGContextBeginPath(context);
+            CGContextAddRect(context, CGRectInset(line, -4, -4));
+            for (NSValue *box in spoilers) CGContextAddRect(context, CGRectOffset([box CGRectValue], origin.x, origin.y));
+            CGContextEOClip(context);
+        }
+        /* CoreText draws with the origin at the bottom left, so each line is drawn in a flipped frame of its own */
+        CGContextTranslateCTM(context, origin.x + _origins[i].x, origin.y + _origins[i].y);
+        CGContextScaleCTM(context, 1, -1);
+        CGContextSetTextMatrix(context, CGAffineTransformIdentity);
+        CGContextSetTextPosition(context, 0, 0);
+        CTLineDraw(_lines[i], context);
+        CGContextRestoreGState(context);
+        for (NSValue *box in spoilers) {
+            [[ink colorWithAlphaComponent:0.3] setFill];
+            [[UIBezierPath bezierPathWithRoundedRect:CGRectOffset([box CGRectValue], origin.x, origin.y) cornerRadius:4] fill];
+        }
+        for (NSValue *box in [self boxesOfAttribute:NoshiStrikeAttribute inLine:i]) {
+            CGRect rect = CGRectOffset([box CGRectValue], origin.x, origin.y);
+            [ink setFill];
+            CGContextFillRect(context, CGRectMake(rect.origin.x, floor(rect.origin.y + rect.size.height * 0.45), rect.size.width, 1));
+        }
+        CFArrayRef runs = CTLineGetGlyphRuns(_lines[i]);
+        for (CFIndex j = 0; j < CFArrayGetCount(runs); ++j) {
+            CTRunRef run = CFArrayGetValueAtIndex(runs, j);
+            NSDictionary *attributes = (NSDictionary *)CTRunGetAttributes(run);
+            NSNumber *entry = [attributes objectForKey:NoshiEmojiAttribute];
+            NSNumber *document = [attributes objectForKey:NoshiCustomEmojiAttribute];
+            if (!entry && !document) continue;
+            if (document && hiddenDocument && [document longLongValue] == hiddenDocument) continue;
+            /* an emoji inside a covered spoiler stays hidden with the words around it */
+            if (covered && [attributes objectForKey:NoshiSpoilerAttribute]) continue;
+            CGPoint position;
+            CGFloat ascent, descent;
+            CTRunGetPositions(run, CFRangeMake(0, 1), &position);
+            CGFloat width = CTRunGetTypographicBounds(run, CFRangeMake(0, 0), &ascent, &descent, NULL);
+            CGRect rect = CGRectMake(origin.x + _origins[i].x + position.x, origin.y + _origins[i].y - ascent, width, ascent + descent);
+            UIImage *picture = document ? [NoshiCustomEmoji imageForDocument:[document longLongValue]] : nil;
+            /* every emoji is a square of the width the line reserved, centered in its room; the room is a little taller than wide, and a
+               picture drawn into all of it came out stretched */
+            CGFloat side = rect.size.width;
+            CGRect square = CGRectMake(CGRectGetMidX(rect) - side / 2, CGRectGetMidY(rect) - side / 2, side, side);
+            if (picture) {
+                [picture drawInRect:square];
+            } else if (entry) {
+                NoshiDrawEmoji([entry unsignedIntegerValue], square);
+            }
+        }
+    }
+}
+
+/* ---- selection: the indices here are those of the laid out string, in which an emoji is one character; textRangeForRange: gives the range in the words ---- */
+
+- (NSString *)text { return _text; }
+
+- (NSUInteger)length { return _string.length; }
+
+- (NSUInteger)textIndexOfIndex:(NSUInteger)index {
+    const NSUInteger *pairs = _marks.bytes;
+    NSUInteger shift = 0;
+    for (NSUInteger i = 0; i < _marks.length / (2 * sizeof(NSUInteger)); ++i) {
+        NSUInteger start = pairs[2 * i], length = pairs[2 * i + 1];
+        if (index <= start - shift) break;
+        shift += length - 1;
+    }
+    return index + shift;
+}
+
+- (NSRange)textRangeForRange:(NSRange)range {
+    NSUInteger from = [self textIndexOfIndex:range.location], to = [self textIndexOfIndex:NSMaxRange(range)];
+    return NSMakeRange(from, to > from ? to - from : 0);
+}
+
+/* the place in the laid out string of an index of the words: an emoji is one character here and as many as it was written there */
+- (NSUInteger)layoutIndexOfTextIndex:(NSUInteger)index {
+    const NSUInteger *pairs = _marks.bytes;
+    NSUInteger shift = 0;
+    for (NSUInteger i = 0; i < _marks.length / (2 * sizeof(NSUInteger)); ++i) {
+        NSUInteger start = pairs[2 * i], length = pairs[2 * i + 1];
+        if (index <= start) break;
+        if (index >= start + length) { shift += length - 1; continue; }
+        return start - shift;
+    }
+    return index - shift;
+}
+
+- (void)setHighlight:(NSString *)highlight {
+    if (highlight == _highlight || [highlight isEqualToString:_highlight]) return;
+    [_highlight release];
+    _highlight = [highlight copy];
+    [_highlightRanges release];
+    _highlightRanges = nil;
+}
+
+- (NSString *)highlight { return _highlight; }
+
+/* where the words stand in the laid out string: the whole phrase wherever it occurs, and when it does not (the search matched its words apart) each word of it */
+- (NSArray *)highlightRanges {
+    if (_highlightRanges) return _highlightRanges;
+    NSMutableArray *found = [NSMutableArray array];
+    NSString *words = [_highlight stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (words.length && _text.length) {
+        NSStringCompareOptions options = NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch;
+        NSMutableArray *needles = [NSMutableArray arrayWithObject:words];
+        BOOL phrase = NO;
+        NSUInteger at = 0;
+        while (at < _text.length) {
+            NSRange hit = [_text rangeOfString:words options:options range:NSMakeRange(at, _text.length - at)];
+            if (hit.location == NSNotFound || !hit.length) break;
+            phrase = YES;
+            [found addObject:[NSValue valueWithRange:hit]];
+            at = NSMaxRange(hit);
+        }
+        if (!phrase) {
+            for (NSString *word in [words componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]) {
+                if (word.length < 2) continue;
+                at = 0;
+                while (at < _text.length) {
+                    NSRange hit = [_text rangeOfString:word options:options range:NSMakeRange(at, _text.length - at)];
+                    if (hit.location == NSNotFound || !hit.length) break;
+                    [found addObject:[NSValue valueWithRange:hit]];
+                    at = NSMaxRange(hit);
+                }
+            }
+        }
+        (void)needles;
+    }
+    _highlightRanges = [found copy];
+    return _highlightRanges;
+}
+
+- (NSUInteger)characterIndexAtPoint:(CGPoint)point {
+    if (!_lineCount) return 0;
+    NSUInteger line = _lineCount - 1;
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        if (point.y <= _origins[i].y + _descents[i]) { line = i; break; }
+    }
+    CFIndex index = CTLineGetStringIndexForPosition(_lines[line], CGPointMake(point.x - _origins[line].x, 0));
+    if (index == kCFNotFound) return 0;
+    return MIN((NSUInteger)index, _string.length);
+}
+
+- (NSArray *)rectsForRange:(NSRange)range {
+    NSMutableArray *rects = [NSMutableArray array];
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        CFRange lineRange = CTLineGetStringRange(_lines[i]);
+        NSUInteger from = MAX(range.location, (NSUInteger)lineRange.location), to = MIN(NSMaxRange(range), (NSUInteger)(lineRange.location + lineRange.length));
+        if (to <= from) continue;
+        CGFloat x1 = CTLineGetOffsetForStringIndex(_lines[i], (CFIndex)from, NULL), x2 = CTLineGetOffsetForStringIndex(_lines[i], (CFIndex)to, NULL);
+        [rects addObject:[NSValue valueWithCGRect:CGRectMake(_origins[i].x + x1, _origins[i].y - _ascents[i], MAX(0, x2 - x1), _ascents[i] + _descents[i])]];
+    }
+    return rects;
+}
+
+- (NSRange)wordRangeAtIndex:(NSUInteger)index {
+    NSString *plain = _string.string;
+    if (!plain.length) return NSMakeRange(0, 0);
+    if (index >= plain.length) index = plain.length - 1;
+    __block NSRange found = NSMakeRange(NSNotFound, 0);
+    [plain enumerateSubstringsInRange:NSMakeRange(0, plain.length) options:NSStringEnumerationByWords | NSStringEnumerationSubstringNotRequired
+                           usingBlock:^(NSString *word, NSRange range, NSRange enclosing, BOOL *stop) {
+        (void)word; (void)enclosing;
+        if (index >= range.location && index < NSMaxRange(range)) { found = range; *stop = YES; }
+        else if (range.location > index) *stop = YES;
+    }];
+    if (found.location == NSNotFound) found = [plain rangeOfComposedCharacterSequenceAtIndex:index];
+    return found;
+}
+
+- (NSString *)linkAtPoint:(CGPoint)point {
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        if (point.y < _origins[i].y - _ascents[i] - 2 || point.y > _origins[i].y + _descents[i] + 2) continue;
+        CGFloat width = CTLineGetTypographicBounds(_lines[i], NULL, NULL, NULL);
+        if (point.x < _origins[i].x || point.x > _origins[i].x + width) return nil;
+        CFIndex index = CTLineGetStringIndexForPosition(_lines[i], CGPointMake(point.x - _origins[i].x, 0));
+        if (index == kCFNotFound || (NSUInteger)index >= _string.length) return nil;
+        if (_hasSpoilers && !_spoilersRevealed && [_string attribute:NoshiSpoilerAttribute atIndex:(NSUInteger)index effectiveRange:NULL]) return NoshiSpoilerTarget;
+        return [_string attribute:NoshiLinkAttribute atIndex:(NSUInteger)index effectiveRange:NULL];
+    }
+    return nil;
+}
+
+- (NoshiTextEntity *)codeAtPoint:(CGPoint)point {
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        if (point.y < _origins[i].y - _ascents[i] - 2 || point.y > _origins[i].y + _descents[i] + 2) continue;
+        CGFloat width = CTLineGetTypographicBounds(_lines[i], NULL, NULL, NULL);
+        if (point.x < _origins[i].x || point.x > _origins[i].x + width) return nil;
+        CFIndex index = CTLineGetStringIndexForPosition(_lines[i], CGPointMake(point.x - _origins[i].x, 0));
+        if (index == kCFNotFound || (NSUInteger)index >= _string.length) return nil;
+        return [_string attribute:NoshiMonoEntityAttribute atIndex:(NSUInteger)index effectiveRange:NULL];
+    }
+    return nil;
+}
+
+- (CGRect)rectOfCustomEmoji:(long long)document {
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        CFArrayRef runs = CTLineGetGlyphRuns(_lines[i]);
+        for (CFIndex j = 0; j < CFArrayGetCount(runs); ++j) {
+            CTRunRef run = (CTRunRef)CFArrayGetValueAtIndex(runs, j);
+            NSNumber *found = [(NSDictionary *)CTRunGetAttributes(run) objectForKey:NoshiCustomEmojiAttribute];
+            if (!found || found.longLongValue != document || CTRunGetGlyphCount(run) == 0) continue;
+            CGPoint position;
+            CTRunGetPositions(run, CFRangeMake(0, 1), &position);
+            CGFloat width = (CGFloat)CTRunGetTypographicBounds(run, CFRangeMake(0, 0), NULL, NULL, NULL);
+            return CGRectMake(_origins[i].x + position.x, _origins[i].y - _ascents[i], width, _ascents[i] + _descents[i]);
+        }
+    }
+    return CGRectNull;
+}
+
+- (NSUInteger)foldableQuoteAtPoint:(CGPoint)point {
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        if (_toggles[i] < 0) continue;
+        CGFloat top = _origins[i].y - _ascents[i], bottom = _origins[i].y + _descents[i] + _footers[i];
+        if (point.x >= 0 && point.x <= _width && point.y >= top && point.y <= bottom) return (NSUInteger)_toggles[i];
+    }
+    return NSNotFound;
+}
+
+- (long long)customEmojiAtPoint:(CGPoint)point {
+    for (NSUInteger i = 0; i < _lineCount; ++i) {
+        if (point.y < _origins[i].y - _ascents[i] - 2 || point.y > _origins[i].y + _descents[i] + 2) continue;
+        CFArrayRef runs = CTLineGetGlyphRuns(_lines[i]);
+        for (CFIndex j = 0; j < CFArrayGetCount(runs); ++j) {
+            CTRunRef run = (CTRunRef)CFArrayGetValueAtIndex(runs, j);
+            NSDictionary *attributes = (NSDictionary *)CTRunGetAttributes(run);
+            NSNumber *document = [attributes objectForKey:NoshiCustomEmojiAttribute];
+            if (!document || CTRunGetGlyphCount(run) == 0) continue;
+            CGPoint position;
+            CTRunGetPositions(run, CFRangeMake(0, 1), &position);
+            CGFloat x = _origins[i].x + position.x;
+            CGFloat width = (CGFloat)CTRunGetTypographicBounds(run, CFRangeMake(0, 0), NULL, NULL, NULL);
+            if (point.x >= x && point.x < x + width) return document.longLongValue;
+        }
+        return 0;
+    }
+    return 0;
+}
+
+@end

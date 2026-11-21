@@ -1,122 +1,122 @@
 #include <math.h>
 
 #include "test_util.h"
-#include "exteria_messages.h"
-#include "exteria_tl_ids.h"
+#include "noshi_messages.h"
+#include "noshi_tl_ids.h"
 
-static exteria_arena arena;
+static noshi_arena arena;
 
 static void test_history_page_cursor(void) {
-    exteria_history_page page;
-    exteria_tl_value *answer = exteria_tl_new_obj(&arena, "messages.channelMessages");
-    exteria_tl_value *list = exteria_tl_new_vec(&arena, 3);
-    exteria_tl_value *a = exteria_tl_new_obj(&arena, "message");
-    exteria_tl_value *b = exteria_tl_new_obj(&arena, "messageEmpty");
-    exteria_tl_value *c = exteria_tl_new_obj(&arena, "messageService");
+    noshi_history_page page;
+    noshi_tl_value *answer = noshi_tl_new_obj(&arena, "messages.channelMessages");
+    noshi_tl_value *list = noshi_tl_new_vec(&arena, 3);
+    noshi_tl_value *a = noshi_tl_new_obj(&arena, "message");
+    noshi_tl_value *b = noshi_tl_new_obj(&arena, "messageEmpty");
+    noshi_tl_value *c = noshi_tl_new_obj(&arena, "messageService");
     CHECK(answer && list && a && b && c);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, a, "id", 100), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, b, "id", 98), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, c, "id", 99), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(list, 0, a), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(list, 1, b), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_vec_set(list, 2, c), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set(answer, "messages", list), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_page_read(answer, &page), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, a, "id", 100), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, b, "id", 98), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, c, "id", 99), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(list, 0, a), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(list, 1, b), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(list, 2, c), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set(answer, "messages", list), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_page_read(answer, &page), NOSHI_OK);
     CHECK_EQ_INT(page.count, 3);
     CHECK_EQ_INT(page.oldest_id, 98);
     CHECK_EQ_INT(page.newest_id, 100);
     int32_t cursor = 0;
     int more = 0;
     /* a sparse cached message at id 10 must not move the server cursor */
-    CHECK_EQ_INT(exteria_history_cursor_advance(0, &page, 3, &cursor, &more), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_history_cursor_advance(0, &page, 3, &cursor, &more), NOSHI_OK);
     CHECK_EQ_INT(cursor, 98);
     CHECK_EQ_INT(more, 1);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, a, "id", 98), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, b, "id", 97), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, c, "id", 96), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_page_read(answer, &page), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_cursor_advance(cursor, &page, 3, &cursor, &more), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, a, "id", 98), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, b, "id", 97), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, c, "id", 96), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_page_read(answer, &page), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_cursor_advance(cursor, &page, 3, &cursor, &more), NOSHI_OK);
     CHECK_EQ_INT(cursor, 96);
     CHECK_EQ_INT(more, 1);
-    CHECK_EQ_INT(exteria_history_cursor_advance(cursor, &page, 3, &cursor, &more), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_history_cursor_advance(cursor, &page, 3, &cursor, &more), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(cursor, 96);
     CHECK_EQ_INT(more, 0);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, b, "id", 0), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_page_read(answer, &page), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, b, "id", 0), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_page_read(answer, &page), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(page.count, 0);
-    CHECK_EQ_INT(exteria_history_page_read(NULL, &page), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_history_page_read(answer, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_history_page_read(NULL, &page), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_history_page_read(answer, NULL), NOSHI_E_ARG);
 }
 
-static exteria_tl_value *obj(const char *name) {
-    exteria_tl_value *v = exteria_tl_new_obj(&arena, name);
+static noshi_tl_value *obj(const char *name) {
+    noshi_tl_value *v = noshi_tl_new_obj(&arena, name);
     CHECK(v != NULL);
     return v;
 }
 
-static void set_i32(exteria_tl_value *v, const char *f, int32_t x) { CHECK_EQ_INT(exteria_tl_set_i32(&arena, v, f, x), EXTERIA_OK); }
-static void set_i64(exteria_tl_value *v, const char *f, int64_t x) { CHECK_EQ_INT(exteria_tl_set_i64(&arena, v, f, x), EXTERIA_OK); }
-static void set_f64(exteria_tl_value *v, const char *f, double x) { CHECK_EQ_INT(exteria_tl_set_f64(&arena, v, f, x), EXTERIA_OK); }
-static void set_str(exteria_tl_value *v, const char *f, const char *x) { CHECK_EQ_INT(exteria_tl_set_str(&arena, v, f, x), EXTERIA_OK); }
-static void set_flag(exteria_tl_value *v, const char *f) { CHECK_EQ_INT(exteria_tl_set_flag(v, f), EXTERIA_OK); }
-static void set(exteria_tl_value *v, const char *f, exteria_tl_value *x) { CHECK_EQ_INT(exteria_tl_set(v, f, x), EXTERIA_OK); }
+static void set_i32(noshi_tl_value *v, const char *f, int32_t x) { CHECK_EQ_INT(noshi_tl_set_i32(&arena, v, f, x), NOSHI_OK); }
+static void set_i64(noshi_tl_value *v, const char *f, int64_t x) { CHECK_EQ_INT(noshi_tl_set_i64(&arena, v, f, x), NOSHI_OK); }
+static void set_f64(noshi_tl_value *v, const char *f, double x) { CHECK_EQ_INT(noshi_tl_set_f64(&arena, v, f, x), NOSHI_OK); }
+static void set_str(noshi_tl_value *v, const char *f, const char *x) { CHECK_EQ_INT(noshi_tl_set_str(&arena, v, f, x), NOSHI_OK); }
+static void set_flag(noshi_tl_value *v, const char *f) { CHECK_EQ_INT(noshi_tl_set_flag(v, f), NOSHI_OK); }
+static void set(noshi_tl_value *v, const char *f, noshi_tl_value *x) { CHECK_EQ_INT(noshi_tl_set(v, f, x), NOSHI_OK); }
 
-static exteria_tl_value *vec_of(exteria_tl_value **items, uint32_t n) {
-    exteria_tl_value *v = exteria_tl_new_vec(&arena, n);
+static noshi_tl_value *vec_of(noshi_tl_value **items, uint32_t n) {
+    noshi_tl_value *v = noshi_tl_new_vec(&arena, n);
     uint32_t i;
     CHECK(v != NULL);
-    for (i = 0; i < n; ++i) CHECK_EQ_INT(exteria_tl_vec_set(v, i, items[i]), EXTERIA_OK);
+    for (i = 0; i < n; ++i) CHECK_EQ_INT(noshi_tl_vec_set(v, i, items[i]), NOSHI_OK);
     return v;
 }
 
 static void test_story_media(void) {
-    exteria_media_info info;
-    exteria_tl_value *media = obj("messageMediaStory");
+    noshi_media_info info;
+    noshi_tl_value *media = obj("messageMediaStory");
     /* a story sent into a chat is a message that names it, not an unsupported one */
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_STORY);
-    CHECK_EQ_INT(info.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_STORY);
+    CHECK_EQ_INT(info.ref.source, NOSHI_MEDIA_SOURCE_NONE);
 }
 
 static void test_paid_media(void) {
-    exteria_media_info info;
-    exteria_tl_value *media = obj("messageMediaPaidMedia"), *preview = obj("messageExtendedMediaPreview"), *items[1];
-    CHECK_EQ_INT(exteria_tl_set_i64(&arena, media, "stars_amount", 25), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, preview, "w", 640), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_set_i32(&arena, preview, "h", 480), EXTERIA_OK);
+    noshi_media_info info;
+    noshi_tl_value *media = obj("messageMediaPaidMedia"), *preview = obj("messageExtendedMediaPreview"), *items[1];
+    CHECK_EQ_INT(noshi_tl_set_i64(&arena, media, "stars_amount", 25), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, preview, "w", 640), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_set_i32(&arena, preview, "h", 480), NOSHI_OK);
     items[0] = preview;
     set(media, "extended_media", vec_of(items, 1));
     /* a locked item keeps its price and size and has no file */
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_PAID);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_PAID);
     CHECK_EQ_INT(info.paid_stars, 25);
     CHECK_EQ_INT(info.width, 640);
     CHECK_EQ_INT(info.height, 480);
-    CHECK_EQ_INT(info.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
+    CHECK_EQ_INT(info.ref.source, NOSHI_MEDIA_SOURCE_NONE);
     /* a price that is not positive is no price */
-    CHECK_EQ_INT(exteria_tl_set_i64(&arena, media, "stars_amount", -3), EXTERIA_OK);
-    exteria_media_classify(media, &info);
+    CHECK_EQ_INT(noshi_tl_set_i64(&arena, media, "stars_amount", -3), NOSHI_OK);
+    noshi_media_classify(media, &info);
     CHECK_EQ_INT(info.paid_stars, 0);
     /* a bought item is read as the media it is */
     {
-        exteria_tl_value *bought = obj("messageExtendedMedia"), *inner = obj("messageMediaContact");
+        noshi_tl_value *bought = obj("messageExtendedMedia"), *inner = obj("messageMediaContact");
         set(bought, "media", inner);
         items[0] = bought;
         set(media, "extended_media", vec_of(items, 1));
-        exteria_media_classify(media, &info);
-        CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_CONTACT);
+        noshi_media_classify(media, &info);
+        CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_CONTACT);
     }
 }
 
 
-static exteria_tl_value *peer_user(int64_t id) {
-    exteria_tl_value *p = obj("peerUser");
+static noshi_tl_value *peer_user(int64_t id) {
+    noshi_tl_value *p = obj("peerUser");
     set_i64(p, "user_id", id);
     return p;
 }
 
-static exteria_tl_value *message(int32_t id, const char *text) {
-    exteria_tl_value *m = obj("message");
+static noshi_tl_value *message(int32_t id, const char *text) {
+    noshi_tl_value *m = obj("message");
     set_i32(m, "id", id);
     set(m, "peer_id", peer_user(5));
     set_i32(m, "date", 1000 + id);
@@ -124,8 +124,8 @@ static exteria_tl_value *message(int32_t id, const char *text) {
     return m;
 }
 
-static exteria_tl_value *size(const char *type, int32_t w, int32_t h, int32_t bytes) {
-    exteria_tl_value *s = obj("photoSize");
+static noshi_tl_value *size(const char *type, int32_t w, int32_t h, int32_t bytes) {
+    noshi_tl_value *s = obj("photoSize");
     set_str(s, "type", type);
     set_i32(s, "w", w);
     set_i32(s, "h", h);
@@ -133,12 +133,12 @@ static exteria_tl_value *size(const char *type, int32_t w, int32_t h, int32_t by
     return s;
 }
 
-static exteria_tl_value *document(int64_t id, const char *mime, exteria_tl_value **attributes, uint32_t n) {
+static noshi_tl_value *document(int64_t id, const char *mime, noshi_tl_value **attributes, uint32_t n) {
     static const uint8_t reference[] = {1, 2, 3, 4};
-    exteria_tl_value *d = obj("document"), *thumbs[2];
+    noshi_tl_value *d = obj("document"), *thumbs[2];
     set_i64(d, "id", id);
     set_i64(d, "access_hash", id * 3);
-    CHECK_EQ_INT(exteria_tl_set_bytes(&arena, d, "file_reference", reference, sizeof(reference)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_bytes(&arena, d, "file_reference", reference, sizeof(reference)), NOSHI_OK);
     set_i32(d, "date", 5);
     set_str(d, "mime_type", mime);
     set_i64(d, "size", 40960);
@@ -150,21 +150,21 @@ static exteria_tl_value *document(int64_t id, const char *mime, exteria_tl_value
     return d;
 }
 
-static exteria_tl_value *media_document(exteria_tl_value *doc) {
-    exteria_tl_value *m = obj("messageMediaDocument");
+static noshi_tl_value *media_document(noshi_tl_value *doc) {
+    noshi_tl_value *m = obj("messageMediaDocument");
     set(m, "document", doc);
     return m;
 }
 
-static exteria_tl_value *sticker_attribute(const char *alt) {
-    exteria_tl_value *a = obj("documentAttributeSticker");
+static noshi_tl_value *sticker_attribute(const char *alt) {
+    noshi_tl_value *a = obj("documentAttributeSticker");
     set_str(a, "alt", alt);
     set(a, "stickerset", obj("inputStickerSetEmpty"));
     return a;
 }
 
-static exteria_tl_value *answer(const char *ctor, exteria_tl_value **messages, uint32_t n) {
-    exteria_tl_value *a = obj(ctor);
+static noshi_tl_value *answer(const char *ctor, noshi_tl_value **messages, uint32_t n) {
+    noshi_tl_value *a = obj(ctor);
     set(a, "messages", vec_of(messages, n));
     set(a, "topics", vec_of(NULL, 0));
     set(a, "chats", vec_of(NULL, 0));
@@ -178,9 +178,9 @@ static exteria_tl_value *answer(const char *ctor, exteria_tl_value **messages, u
 }
 
 static void test_text_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(7, "line one\nline two");
-    exteria_tl_value *reply = obj("messageReplyHeader"), *entities[3], *url;
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(7, "line one\nline two");
+    noshi_tl_value *reply = obj("messageReplyHeader"), *entities[3], *url;
     CHECK(row != NULL);
     set_flag(m, "out");
     set(m, "from_id", peer_user(9));
@@ -201,25 +201,25 @@ static void test_text_message(void) {
     url = obj("messageEntitySpoiler");
     set_i32(url, "offset", 0);
     set_i32(url, "length", 1);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->id, 7);
     CHECK_EQ_INT(row->date, 1007);
     CHECK_EQ_INT(row->out, 1);
     CHECK_EQ_INT(row->noforwards, 0);
     set_flag(m, "noforwards");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->noforwards, 1);
     /* the words above the picture are the sender's choice, and a message without the flag keeps them below */
     CHECK_EQ_INT(row->invert_media, 0);
     set_flag(m, "invert_media");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->invert_media, 1);
     CHECK_EQ_INT(row->unread_mention, 0);
     set_flag(m, "mentioned");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->unread_mention, 0);
     set_flag(m, "media_unread");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->unread_mention, 1);
     CHECK_EQ_INT(row->from_id, 9);
     CHECK_EQ_INT(row->reply_to, 3);
@@ -227,28 +227,28 @@ static void test_text_message(void) {
     CHECK_EQ_INT(row->reply_quote[0], 0);
     set(reply, "reply_to_peer_id", peer_user(91));
     set_str(reply, "quote_text", "quoted words");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->reply_peer_kind, 1);
     CHECK_EQ_INT(row->reply_peer_id, 91);
     CHECK(!strcmp(row->reply_quote, "quoted words"));
     CHECK_EQ_INT(row->service, 0);
-    CHECK_EQ_INT(row->media.kind, EXTERIA_PREVIEW_TEXT);
+    CHECK_EQ_INT(row->media.kind, NOSHI_PREVIEW_TEXT);
     CHECK(!strcmp(row->text, "line one\nline two"));
     CHECK_EQ_INT(row->entity_count, 2);
-    CHECK_EQ_INT(row->entities[0].kind, EXTERIA_ENTITY_BOLD);
-    CHECK_EQ_INT(row->entities[1].kind, EXTERIA_ENTITY_TEXT_URL);
+    CHECK_EQ_INT(row->entities[0].kind, NOSHI_ENTITY_BOLD);
+    CHECK_EQ_INT(row->entities[1].kind, NOSHI_ENTITY_TEXT_URL);
     CHECK_EQ_INT(row->entities[1].url_length, 21);
     CHECK(!strcmp(row->urls + row->entities[1].url_offset, "https://example.org/a"));
     free(row);
 }
 
-static exteria_tl_value *gif_document(exteria_tl_value *thumbs, exteria_tl_value *video_thumbs) {
-    exteria_tl_value *d = obj("document"), *media = obj("messageMediaDocument"), *animated = obj("documentAttributeAnimated"), *video = obj("documentAttributeVideo");
-    exteria_tl_value *attributes[2];
+static noshi_tl_value *gif_document(noshi_tl_value *thumbs, noshi_tl_value *video_thumbs) {
+    noshi_tl_value *d = obj("document"), *media = obj("messageMediaDocument"), *animated = obj("documentAttributeAnimated"), *video = obj("documentAttributeVideo");
+    noshi_tl_value *attributes[2];
     static const uint8_t reference[] = {1, 2, 3};
     set_i64(d, "id", 77);
     set_i64(d, "access_hash", 88);
-    CHECK_EQ_INT(exteria_tl_set_bytes(&arena, d, "file_reference", reference, sizeof(reference)), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_bytes(&arena, d, "file_reference", reference, sizeof(reference)), NOSHI_OK);
     set_i32(d, "dc_id", 2);
     set_str(d, "mime_type", "video/mp4");
     set_i32(video, "w", 258);
@@ -262,8 +262,8 @@ static exteria_tl_value *gif_document(exteria_tl_value *thumbs, exteria_tl_value
     return media;
 }
 
-static exteria_tl_value *size_item(const char *name, const char *type, int32_t w, int32_t h) {
-    exteria_tl_value *s = obj(name);
+static noshi_tl_value *size_item(const char *name, const char *type, int32_t w, int32_t h) {
+    noshi_tl_value *s = obj(name);
     set_str(s, "type", type);
     set_i32(s, "w", w);
     set_i32(s, "h", h);
@@ -272,54 +272,54 @@ static exteria_tl_value *size_item(const char *name, const char *type, int32_t w
 }
 
 static void test_gif_preview(void) {
-    exteria_media_info info;
-    exteria_tl_value *items[2];
-    exteria_tl_value *stripped = obj("photoStrippedSize");
+    noshi_media_info info;
+    noshi_tl_value *items[2];
+    noshi_tl_value *stripped = obj("photoStrippedSize");
     set_str(stripped, "type", "i");
     /* a photo size wins when there is one */
     items[0] = stripped;
     items[1] = size_item("photoSize", "m", 180, 180);
-    exteria_media_classify(gif_document(vec_of(items, 2), vec_of(items + 1, 0)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_GIF);
+    noshi_media_classify(gif_document(vec_of(items, 2), vec_of(items + 1, 0)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_GIF);
     CHECK(strcmp(info.preview.thumb, "m") == 0);
     /* only a stripped picture and a clip: the clip is the preview */
     items[0] = stripped;
-    exteria_media_classify(gif_document(vec_of(items, 1), vec_of((exteria_tl_value *[]){size_item("videoSize", "v", 150, 150)}, 1)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_GIF);
+    noshi_media_classify(gif_document(vec_of(items, 1), vec_of((noshi_tl_value *[]){size_item("videoSize", "v", 150, 150)}, 1)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_GIF);
     CHECK(strcmp(info.preview.thumb, "v") == 0);
     CHECK_EQ_INT(info.preview.dc, 2);
     /* nothing to fetch: no preview at all */
-    exteria_media_classify(gif_document(vec_of(items, 1), NULL), &info);
+    noshi_media_classify(gif_document(vec_of(items, 1), NULL), &info);
     CHECK_EQ_INT(info.preview.thumb[0], 0);
 }
 
 static void test_edit_hide(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m;
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m;
     CHECK(row != NULL);
     if (!row) return;
     m = message(40, "text");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->edit_date, 0);
     CHECK_EQ_INT(row->edit_hide, 0);
     /* an edit date with the hide flag is a change of the server and not of the words */
     m = message(41, "text");
     set_i32(m, "edit_date", 5000);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->edit_date, 5000);
     CHECK_EQ_INT(row->edit_hide, 0);
     m = message(42, "text");
     set_i32(m, "edit_date", 5000);
     set_flag(m, "edit_hide");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->edit_date, 5000);
     CHECK_EQ_INT(row->edit_hide, 1);
     free(row);
 }
 
 static void test_custom_emoji_entity(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(8, "a\xF0\x9F\x98\x80 b"), *entities[2];
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(8, "a\xF0\x9F\x98\x80 b"), *entities[2];
     CHECK(row != NULL);
     entities[0] = obj("messageEntityCustomEmoji");
     set_i32(entities[0], "offset", 1);
@@ -331,9 +331,9 @@ static void test_custom_emoji_entity(void) {
     set_i32(entities[1], "length", 1);
     set_i64(entities[1], "document_id", 0);
     set(m, "entities", vec_of(entities, 2));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->entity_count, 1);
-    CHECK_EQ_INT(row->entities[0].kind, EXTERIA_ENTITY_CUSTOM_EMOJI);
+    CHECK_EQ_INT(row->entities[0].kind, NOSHI_ENTITY_CUSTOM_EMOJI);
     CHECK_EQ_INT(row->entities[0].offset, 1);
     CHECK_EQ_INT(row->entities[0].length, 2);
     CHECK(row->entities[0].document_id == 5368324170671202286ll);
@@ -342,8 +342,8 @@ static void test_custom_emoji_entity(void) {
 
 /* a caption with many entities (custom emoji from several packs, links, spoilers) keeps every one up to the cap, the last ones included */
 static void test_many_entities(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(70, "0123456789012345678901234567890123456789012345678901234567890123456789"), *entities[70];
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(70, "0123456789012345678901234567890123456789012345678901234567890123456789"), *entities[70];
     size_t i;
     CHECK(row != NULL);
     for (i = 0; i < 70; ++i) {
@@ -353,7 +353,7 @@ static void test_many_entities(void) {
         set_i64(entities[i], "document_id", (int64_t)(1000 + i));
     }
     set(m, "entities", vec_of(entities, 70));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->entity_count, 70);
     CHECK_EQ_INT(row->entities[69].offset, 69);
     CHECK(row->entities[69].document_id == 1069);
@@ -361,8 +361,8 @@ static void test_many_entities(void) {
 }
 
 static void test_folder_title_entities(void) {
-    exteria_tl_value *title = obj("textWithEntities"), *items[3];
-    exteria_entity entities[EXTERIA_MESSAGE_ENTITIES_MAX];
+    noshi_tl_value *title = obj("textWithEntities"), *items[3];
+    noshi_entity entities[NOSHI_MESSAGE_ENTITIES_MAX];
     char urls[1] = {0};
     uint8_t count = 0;
     set_str(title, "text", "a\xF0\x9F\x98\x80 b");
@@ -379,17 +379,17 @@ static void test_folder_title_entities(void) {
     set_i32(items[2], "length", 1);
     set_i64(items[2], "document_id", 0);
     set(title, "entities", vec_of(items, 3));
-    exteria_entities_read(title, entities, EXTERIA_MESSAGE_ENTITIES_MAX, urls, sizeof(urls), &count);
+    noshi_entities_read(title, entities, NOSHI_MESSAGE_ENTITIES_MAX, urls, sizeof(urls), &count);
     CHECK_EQ_INT(count, 1);
-    CHECK_EQ_INT(entities[0].kind, EXTERIA_ENTITY_CUSTOM_EMOJI);
+    CHECK_EQ_INT(entities[0].kind, NOSHI_ENTITY_CUSTOM_EMOJI);
     CHECK_EQ_INT(entities[0].offset, 1);
     CHECK_EQ_INT(entities[0].length, 2);
     CHECK(entities[0].document_id == 5368324170671202286ll);
 }
 
 static void test_formatting_entities(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(10, "hidden code quote name when"), *entities[7];
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(10, "hidden code quote name when"), *entities[7];
     CHECK(row != NULL);
     entities[0] = obj("messageEntitySpoiler");
     set_i32(entities[0], "offset", 0);
@@ -421,24 +421,24 @@ static void test_formatting_entities(void) {
     set_i32(entities[6], "offset", 0);
     set_i32(entities[6], "length", 2);
     set(m, "entities", vec_of(entities, 7));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->entity_count, 5);
-    CHECK_EQ_INT(row->entities[0].kind, EXTERIA_ENTITY_SPOILER);
-    CHECK_EQ_INT(row->entities[1].kind, EXTERIA_ENTITY_PRE);
+    CHECK_EQ_INT(row->entities[0].kind, NOSHI_ENTITY_SPOILER);
+    CHECK_EQ_INT(row->entities[1].kind, NOSHI_ENTITY_PRE);
     CHECK(!strcmp(row->urls + row->entities[1].url_offset, "c"));
-    CHECK_EQ_INT(row->entities[2].kind, EXTERIA_ENTITY_BLOCKQUOTE);
-    CHECK_EQ_INT(row->entities[2].flags, EXTERIA_ENTITY_COLLAPSED);
-    CHECK_EQ_INT(row->entities[3].kind, EXTERIA_ENTITY_MENTION_NAME);
+    CHECK_EQ_INT(row->entities[2].kind, NOSHI_ENTITY_BLOCKQUOTE);
+    CHECK_EQ_INT(row->entities[2].flags, NOSHI_ENTITY_COLLAPSED);
+    CHECK_EQ_INT(row->entities[3].kind, NOSHI_ENTITY_MENTION_NAME);
     CHECK(row->entities[3].user_id == 77);
-    CHECK_EQ_INT(row->entities[4].kind, EXTERIA_ENTITY_FORMATTED_DATE);
+    CHECK_EQ_INT(row->entities[4].kind, NOSHI_ENTITY_FORMATTED_DATE);
     CHECK_EQ_INT(row->entities[4].date, 1700000000);
-    CHECK_EQ_INT(row->entities[4].flags, EXTERIA_DATE_LONG_DATE | EXTERIA_DATE_DAY_OF_WEEK);
+    CHECK_EQ_INT(row->entities[4].flags, NOSHI_DATE_LONG_DATE | NOSHI_DATE_DAY_OF_WEEK);
     free(row);
 }
 
 static void test_sticker_set_reference(void) {
-    exteria_media_info info;
-    exteria_tl_value *document = obj("document"), *attributes[1], *attribute = obj("documentAttributeSticker"), *named = obj("inputStickerSetID");
+    noshi_media_info info;
+    noshi_tl_value *document = obj("document"), *attributes[1], *attribute = obj("documentAttributeSticker"), *named = obj("inputStickerSetID");
     set_i64(document, "id", 5);
     set_i64(document, "access_hash", 6);
     set_i32(document, "dc_id", 2);
@@ -450,56 +450,56 @@ static void test_sticker_set_reference(void) {
     attributes[0] = attribute;
     set(document, "attributes", vec_of(attributes, 1));
     memset(&info, 0, sizeof(info));
-    exteria_document_read(document, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_STICKER);
+    noshi_document_read(document, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_STICKER);
     CHECK(info.sticker_set_id == 1234);
     CHECK(info.sticker_set_hash == 5678);
 }
 
 static void test_bot_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(9, "/start now"), *entities[1], *markup = obj("replyInlineMarkup");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(9, "/start now"), *entities[1], *markup = obj("replyInlineMarkup");
     CHECK(row != NULL);
     entities[0] = obj("messageEntityBotCommand");
     set_i32(entities[0], "offset", 0);
     set_i32(entities[0], "length", 6);
     set(m, "entities", vec_of(entities, 1));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->entity_count, 1);
-    CHECK_EQ_INT(row->entities[0].kind, EXTERIA_ENTITY_BOT_COMMAND);
+    CHECK_EQ_INT(row->entities[0].kind, NOSHI_ENTITY_BOT_COMMAND);
     CHECK_EQ_INT(row->entities[0].length, 6);
     CHECK_EQ_INT(row->via_bot_id, 0);
     CHECK_EQ_INT(row->has_markup, 0);
     set_i64(m, "via_bot_id", 4242);
     set(markup, "rows", vec_of(NULL, 0));
     set(m, "reply_markup", markup);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->via_bot_id, 4242);
     CHECK_EQ_INT(row->has_markup, 1);
     free(row);
 }
 
-static exteria_tl_value *rich_plain(const char *text) {
-    exteria_tl_value *t = obj("textPlain");
+static noshi_tl_value *rich_plain(const char *text) {
+    noshi_tl_value *t = obj("textPlain");
     set_str(t, "text", text);
     return t;
 }
 
-static exteria_tl_value *rich_block(const char *name, exteria_tl_value *text) {
-    exteria_tl_value *b = obj(name);
+static noshi_tl_value *rich_block(const char *name, noshi_tl_value *text) {
+    noshi_tl_value *b = obj(name);
     set(b, "text", text);
     return b;
 }
 
-static exteria_tl_value *rich_message_of(exteria_tl_value **blocks, uint32_t count) {
-    exteria_tl_value *rich = obj("richMessage");
+static noshi_tl_value *rich_message_of(noshi_tl_value **blocks, uint32_t count) {
+    noshi_tl_value *rich = obj("richMessage");
     set(rich, "blocks", vec_of(blocks, count));
     return rich;
 }
 
 static void test_rich_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m, *blocks[3], *parts[2], *entries[2], *list, *concat, *deep;
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m, *blocks[3], *parts[2], *entries[2], *list, *concat, *deep;
     CHECK(row != NULL);
     /* the words of a bot answer sit in the blocks, and the empty message is not an unsupported kind */
     parts[0] = rich_plain("hello ");
@@ -515,19 +515,19 @@ static void test_rich_message(void) {
     blocks[2] = obj("pageBlockDivider");
     m = message(20, "");
     set(m, "rich_message", rich_message_of(blocks, 3));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!strcmp(row->text, "hello world\n\n\xE2\x80\xA2 one\n\xE2\x80\xA2 two"));
-    CHECK_EQ_INT(row->media.kind, EXTERIA_PREVIEW_TEXT);
+    CHECK_EQ_INT(row->media.kind, NOSHI_PREVIEW_TEXT);
     /* a message that has its own text keeps it */
     m = message(21, "own words");
     set(m, "rich_message", rich_message_of(blocks, 3));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!strcmp(row->text, "own words"));
     /* blocks with nothing readable leave the text empty */
     blocks[0] = obj("pageBlockDivider");
     m = message(22, "");
     set(m, "rich_message", rich_message_of(blocks, 1));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!row->text[0]);
     /* nesting past the limit is dropped, not followed */
     deep = rich_plain("deep");
@@ -535,14 +535,14 @@ static void test_rich_message(void) {
     blocks[0] = rich_block("pageBlockParagraph", deep);
     m = message(23, "");
     set(m, "rich_message", rich_message_of(blocks, 1));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!row->text[0]);
     free(row);
 }
 
 static void test_invoice_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(10, ""), *media = obj("messageMediaInvoice");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(10, ""), *media = obj("messageMediaInvoice");
     CHECK(row != NULL);
     set_str(media, "title", "Pack \xF0\x9F\x98\x80");
     set_str(media, "description", "Ten stickers");
@@ -550,50 +550,50 @@ static void test_invoice_message(void) {
     set_i64(media, "total_amount", 150);
     set_str(media, "start_param", "p");
     set(m, "media", media);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!strcmp(row->text, "Pack \xF0\x9F\x98\x80\nTen stickers\n\n\xE2\xAD\x90 150"));
     CHECK_EQ_INT(row->entity_count, 1);
-    CHECK_EQ_INT(row->entities[0].kind, EXTERIA_ENTITY_BOLD);
+    CHECK_EQ_INT(row->entities[0].kind, NOSHI_ENTITY_BOLD);
     CHECK_EQ_INT(row->entities[0].offset, 0);
     /* the emoji counts as two units, the way the server counts */
     CHECK_EQ_INT(row->entities[0].length, 7);
-    CHECK_EQ_INT(row->media.kind, EXTERIA_PREVIEW_OTHER);
+    CHECK_EQ_INT(row->media.kind, NOSHI_PREVIEW_OTHER);
     set_str(media, "currency", "USD");
     m = message(11, "");
     set(m, "media", media);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!strcmp(row->text, "Pack \xF0\x9F\x98\x80\nTen stickers"));
     /* a message that has its own text keeps it */
     m = message(12, "own words");
     set(m, "media", media);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(!strcmp(row->text, "own words"));
     CHECK_EQ_INT(row->entity_count, 0);
     free(row);
 }
 
 static void test_text_limits(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    char *long_text = malloc(EXTERIA_MESSAGE_TEXT_MAX + 50);
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    char *long_text = malloc(NOSHI_MESSAGE_TEXT_MAX + 50);
     size_t i;
     CHECK(row && long_text);
     /* a two byte letter lands across the cut, it must go whole */
-    for (i = 0; i < EXTERIA_MESSAGE_TEXT_MAX + 40; ++i) long_text[i] = 'a';
-    long_text[EXTERIA_MESSAGE_TEXT_MAX + 40] = 0;
-    long_text[EXTERIA_MESSAGE_TEXT_MAX - 2] = (char)0xD0;
-    long_text[EXTERIA_MESSAGE_TEXT_MAX - 1] = (char)0xB1;
-    CHECK_EQ_INT(exteria_message_read(message(1, long_text), row), EXTERIA_OK);
-    CHECK_EQ_INT(strlen(row->text), EXTERIA_MESSAGE_TEXT_MAX - 2);
+    for (i = 0; i < NOSHI_MESSAGE_TEXT_MAX + 40; ++i) long_text[i] = 'a';
+    long_text[NOSHI_MESSAGE_TEXT_MAX + 40] = 0;
+    long_text[NOSHI_MESSAGE_TEXT_MAX - 2] = (char)0xD0;
+    long_text[NOSHI_MESSAGE_TEXT_MAX - 1] = (char)0xB1;
+    CHECK_EQ_INT(noshi_message_read(message(1, long_text), row), NOSHI_OK);
+    CHECK_EQ_INT(strlen(row->text), NOSHI_MESSAGE_TEXT_MAX - 2);
     CHECK_EQ_INT((uint8_t)row->text[strlen(row->text) - 1], 'a');
-    CHECK_EQ_INT(exteria_message_read(message(2, ""), row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(message(2, ""), row), NOSHI_OK);
     CHECK_EQ_INT(row->text[0], 0);
     free(long_text);
     free(row);
 }
 
 static void test_url_pool_overflow(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(1, "x"), *entities[4];
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(1, "x"), *entities[4];
     char url[400];
     int i;
     CHECK(row != NULL);
@@ -606,7 +606,7 @@ static void test_url_pool_overflow(void) {
         set_str(entities[i], "url", url);
     }
     set(m, "entities", vec_of(entities, 4));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     /* 1024 bytes of pool hold two 399 byte addresses, the others are left out instead of cut */
     CHECK_EQ_INT(row->entity_count, 2);
     CHECK_EQ_INT(strlen(row->urls + row->entities[1].url_offset), 399);
@@ -614,44 +614,44 @@ static void test_url_pool_overflow(void) {
 }
 
 static void test_sticker(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *attributes[2], *m = message(2, "");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *attributes[2], *m = message(2, "");
     attributes[0] = sticker_attribute("\xF0\x9F\x98\x80");
     attributes[1] = obj("documentAttributeImageSize");
     set_i32(attributes[1], "w", 512);
     set_i32(attributes[1], "h", 480);
     set(m, "media", media_document(document(77, "image/webp", attributes, 2)));
     CHECK(row != NULL);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->media.kind, EXTERIA_PREVIEW_STICKER);
-    CHECK_EQ_INT(row->media.sticker, EXTERIA_STICKER_STATIC);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->media.kind, NOSHI_PREVIEW_STICKER);
+    CHECK_EQ_INT(row->media.sticker, NOSHI_STICKER_STATIC);
     CHECK_EQ_INT(row->media.width, 512);
     CHECK_EQ_INT(row->media.height, 480);
-    CHECK_EQ_INT(row->media.ref.source, EXTERIA_MEDIA_SOURCE_DOCUMENT);
+    CHECK_EQ_INT(row->media.ref.source, NOSHI_MEDIA_SOURCE_DOCUMENT);
     CHECK_EQ_INT(row->media.ref.id, 77);
     CHECK_EQ_INT(row->media.ref.dc, 2);
     CHECK_EQ_INT(row->media.ref.ref_len, 4);
     CHECK_EQ_INT(row->media.ref.thumb[0], 0);
     CHECK(!strcmp(row->media.alt, "\xF0\x9F\x98\x80"));
     /* the preview is the thumbnail that covers 100 pixels, not the 50 pixel one */
-    CHECK_EQ_INT(row->media.preview.source, EXTERIA_MEDIA_SOURCE_DOCUMENT);
+    CHECK_EQ_INT(row->media.preview.source, NOSHI_MEDIA_SOURCE_DOCUMENT);
     CHECK(!strcmp(row->media.preview.thumb, "m"));
 
     attributes[0] = sticker_attribute("x");
     m = message(3, "");
     set(m, "media", media_document(document(78, "application/x-tgsticker", attributes, 1)));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->media.sticker, EXTERIA_STICKER_ANIMATED);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->media.sticker, NOSHI_STICKER_ANIMATED);
     attributes[0] = sticker_attribute("x");
     m = message(4, "");
     set(m, "media", media_document(document(79, "video/webm", attributes, 1)));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->media.sticker, EXTERIA_STICKER_VIDEO);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->media.sticker, NOSHI_STICKER_VIDEO);
     free(row);
 }
 
-static exteria_tl_value *video_document(int64_t id, const char *codec, int32_t width, int32_t height) {
-    exteria_tl_value *video = obj("documentAttributeVideo"), *attributes[] = {video};
+static noshi_tl_value *video_document(int64_t id, const char *codec, int32_t width, int32_t height) {
+    noshi_tl_value *video = obj("documentAttributeVideo"), *attributes[] = {video};
     set_f64(video, "duration", 11.6);
     set_i32(video, "w", width);
     set_i32(video, "h", height);
@@ -660,62 +660,62 @@ static exteria_tl_value *video_document(int64_t id, const char *codec, int32_t w
 }
 
 static void test_video_variants(void) {
-    exteria_media_info info;
-    exteria_tl_value *original = video_document(21, "hevc", 720, 1280);
-    exteria_tl_value *media = media_document(original);
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_info info;
+    noshi_tl_value *original = video_document(21, "hevc", 720, 1280);
+    noshi_tl_value *media = media_document(original);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 21);
-    exteria_tl_value *alternatives[] = {
+    noshi_tl_value *alternatives[] = {
         video_document(22, "h264", 1080, 1920), video_document(23, "avc", 720, 1280),
         video_document(24, "h264", 360, 640), video_document(25, "hevc", 720, 1280),
         video_document(26, NULL, 720, 1280), obj("documentEmpty")
     };
     set(media, "alt_documents", vec_of(alternatives, 6));
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 23);
     CHECK_EQ_INT(info.preview.id, 23);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_VIDEO);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_VIDEO);
     CHECK_EQ_INT(info.width, 720);
     CHECK_EQ_INT(info.height, 1280);
     CHECK_EQ_INT(info.duration, 11);
-    exteria_media_classify_sized(media, 320, &info);
+    noshi_media_classify_sized(media, 320, &info);
     CHECK_EQ_INT(info.ref.id, 24);
-    exteria_media_classify_sized(media, 4096, &info);
+    noshi_media_classify_sized(media, 4096, &info);
     CHECK_EQ_INT(info.ref.id, 22);
     /* an already compatible primary document stays the same */
     set(media, "document", video_document(27, "h264", 720, 1280));
-    exteria_media_classify_sized(media, 320, &info);
+    noshi_media_classify_sized(media, 320, &info);
     CHECK_EQ_INT(info.ref.id, 27);
     set(media, "document", original);
     set_i32(alternatives[0], "dc_id", 0);
     set_i64(alternatives[1], "size", 0);
     set_str(alternatives[2], "mime_type", "video/webm");
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 21);
-    exteria_tl_value *malformed = vec_of(NULL, 0);
+    noshi_tl_value *malformed = vec_of(NULL, 0);
     set(media, "alt_documents", malformed);
-    malformed->kind = EXTERIA_TL_V_I32;
-    exteria_media_classify_sized(media, 1280, &info);
+    malformed->kind = NOSHI_TL_V_I32;
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 21);
-    exteria_tl_value *many = exteria_tl_new_vec(&arena, 65);
+    noshi_tl_value *many = noshi_tl_new_vec(&arena, 65);
     CHECK(many != NULL);
     set(media, "alt_documents", many);
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 21);
     set(media, "alt_documents", vec_of(NULL, 0));
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK_EQ_INT(info.ref.id, 21);
 }
 
 static void test_media_kinds(void) {
-    exteria_media_info info;
-    exteria_tl_value *attributes[3], *media, *photo, *sizes[6];
+    noshi_media_info info;
+    noshi_tl_value *attributes[3], *media, *photo, *sizes[6];
     attributes[0] = obj("documentAttributeFilename");
-    set_str(attributes[0], "file_name", "Exteria_icon.png");
+    set_str(attributes[0], "file_name", "Noshi_icon.png");
     media = media_document(document(10, "image/png", attributes, 1));
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_FILE);
-    CHECK(!strcmp(info.name, "Exteria_icon.png"));
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_FILE);
+    CHECK(!strcmp(info.name, "Noshi_icon.png"));
     CHECK_EQ_INT(info.size, 40960);
     {
         /* a name of the longest size a file system holds comes through whole, extension included */
@@ -724,7 +724,7 @@ static void test_media_kinds(void) {
         memcpy(longest + 251, ".pdf", 5);
         attributes[0] = obj("documentAttributeFilename");
         set_str(attributes[0], "file_name", longest);
-        exteria_media_classify(media_document(document(10, "application/pdf", attributes, 1)), &info);
+        noshi_media_classify(media_document(document(10, "application/pdf", attributes, 1)), &info);
         CHECK(!strcmp(info.name, longest));
     }
 
@@ -733,72 +733,72 @@ static void test_media_kinds(void) {
     set_i32(attributes[0], "w", 320);
     set_i32(attributes[0], "h", 240);
     media = media_document(document(11, "video/mp4", attributes, 1));
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_VIDEO);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_VIDEO);
     CHECK_EQ_INT(info.duration, 12);
     attributes[0] = obj("documentAttributeVideo");
     set_f64(attributes[0], "duration", 3);
     set_i32(attributes[0], "w", 240);
     set_i32(attributes[0], "h", 240);
     set_flag(attributes[0], "round_message");
-    exteria_media_classify(media_document(document(12, "video/mp4", attributes, 1)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_VIDEO_MESSAGE);
+    noshi_media_classify(media_document(document(12, "video/mp4", attributes, 1)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_VIDEO_MESSAGE);
 
     attributes[0] = obj("documentAttributeAudio");
     set_i32(attributes[0], "duration", 9);
     set_flag(attributes[0], "voice");
-    exteria_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_VOICE);
+    noshi_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_VOICE);
     CHECK_EQ_INT(info.duration, 9);
     /* the waveform of a note rides along when it fits, and is left out when it does not */
     {
         static const uint8_t wave[4] = {1, 2, 3, 4};
-        uint8_t big[EXTERIA_MEDIA_WAVEFORM_MAX + 1] = {0};
+        uint8_t big[NOSHI_MEDIA_WAVEFORM_MAX + 1] = {0};
         CHECK_EQ_INT(info.waveform_len, 0);
         attributes[0] = obj("documentAttributeAudio");
         set_i32(attributes[0], "duration", 9);
         set_flag(attributes[0], "voice");
-        CHECK_EQ_INT(exteria_tl_set_bytes(&arena, attributes[0], "waveform", wave, sizeof(wave)), EXTERIA_OK);
-        exteria_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
+        CHECK_EQ_INT(noshi_tl_set_bytes(&arena, attributes[0], "waveform", wave, sizeof(wave)), NOSHI_OK);
+        noshi_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
         CHECK_EQ_INT(info.waveform_len, 4);
         CHECK_EQ_INT(info.waveform[3], 4);
         attributes[0] = obj("documentAttributeAudio");
         set_flag(attributes[0], "voice");
-        CHECK_EQ_INT(exteria_tl_set_bytes(&arena, attributes[0], "waveform", big, sizeof(big)), EXTERIA_OK);
-        exteria_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
+        CHECK_EQ_INT(noshi_tl_set_bytes(&arena, attributes[0], "waveform", big, sizeof(big)), NOSHI_OK);
+        noshi_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
         CHECK_EQ_INT(info.waveform_len, 0);
         attributes[0] = obj("documentAttributeAudio");
         set_i32(attributes[0], "duration", 9);
         set_flag(attributes[0], "voice");
-        exteria_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
+        noshi_media_classify(media_document(document(13, "audio/ogg", attributes, 1)), &info);
     }
     attributes[0] = obj("documentAttributeAudio");
     set_i32(attributes[0], "duration", 200);
-    exteria_media_classify(media_document(document(14, "audio/mpeg", attributes, 1)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_AUDIO);
+    noshi_media_classify(media_document(document(14, "audio/mpeg", attributes, 1)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_AUDIO);
     {
-        exteria_tl_value *doc = document(14, "audio/mpeg", attributes, 1);
-        exteria_tl_value *covers[3] = {size("s", 90, 90, 1000), size("m", 160, 160, 4000), size("x", 320, 320, 16000)};
+        noshi_tl_value *doc = document(14, "audio/mpeg", attributes, 1);
+        noshi_tl_value *covers[3] = {size("s", 90, 90, 1000), size("m", 160, 160, 4000), size("x", 320, 320, 16000)};
         set(doc, "thumbs", vec_of(covers, 3));
-        exteria_media_classify(media_document(doc), &info);
+        noshi_media_classify(media_document(doc), &info);
         CHECK(!strcmp(info.preview.thumb, "x"));
         set(doc, "thumbs", vec_of(covers, 2));
-        exteria_media_classify(media_document(doc), &info);
+        noshi_media_classify(media_document(doc), &info);
         CHECK(!strcmp(info.preview.thumb, "m"));
     }
     attributes[0] = obj("documentAttributeFilename");
     set_str(attributes[0], "file_name", "track.FLAC");
-    exteria_media_classify(media_document(document(14, "application/octet-stream", attributes, 1)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_AUDIO);
-    exteria_media_classify(media_document(document(14, "audio/flac", NULL, 0)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_AUDIO);
+    noshi_media_classify(media_document(document(14, "application/octet-stream", attributes, 1)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_AUDIO);
+    noshi_media_classify(media_document(document(14, "audio/flac", NULL, 0)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_AUDIO);
     attributes[0] = obj("documentAttributeAnimated");
     attributes[1] = obj("documentAttributeVideo");
     set_f64(attributes[1], "duration", 2);
     set_i32(attributes[1], "w", 100);
     set_i32(attributes[1], "h", 100);
-    exteria_media_classify(media_document(document(15, "video/mp4", attributes, 2)), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_GIF);
+    noshi_media_classify(media_document(document(15, "video/mp4", attributes, 2)), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_GIF);
 
     /* retina bubbles need more than 320 pixels; stripped sizes have no file */
     sizes[0] = obj("photoStrippedSize");
@@ -809,81 +809,81 @@ static void test_media_kinds(void) {
     photo = obj("photo");
     set_i64(photo, "id", 31);
     set_i64(photo, "access_hash", 32);
-    CHECK_EQ_INT(exteria_tl_set_bytes(&arena, photo, "file_reference", "abc", 3), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_bytes(&arena, photo, "file_reference", "abc", 3), NOSHI_OK);
     set_i32(photo, "date", 1);
     set(photo, "sizes", vec_of(sizes, 4));
     set_i32(photo, "dc_id", 4);
     media = obj("messageMediaPhoto");
     set(media, "photo", photo);
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_PHOTO);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_PHOTO);
     CHECK_EQ_INT(info.spoiler, 0);
-    CHECK_EQ_INT(info.ref.source, EXTERIA_MEDIA_SOURCE_PHOTO);
+    CHECK_EQ_INT(info.ref.source, NOSHI_MEDIA_SOURCE_PHOTO);
     CHECK(!strcmp(info.ref.thumb, "x"));
     CHECK_EQ_INT(info.width, 450);
     CHECK_EQ_INT(info.height, 800);
     CHECK_EQ_INT(info.ref.dc, 4);
-    CHECK_EQ_INT(info.full_photo.source, EXTERIA_MEDIA_SOURCE_PHOTO);
+    CHECK_EQ_INT(info.full_photo.source, NOSHI_MEDIA_SOURCE_PHOTO);
     CHECK(!strcmp(info.full_photo.thumb, "x"));
     CHECK_EQ_INT(info.full_photo_size, 40000);
     CHECK_EQ_INT(info.full_photo.id, info.ref.id);
     CHECK_EQ_INT(info.full_photo.dc, info.ref.dc);
     /* a photo the sender hid under a spoiler says so */
     set_flag(media, "spoiler");
-    exteria_media_classify(media, &info);
+    noshi_media_classify(media, &info);
     CHECK_EQ_INT(info.spoiler, 1);
     /* a story asks for a size near 1280 px; with no size that large the largest one is the best left */
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK(!strcmp(info.ref.thumb, "x"));
     CHECK_EQ_INT(info.width, 450);
-    exteria_media_classify_sized(media, 320, &info);
+    noshi_media_classify_sized(media, 320, &info);
     CHECK(!strcmp(info.ref.thumb, "m"));
 
     sizes[4] = size("w", 1440, 2560, 2000000);
     sizes[5] = size("y", 720, 1280, 400000);
     set(photo, "sizes", vec_of(sizes, 6));
-    exteria_media_classify(media, &info);
+    noshi_media_classify(media, &info);
     CHECK(!strcmp(info.ref.thumb, "x"));
     CHECK(!strcmp(info.full_photo.thumb, "w"));
     CHECK_EQ_INT(info.full_photo_size, 2000000);
-    exteria_media_classify_sized(media, 1280, &info);
+    noshi_media_classify_sized(media, 1280, &info);
     CHECK(!strcmp(info.ref.thumb, "y"));
     CHECK(!strcmp(info.full_photo.thumb, "w"));
 
     /* a photo that expired keeps its kind but has nothing to fetch */
     media = obj("messageMediaPhoto");
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_PHOTO);
-    CHECK_EQ_INT(info.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_PHOTO);
+    CHECK_EQ_INT(info.ref.source, NOSHI_MEDIA_SOURCE_NONE);
 
-    exteria_media_classify(obj("messageMediaWebPage"), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_TEXT);
-    exteria_media_classify(NULL, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_TEXT);
-    exteria_media_classify(obj("messageMediaPoll"), &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_POLL);
+    noshi_media_classify(obj("messageMediaWebPage"), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_TEXT);
+    noshi_media_classify(NULL, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_TEXT);
+    noshi_media_classify(obj("messageMediaPoll"), &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_POLL);
 }
 
 static void test_reference_limit(void) {
-    exteria_media_info info;
-    exteria_tl_value *attributes[1];
-    uint8_t big[EXTERIA_MEDIA_REF_MAX + 1];
-    exteria_tl_value *doc;
+    noshi_media_info info;
+    noshi_tl_value *attributes[1];
+    uint8_t big[NOSHI_MEDIA_REF_MAX + 1];
+    noshi_tl_value *doc;
     memset(big, 7, sizeof(big));
     attributes[0] = obj("documentAttributeFilename");
     set_str(attributes[0], "file_name", "a");
     doc = document(5, "text/plain", attributes, 1);
-    CHECK_EQ_INT(exteria_tl_set_bytes(&arena, doc, "file_reference", big, sizeof(big)), EXTERIA_OK);
-    exteria_media_classify(media_document(doc), &info);
+    CHECK_EQ_INT(noshi_tl_set_bytes(&arena, doc, "file_reference", big, sizeof(big)), NOSHI_OK);
+    noshi_media_classify(media_document(doc), &info);
     /* a reference longer than the cap cannot be sent back, so the file is not offered */
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_FILE);
-    CHECK_EQ_INT(info.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_FILE);
+    CHECK_EQ_INT(info.ref.source, NOSHI_MEDIA_SOURCE_NONE);
     CHECK_EQ_INT(info.ref.ref_len, 0);
 }
 
 static void test_service(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = obj("messageService"), *action = obj("messageActionChatEditTitle");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = obj("messageService"), *action = obj("messageActionChatEditTitle");
     CHECK(row != NULL);
     set_i32(m, "id", 40);
     set(m, "peer_id", peer_user(5));
@@ -891,9 +891,9 @@ static void test_service(void) {
     set(m, "from_id", peer_user(8));
     set_str(action, "title", "New name");
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->service, EXTERIA_SERVICE_TITLE + 1);
-    CHECK_EQ_INT(row->media.kind, EXTERIA_PREVIEW_SERVICE);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->service, NOSHI_SERVICE_TITLE + 1);
+    CHECK_EQ_INT(row->media.kind, NOSHI_PREVIEW_SERVICE);
     CHECK_EQ_INT(row->from_id, 8);
     CHECK(!strcmp(row->text, "New name"));
     free(row);
@@ -901,33 +901,33 @@ static void test_service(void) {
 
 /* a message written in a group on behalf of a channel names the channel, not a user */
 static void test_sent_as_channel(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(12, "as the channel"), *from = obj("peerChannel");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(12, "as the channel"), *from = obj("peerChannel");
     CHECK(row != NULL);
     set_i64(from, "channel_id", 4321);
     set(m, "from_id", from);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->from_id, 0);
     CHECK_EQ_INT(row->from_channel, 4321);
     set(m, "from_id", peer_user(9));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->from_id, 9);
     CHECK_EQ_INT(row->from_channel, 0);
     free(row);
 }
 
 static void test_post_counters(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(14, "post"), *replies = obj("messageReplies"), *who[4];
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(14, "post"), *replies = obj("messageReplies"), *who[4];
     int i;
     CHECK(row != NULL);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->views, 0);
     CHECK_EQ_INT(row->has_comments, 0);
     /* a post of a channel that signs its posts names the administrator, one that does not has no name, and a line break in it becomes a space */
     CHECK(row->post_author[0] == 0);
     set_str(m, "post_author", "Ann\nLee");
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK(strcmp(row->post_author, "Ann Lee") == 0);
     set_i32(m, "views", 79);
     set_flag(replies, "comments");
@@ -937,7 +937,7 @@ static void test_post_counters(void) {
     for (i = 0; i < 4; ++i) who[i] = peer_user(20 + i);
     set(replies, "recent_repliers", vec_of(who, 4));
     set(m, "replies", replies);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->views, 79);
     CHECK_EQ_INT(row->has_comments, 1);
     CHECK_EQ_INT(row->comments, 10);
@@ -951,142 +951,142 @@ static void test_post_counters(void) {
     set_i32(replies, "replies", 3);
     set_i32(replies, "replies_pts", 1);
     set(m, "replies", replies);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->has_comments, 0);
     free(row);
 }
 
 static void test_reactions_request(void) {
-    exteria_tl_value *request = NULL, *decoded = NULL;
-    exteria_peer_ref group = {2, 500, 0, 0, 0}, channel = {3, 500, 7, 0, 42}, bad = {3, 500, 7, 0, -1};
-    exteria_writer writer;
+    noshi_tl_value *request = NULL, *decoded = NULL;
+    noshi_peer_ref group = {2, 500, 0, 0, 0}, channel = {3, 500, 7, 0, 42}, bad = {3, 500, 7, 0, -1};
+    noshi_writer writer;
     int32_t value = 0;
-    CHECK_EQ_INT(exteria_unread_reactions_request(&arena, &group, 100, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getUnreadReactions);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "limit", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_unread_reactions_request(&arena, &group, 100, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getUnreadReactions);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "limit", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 100);
-    CHECK(!exteria_tl_has(request, "top_msg_id"));
-    CHECK_EQ_INT(exteria_unread_reactions_request(&arena, &channel, 100, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "top_msg_id", &value), EXTERIA_OK);
+    CHECK(!noshi_tl_has(request, "top_msg_id"));
+    CHECK_EQ_INT(noshi_unread_reactions_request(&arena, &channel, 100, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "top_msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 42);
-    exteria_writer_init(&writer, 4096);
-    CHECK_EQ_INT(exteria_tl_encode(request, &writer, NULL), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_decode_all(&arena, NULL, EXTERIA_TL_REF_ANY, writer.data, writer.len, &decoded), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(decoded, "top_msg_id", &value), EXTERIA_OK);
+    noshi_writer_init(&writer, 4096);
+    CHECK_EQ_INT(noshi_tl_encode(request, &writer, NULL), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_decode_all(&arena, NULL, NOSHI_TL_REF_ANY, writer.data, writer.len, &decoded), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(decoded, "top_msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 42);
-    exteria_writer_free(&writer);
-    CHECK_EQ_INT(exteria_unread_reactions_request(&arena, &group, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_unread_reactions_request(&arena, &group, EXTERIA_MESSAGES_MAX + 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_unread_reactions_request(&arena, &bad, 10, &request), EXTERIA_E_ARG);
+    noshi_writer_free(&writer);
+    CHECK_EQ_INT(noshi_unread_reactions_request(&arena, &group, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_unread_reactions_request(&arena, &group, NOSHI_MESSAGES_MAX + 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_unread_reactions_request(&arena, &bad, 10, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_read_reactions_request(&arena, &group, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_readReactions);
-    CHECK(!exteria_tl_has(request, "limit"));
+    CHECK_EQ_INT(noshi_read_reactions_request(&arena, &group, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_readReactions);
+    CHECK(!noshi_tl_has(request, "limit"));
 }
 
 static void test_pinned_request(void) {
-    exteria_tl_value *request = NULL, *decoded = NULL;
-    exteria_peer_ref channel = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0};
-    exteria_writer writer;
+    noshi_tl_value *request = NULL, *decoded = NULL;
+    noshi_peer_ref channel = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0};
+    noshi_writer writer;
     int32_t topic = 0;
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 100, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_search);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "filter")), EXTERIA_TL_ID_inputMessagesFilterPinned);
-    CHECK(!exteria_tl_has(request, "top_msg_id"));
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 100, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_search);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "filter")), NOSHI_TL_ID_inputMessagesFilterPinned);
+    CHECK(!noshi_tl_has(request, "top_msg_id"));
     channel.topic_id = 42;
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 100, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "top_msg_id", &topic), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 100, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "top_msg_id", &topic), NOSHI_OK);
     CHECK_EQ_INT(topic, 42);
-    exteria_writer_init(&writer, 4096);
-    CHECK_EQ_INT(exteria_tl_encode(request, &writer, NULL), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_decode_all(&arena, NULL, EXTERIA_TL_REF_ANY, writer.data, writer.len, &decoded), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(decoded, "top_msg_id", &topic), EXTERIA_OK);
+    noshi_writer_init(&writer, 4096);
+    CHECK_EQ_INT(noshi_tl_encode(request, &writer, NULL), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_decode_all(&arena, NULL, NOSHI_TL_REF_ANY, writer.data, writer.len, &decoded), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(decoded, "top_msg_id", &topic), NOSHI_OK);
     CHECK_EQ_INT(topic, 42);
-    exteria_writer_free(&writer);
+    noshi_writer_free(&writer);
     channel.topic_id = 1;
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 100, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "top_msg_id", &topic), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 100, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "top_msg_id", &topic), NOSHI_OK);
     CHECK_EQ_INT(topic, 1);
     channel.topic_id = -1;
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 100, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 100, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
     {
-        exteria_peer_ref user = {1, 500, 7, 0, 42};
-        CHECK_EQ_INT(exteria_pinned_request(&arena, &user, 100, &request), EXTERIA_E_ARG);
+        noshi_peer_ref user = {1, 500, 7, 0, 42};
+        CHECK_EQ_INT(noshi_pinned_request(&arena, &user, 100, &request), NOSHI_E_ARG);
         CHECK(request == NULL);
     }
     channel.topic_id = 0;
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &nohash, 100, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &nohash, 100, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, EXTERIA_MESSAGES_MAX + 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_pinned_request(&arena, &channel, 10, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, NOSHI_MESSAGES_MAX + 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_pinned_request(&arena, &channel, 10, NULL), NOSHI_E_ARG);
 }
 
 static void test_greeting_stickers(void) {
-    exteria_tl_value *request = NULL, *docs[3], *s;
-    exteria_sticker_row stickers[4];
+    noshi_tl_value *request = NULL, *docs[3], *s;
+    noshi_sticker_row stickers[4];
     size_t count = 9;
     const uint8_t *text;
     size_t len;
-    CHECK_EQ_INT(exteria_stickers_request(&arena, "\xf0\x9f\x91\x8b", &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getStickers);
-    CHECK_EQ_INT(exteria_tl_get_bytes(request, "emoticon", &text, &len), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_stickers_request(&arena, "\xf0\x9f\x91\x8b", &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getStickers);
+    CHECK_EQ_INT(noshi_tl_get_bytes(request, "emoticon", &text, &len), NOSHI_OK);
     CHECK_EQ_INT((int)len, 4);
-    CHECK_EQ_INT(exteria_stickers_request(&arena, "", &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_stickers_request(&arena, "", &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_stickers_request(&arena, "0123456789012345678901234567890123", &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_stickers_request(&arena, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_stickers_request(&arena, "a", NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_stickers_request(&arena, "0123456789012345678901234567890123", &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_stickers_request(&arena, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_stickers_request(&arena, "a", NULL), NOSHI_E_ARG);
     s = obj("messages.stickers");
     set_i64(s, "hash", 1);
     set(s, "stickers", vec_of(docs, 0));
-    CHECK_EQ_INT(exteria_stickers_parse(s, stickers, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_stickers_parse(s, stickers, 4, &count), NOSHI_OK);
     CHECK_EQ_INT((int)count, 0);
-    CHECK_EQ_INT(exteria_stickers_parse(obj("messages.stickersNotModified"), stickers, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_stickers_parse(obj("messages.recentStickers"), stickers, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_stickers_parse(NULL, stickers, 4, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_stickers_parse(obj("messages.stickersNotModified"), stickers, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_stickers_parse(obj("messages.recentStickers"), stickers, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_stickers_parse(NULL, stickers, 4, &count), NOSHI_E_ARG);
 }
 
 static void test_empty_and_malformed(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = obj("messageEmpty"), *bad = obj("message");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = obj("messageEmpty"), *bad = obj("message");
     CHECK(row != NULL);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_message_read(bad, row), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_message_read(obj("user"), row), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_message_read(NULL, row), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_message_read(m, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_message_read(bad, row), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_message_read(obj("user"), row), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_message_read(NULL, row), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_message_read(m, NULL), NOSHI_E_ARG);
     free(row);
 }
 
 static void test_answers(void) {
-    exteria_message_row *rows = calloc(4, sizeof(*rows));
-    exteria_tl_value *list[3];
+    noshi_message_row *rows = calloc(4, sizeof(*rows));
+    noshi_tl_value *list[3];
     size_t count = 99;
     CHECK(rows != NULL);
     list[0] = message(30, "newest");
     list[1] = obj("messageEmpty");
     list[2] = message(28, "older");
-    CHECK_EQ_INT(exteria_messages_parse(answer("messages.messagesSlice", list, 3), rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_messages_parse(answer("messages.messagesSlice", list, 3), rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(rows[0].id, 30);
     CHECK_EQ_INT(rows[1].id, 28);
-    CHECK_EQ_INT(exteria_messages_parse(answer("messages.channelMessages", list, 3), rows, 1, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_messages_parse(answer("messages.channelMessages", list, 3), rows, 1, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
-    CHECK_EQ_INT(exteria_messages_parse(answer("messages.messages", list, 0), rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_messages_parse(answer("messages.messages", list, 0), rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 0);
-    CHECK_EQ_INT(exteria_messages_parse(obj("messages.messagesNotModified"), rows, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_messages_parse(obj("contacts.contacts"), rows, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_messages_parse(NULL, rows, 4, &count), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_messages_parse(answer("messages.messages", list, 1), rows, 0, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_messages_parse(obj("messages.messagesNotModified"), rows, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_messages_parse(obj("contacts.contacts"), rows, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_messages_parse(NULL, rows, 4, &count), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_messages_parse(answer("messages.messages", list, 1), rows, 0, &count), NOSHI_E_ARG);
     free(rows);
 }
 
 static void test_dropped_messages(void) {
-    exteria_message_row *rows = calloc(4, sizeof(*rows));
-    exteria_tl_value *list[4], *bad = obj("message");
-    exteria_messages_dropped dropped;
+    noshi_message_row *rows = calloc(4, sizeof(*rows));
+    noshi_tl_value *list[4], *bad = obj("message");
+    noshi_messages_dropped dropped;
     size_t count = 99;
     CHECK(rows != NULL);
     set_i32(bad, "id", 29);
@@ -1094,18 +1094,18 @@ static void test_dropped_messages(void) {
     list[1] = obj("messageEmpty");
     list[2] = bad;
     list[3] = message(28, "older");
-    CHECK_EQ_INT(exteria_messages_parse_counted(answer("messages.messages", list, 4), rows, 4, &count, &dropped), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_messages_parse_counted(answer("messages.messages", list, 4), rows, 4, &count, &dropped), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(dropped.count, 1);
     CHECK_EQ_INT(dropped.first_id, 29);
-    CHECK_EQ_INT(dropped.first_status, EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_messages_parse_counted(answer("messages.messages", list, 1), rows, 4, &count, &dropped), EXTERIA_OK);
+    CHECK_EQ_INT(dropped.first_status, NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_messages_parse_counted(answer("messages.messages", list, 1), rows, 4, &count, &dropped), NOSHI_OK);
     CHECK_EQ_INT(dropped.count, 0);
     free(rows);
 }
 
-static exteria_tl_value *sticker_set(int64_t id, const char *title, int flags_masks) {
-    exteria_tl_value *s = obj("stickerSet"), *thumbs[1];
+static noshi_tl_value *sticker_set(int64_t id, const char *title, int flags_masks) {
+    noshi_tl_value *s = obj("stickerSet"), *thumbs[1];
     set_i64(s, "id", id);
     set_i64(s, "access_hash", id + 1);
     set_str(s, "title", title);
@@ -1121,9 +1121,9 @@ static exteria_tl_value *sticker_set(int64_t id, const char *title, int flags_ma
 }
 
 static void test_sticker_sets(void) {
-    exteria_sticker_set_row sets[4], one;
-    exteria_sticker_row stickers[4];
-    exteria_tl_value *list[3], *attributes[1], *docs[3], *a, *s;
+    noshi_sticker_set_row sets[4], one;
+    noshi_sticker_row stickers[4];
+    noshi_tl_value *list[3], *attributes[1], *docs[3], *a, *s;
     size_t count;
     list[0] = sticker_set(1, "First", 0);
     set_i64(list[0], "thumb_document_id", 1234567890123LL);
@@ -1132,7 +1132,7 @@ static void test_sticker_sets(void) {
     a = obj("messages.allStickers");
     set_i64(a, "hash", 1);
     set(a, "sets", vec_of(list, 3));
-    CHECK_EQ_INT(exteria_sticker_sets_parse(a, sets, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sticker_sets_parse(a, sets, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(sets[0].id, 1);
     CHECK_EQ_INT(sets[1].id, 3);
@@ -1141,8 +1141,8 @@ static void test_sticker_sets(void) {
     CHECK(sets[0].thumb_document_id == 1234567890123LL);
     CHECK(sets[1].thumb_document_id == 0);
     CHECK(!strcmp(sets[0].title, "First"));
-    CHECK_EQ_INT(exteria_sticker_sets_parse(obj("messages.allStickersNotModified"), sets, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_sticker_sets_parse(obj("messages.recentStickers"), sets, 4, &count), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_sticker_sets_parse(obj("messages.allStickersNotModified"), sets, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_sticker_sets_parse(obj("messages.recentStickers"), sets, 4, &count), NOSHI_E_MALFORMED);
 
     attributes[0] = sticker_attribute("a");
     docs[0] = document(100, "image/webp", attributes, 1);
@@ -1156,39 +1156,39 @@ static void test_sticker_sets(void) {
     set(s, "packs", vec_of(NULL, 0));
     set(s, "keywords", vec_of(NULL, 0));
     set(s, "documents", vec_of(docs, 3));
-    CHECK_EQ_INT(exteria_sticker_set_parse(s, &one, stickers, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sticker_set_parse(s, &one, stickers, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(one.id, 1);
     CHECK_EQ_INT(one.installed, 0);
     CHECK_EQ_INT(stickers[0].media.ref.id, 100);
-    CHECK_EQ_INT(stickers[1].media.sticker, EXTERIA_STICKER_ANIMATED);
-    CHECK_EQ_INT(exteria_sticker_set_parse(s, &one, stickers, 1, &count), EXTERIA_OK);
+    CHECK_EQ_INT(stickers[1].media.sticker, NOSHI_STICKER_ANIMATED);
+    CHECK_EQ_INT(noshi_sticker_set_parse(s, &one, stickers, 1, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
     {
         /* the date the account added the set is what says it is installed */
-        exteria_tl_value *header = sticker_set(2, "Mine", 0), *held = obj("messages.stickerSet");
+        noshi_tl_value *header = sticker_set(2, "Mine", 0), *held = obj("messages.stickerSet");
         set_i32(header, "installed_date", 1700000000);
         set(held, "set", header);
         set(held, "packs", vec_of(NULL, 0));
         set(held, "keywords", vec_of(NULL, 0));
         set(held, "documents", vec_of(docs, 3));
-        CHECK_EQ_INT(exteria_sticker_set_parse(held, &one, stickers, 4, &count), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_sticker_set_parse(held, &one, stickers, 4, &count), NOSHI_OK);
         CHECK_EQ_INT(one.installed, 1);
     }
-    CHECK_EQ_INT(exteria_sticker_set_parse(obj("messages.stickerSetNotModified"), &one, stickers, 4, &count), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_sticker_set_parse(obj("messages.stickerSetNotModified"), &one, stickers, 4, &count), NOSHI_E_NOTFOUND);
 
     s = obj("messages.recentStickers");
     set_i64(s, "hash", 1);
     set(s, "packs", vec_of(NULL, 0));
     set(s, "stickers", vec_of(docs, 3));
     set(s, "dates", vec_of(NULL, 0));
-    CHECK_EQ_INT(exteria_recent_stickers_parse(s, stickers, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_recent_stickers_parse(s, stickers, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
-    CHECK_EQ_INT(exteria_recent_stickers_parse(obj("messages.recentStickersNotModified"), stickers, 4, &count), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_recent_stickers_parse(obj("messages.recentStickersNotModified"), stickers, 4, &count), NOSHI_E_NOTFOUND);
 }
 
 static void test_sent_parse(void) {
-    exteria_tl_value *list[2], *u, *update;
+    noshi_tl_value *list[2], *u, *update;
     int32_t id = 0;
     list[0] = obj("updateMessageID");
     set_i32(list[0], "id", 55);
@@ -1202,15 +1202,15 @@ static void test_sent_parse(void) {
     set(u, "chats", vec_of(NULL, 0));
     set_i32(u, "date", 1);
     set_i32(u, "seq", 1);
-    CHECK_EQ_INT(exteria_sent_parse(u, 4321, &id), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sent_parse(u, 4321, &id), NOSHI_OK);
     CHECK_EQ_INT(id, 56);
-    CHECK_EQ_INT(exteria_sent_parse(u, 999, &id), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_sent_parse(u, 999, &id), NOSHI_E_NOTFOUND);
     CHECK_EQ_INT(id, 0);
 
     update = obj("updateShort");
     set(update, "update", list[0]);
     set_i32(update, "date", 1);
-    CHECK_EQ_INT(exteria_sent_parse(update, 1234, &id), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sent_parse(update, 1234, &id), NOSHI_OK);
     CHECK_EQ_INT(id, 55);
 
     u = obj("updateShortSentMessage");
@@ -1218,28 +1218,28 @@ static void test_sent_parse(void) {
     set_i32(u, "pts", 1);
     set_i32(u, "pts_count", 1);
     set_i32(u, "date", 1);
-    CHECK_EQ_INT(exteria_sent_parse(u, 5, &id), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sent_parse(u, 5, &id), NOSHI_OK);
     CHECK_EQ_INT(id, 77);
-    CHECK_EQ_INT(exteria_sent_parse(obj("updatesTooLong"), 5, &id), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_sent_parse(NULL, 5, &id), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_sent_parse(obj("updatesTooLong"), 5, &id), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_sent_parse(NULL, 5, &id), NOSHI_E_ARG);
 }
 
 /* every request must encode against the schema, a missing required field fails here */
-static void check_encodes(const exteria_tl_value *request, uint32_t constructor) {
-    exteria_writer w;
-    exteria_tl_error error;
+static void check_encodes(const noshi_tl_value *request, uint32_t constructor) {
+    noshi_writer w;
+    noshi_tl_error error;
     CHECK(request != NULL);
     if (!request) return;
-    exteria_writer_init(&w, 4096);
-    CHECK_EQ_INT(exteria_tl_encode(request, &w, &error), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), constructor);
-    exteria_writer_free(&w);
+    noshi_writer_init(&w, 4096);
+    CHECK_EQ_INT(noshi_tl_encode(request, &w, &error), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), constructor);
+    noshi_writer_free(&w);
 }
 
 static void test_emoji_sets(void) {
-    exteria_sticker_set_row sets[4], one;
-    exteria_custom_emoji rows[4];
-    exteria_tl_value *list[4], *attributes[1], *docs[2], *a, *s, *request = NULL;
+    noshi_sticker_set_row sets[4], one;
+    noshi_custom_emoji rows[4];
+    noshi_tl_value *list[4], *attributes[1], *docs[2], *a, *s, *request = NULL;
     size_t count;
     list[0] = sticker_set(1, "Pictures", 0);
     list[1] = sticker_set(2, "Faces", 0);
@@ -1252,19 +1252,19 @@ static void test_emoji_sets(void) {
     a = obj("messages.allStickers");
     set_i64(a, "hash", 1);
     set(a, "sets", vec_of(list, 4));
-    CHECK_EQ_INT(exteria_emoji_sets_request(&arena, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getEmojiStickers);
-    CHECK_EQ_INT(exteria_emoji_sets_request(&arena, NULL), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_emoji_sets_parse(a, sets, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_emoji_sets_request(&arena, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getEmojiStickers);
+    CHECK_EQ_INT(noshi_emoji_sets_request(&arena, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_emoji_sets_parse(a, sets, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(sets[0].id, 2);
     CHECK_EQ_INT(sets[1].id, 4);
     /* the sticker list keeps its own sets and none of these */
-    CHECK_EQ_INT(exteria_sticker_sets_parse(a, sets, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_sticker_sets_parse(a, sets, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
     CHECK_EQ_INT(sets[0].id, 1);
-    CHECK_EQ_INT(exteria_emoji_sets_parse(obj("messages.allStickersNotModified"), sets, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_emoji_sets_parse(obj("messages.recentStickers"), sets, 4, &count), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_emoji_sets_parse(obj("messages.allStickersNotModified"), sets, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_emoji_sets_parse(obj("messages.recentStickers"), sets, 4, &count), NOSHI_E_MALFORMED);
 
     attributes[0] = obj("documentAttributeCustomEmoji");
     set_str(attributes[0], "alt", "\xF0\x9F\x98\x80");
@@ -1275,18 +1275,18 @@ static void test_emoji_sets(void) {
     set(s, "packs", vec_of(NULL, 0));
     set(s, "keywords", vec_of(NULL, 0));
     set(s, "documents", vec_of(docs, 2));
-    CHECK_EQ_INT(exteria_emoji_set_parse(s, &one, rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_emoji_set_parse(s, &one, rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(one.id, 2);
     CHECK_EQ_INT(count, 1);
     CHECK_EQ_INT(rows[0].id, 300);
-    CHECK_EQ_INT(rows[0].format, EXTERIA_STICKER_ANIMATED);
-    CHECK_EQ_INT(exteria_emoji_set_parse(obj("messages.stickerSetNotModified"), &one, rows, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_emoji_set_parse(obj("messages.recentStickers"), &one, rows, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_emoji_set_parse(s, &one, rows, 0, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(rows[0].format, NOSHI_STICKER_ANIMATED);
+    CHECK_EQ_INT(noshi_emoji_set_parse(obj("messages.stickerSetNotModified"), &one, rows, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_emoji_set_parse(obj("messages.recentStickers"), &one, rows, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_emoji_set_parse(s, &one, rows, 0, &count), NOSHI_E_ARG);
 }
 
-static exteria_tl_value *topic_message(int32_t id, int forum, int32_t reply_to, int32_t top) {
-    exteria_tl_value *m = message(id, "x"), *header = obj("messageReplyHeader");
+static noshi_tl_value *topic_message(int32_t id, int forum, int32_t reply_to, int32_t top) {
+    noshi_tl_value *m = message(id, "x"), *header = obj("messageReplyHeader");
     if (forum) set_flag(header, "forum_topic");
     if (reply_to) set_i32(header, "reply_to_msg_id", reply_to);
     if (top) set_i32(header, "reply_to_top_id", top);
@@ -1295,734 +1295,734 @@ static exteria_tl_value *topic_message(int32_t id, int forum, int32_t reply_to, 
 }
 
 static void test_topic_of_message(void) {
-    exteria_message_row row;
-    CHECK_EQ_INT(exteria_message_read(message(5, "x"), &row), EXTERIA_OK);
+    noshi_message_row row;
+    CHECK_EQ_INT(noshi_message_read(message(5, "x"), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 1);
     /* a reply in General carries a header without the topic flag */
-    CHECK_EQ_INT(exteria_message_read(topic_message(9, 0, 4, 0), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(9, 0, 4, 0), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 1);
     CHECK_EQ_INT(row.reply_to, 4);
     CHECK_EQ_INT(row.thread_id, 4);
-    CHECK_EQ_INT(exteria_message_read(topic_message(13, 0, 10, 7), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(13, 0, 10, 7), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 1);
     CHECK_EQ_INT(row.thread_id, 7);
     CHECK_EQ_INT(row.reply_to, 10);
     /* the first answer to the topic root is not a reply the reader should see */
-    CHECK_EQ_INT(exteria_message_read(topic_message(10, 1, 7, 0), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(10, 1, 7, 0), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 7);
     CHECK_EQ_INT(row.reply_to, 0);
-    CHECK_EQ_INT(exteria_message_read(topic_message(11, 1, 7, 7), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(11, 1, 7, 7), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 7);
     CHECK_EQ_INT(row.reply_to, 0);
     /* a comment under a channel post names the post as both its target and the top of its thread, and quotes nothing */
-    CHECK_EQ_INT(exteria_message_read(topic_message(14, 0, 7, 7), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(14, 0, 7, 7), &row), NOSHI_OK);
     CHECK_EQ_INT(row.reply_to, 0);
     CHECK_EQ_INT(row.thread_id, 7);
     CHECK_EQ_INT(row.topic_id, 1);
     /* a real reply inside a topic keeps its target */
-    CHECK_EQ_INT(exteria_message_read(topic_message(12, 1, 10, 7), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(topic_message(12, 1, 10, 7), &row), NOSHI_OK);
     CHECK_EQ_INT(row.topic_id, 7);
     CHECK_EQ_INT(row.reply_to, 10);
 }
 
-static void check_media_reply(exteria_tl_value *request, const exteria_peer_ref *peer) {
-    const exteria_tl_value *media = exteria_tl_get(request, "media");
+static void check_media_reply(noshi_tl_value *request, const noshi_peer_ref *peer) {
+    const noshi_tl_value *media = noshi_tl_get(request, "media");
     int32_t id = 0;
     CHECK(media != NULL);
-    CHECK_EQ_INT(exteria_set_reply(&arena, request, peer, 77), EXTERIA_OK);
-    CHECK(exteria_tl_get(request, "media") == media);
-    const exteria_tl_value *reply = exteria_tl_get(request, "reply_to");
-    CHECK_EQ_INT(exteria_tl_get_i32(reply, "reply_to_msg_id", &id), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_set_reply(&arena, request, peer, 77), NOSHI_OK);
+    CHECK(noshi_tl_get(request, "media") == media);
+    const noshi_tl_value *reply = noshi_tl_get(request, "reply_to");
+    CHECK_EQ_INT(noshi_tl_get_i32(reply, "reply_to_msg_id", &id), NOSHI_OK);
     CHECK_EQ_INT(id, 77);
     if (peer->topic_id > 1) {
-        CHECK_EQ_INT(exteria_tl_get_i32(reply, "top_msg_id", &id), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(reply, "top_msg_id", &id), NOSHI_OK);
         CHECK_EQ_INT(id, peer->topic_id);
-    } else CHECK(!exteria_tl_has(reply, "top_msg_id"));
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
-    CHECK_EQ_INT(exteria_set_reply(&arena, request, peer, -1), EXTERIA_E_ARG);
-    CHECK(exteria_tl_get(request, "reply_to") == reply);
-    CHECK_EQ_INT(exteria_set_reply(NULL, request, peer, 1), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_set_reply(&arena, NULL, peer, 1), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_set_reply(&arena, request, NULL, 1), EXTERIA_E_ARG);
+    } else CHECK(!noshi_tl_has(reply, "top_msg_id"));
+    check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
+    CHECK_EQ_INT(noshi_set_reply(&arena, request, peer, -1), NOSHI_E_ARG);
+    CHECK(noshi_tl_get(request, "reply_to") == reply);
+    CHECK_EQ_INT(noshi_set_reply(NULL, request, peer, 1), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_set_reply(&arena, NULL, peer, 1), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_set_reply(&arena, request, NULL, 1), NOSHI_E_ARG);
 }
 
 static void test_saved_history(void) {
-    exteria_peer_ref source = {1, 77, 555, 0, 0}, self = {1, 9, 0, 1, 0}, bare = {1, 77, 0, 0, 0};
-    exteria_tl_value *request = NULL, *m;
-    exteria_message_row row;
+    noshi_peer_ref source = {1, 77, 555, 0, 0}, self = {1, 9, 0, 1, 0}, bare = {1, 77, 0, 0, 0};
+    noshi_tl_value *request = NULL, *m;
+    noshi_message_row row;
     int32_t value = 0;
     /* a chat the favorites hold messages of, and the account's own notes, are asked from the saved history */
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &source, 30, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getSavedHistory);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "offset_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &source, 30, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getSavedHistory);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "offset_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 30);
-    CHECK_EQ_INT(exteria_saved_history_window_request(&arena, &source, 31, -20, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getSavedHistory);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "add_offset", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_saved_history_window_request(&arena, &source, 31, -20, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getSavedHistory);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "add_offset", &value), NOSHI_OK);
     CHECK_EQ_INT(value, -20);
-    CHECK_EQ_INT(exteria_saved_history_window_request(&arena, &source, 31, -40, 40, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &self, 0, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getSavedHistory);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &bare, 0, 40, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &source, -1, 40, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &source, 0, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &source, 0, EXTERIA_MESSAGES_MAX + 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_saved_history_request(&arena, &source, 0, 40, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_window_request(&arena, &source, 31, -40, 40, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &self, 0, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getSavedHistory);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &bare, 0, 40, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &source, -1, 40, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &source, 0, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &source, 0, NOSHI_MESSAGES_MAX + 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_saved_history_request(&arena, &source, 0, 40, NULL), NOSHI_E_ARG);
     /* the message names where it came from */
     m = message(5, "kept");
     set(m, "saved_peer_id", peer_user(77));
-    CHECK_EQ_INT(exteria_message_read(m, &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, &row), NOSHI_OK);
     CHECK_EQ_INT(row.saved_peer_kind, 1);
     CHECK_EQ_INT(row.saved_peer_id, 77);
-    CHECK_EQ_INT(exteria_message_read(message(6, "plain"), &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(message(6, "plain"), &row), NOSHI_OK);
     CHECK_EQ_INT(row.saved_peer_kind, 0);
     CHECK_EQ_INT(row.saved_peer_id, 0);
 }
 
 static void test_topic_requests(void) {
-    exteria_peer_ref forum = {3, 7, 88, 0, 12}, general = {3, 7, 88, 0, 1}, whole = {3, 7, 88, 0, 0};
-    exteria_tl_value *request = NULL, *reply;
+    noshi_peer_ref forum = {3, 7, 88, 0, 12}, general = {3, 7, 88, 0, 1}, whole = {3, 7, 88, 0, 0};
+    noshi_tl_value *request = NULL, *reply;
     int32_t value = 0;
     /* a topic is paged with getReplies, which takes the same window */
-    CHECK_EQ_INT(exteria_history_window_request(&arena, &forum, 51, -20, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getReplies);
-    CHECK_EQ_INT(exteria_history_request(&arena, &forum, 50, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getReplies);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "msg_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_history_window_request(&arena, &forum, 51, -20, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getReplies);
+    CHECK_EQ_INT(noshi_history_request(&arena, &forum, 50, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getReplies);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 12);
-    CHECK_EQ_INT(exteria_history_request(&arena, &general, 0, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getReplies);
-    CHECK_EQ_INT(exteria_history_request(&arena, &whole, 0, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getHistory);
+    CHECK_EQ_INT(noshi_history_request(&arena, &general, 0, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getReplies);
+    CHECK_EQ_INT(noshi_history_request(&arena, &whole, 0, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getHistory);
 
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &forum, "hi", NULL, 0, 42, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMessage);
-    reply = (exteria_tl_value *)exteria_tl_get(request, "reply_to");
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &forum, "hi", NULL, 0, 42, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMessage);
+    reply = (noshi_tl_value *)noshi_tl_get(request, "reply_to");
     CHECK(reply != NULL);
-    CHECK_EQ_INT(exteria_tl_get_i32(reply, "reply_to_msg_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(reply, "reply_to_msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 12);
-    CHECK_EQ_INT(exteria_tl_get_i32(reply, "top_msg_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(reply, "top_msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 12);
     /* general is what the server files a message with no header under */
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &general, "hi", NULL, 0, 42, &request), EXTERIA_OK);
-    CHECK(exteria_tl_get(request, "reply_to") == NULL);
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &whole, "hi", NULL, 0, 42, &request), EXTERIA_OK);
-    CHECK(exteria_tl_get(request, "reply_to") == NULL);
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &general, "hi", NULL, 0, 42, &request), NOSHI_OK);
+    CHECK(noshi_tl_get(request, "reply_to") == NULL);
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &whole, "hi", NULL, 0, 42, &request), NOSHI_OK);
+    CHECK(noshi_tl_get(request, "reply_to") == NULL);
 
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &forum, 10.0, 20.0, 42, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
-    CHECK(exteria_tl_get(request, "reply_to") != NULL);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &forum, 10.0, 20.0, 42, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
+    CHECK(noshi_tl_get(request, "reply_to") != NULL);
     check_media_reply(request, &forum);
 
-    CHECK_EQ_INT(exteria_read_history_request(&arena, &forum, 30, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_readDiscussion);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "msg_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_read_history_request(&arena, &forum, 30, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_readDiscussion);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "msg_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 12);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "read_max_id", &value), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "read_max_id", &value), NOSHI_OK);
     CHECK_EQ_INT(value, 30);
-    CHECK_EQ_INT(exteria_read_history_request(&arena, &forum, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_read_history_request(&arena, &forum, 0, &request), NOSHI_E_ARG);
 }
 
 static void test_requests(void) {
-    exteria_peer_ref user = {1, 5, 77, 0, 0}, chat = {2, 6, 0, 0, 0}, channel = {3, 7, 88, 0, 0}, self = {1, 9, 0, 1, 0};
-    exteria_tl_value *request = NULL;
-    exteria_media_ref sticker;
-    exteria_sticker_set_row set;
+    noshi_peer_ref user = {1, 5, 77, 0, 0}, chat = {2, 6, 0, 0, 0}, channel = {3, 7, 88, 0, 0}, self = {1, 9, 0, 1, 0};
+    noshi_tl_value *request = NULL;
+    noshi_media_ref sticker;
+    noshi_sticker_set_row set;
     memset(&sticker, 0, sizeof(sticker));
     memset(&set, 0, sizeof(set));
-    CHECK_EQ_INT(exteria_history_request(&arena, &user, 0, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getHistory);
-    CHECK_EQ_INT(exteria_shared_request(&arena, &channel, EXTERIA_SHARED_VOICE, 0, 30, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "filter")), EXTERIA_TL_ID_inputMessagesFilterRoundVoice);
-    CHECK_EQ_INT(exteria_shared_request(&arena, &channel, EXTERIA_SHARED_VOICE, 50, 30, &request), EXTERIA_OK);
-    { int32_t offset = 0; CHECK_EQ_INT(exteria_tl_get_i32(request, "offset_id", &offset), EXTERIA_OK); CHECK_EQ_INT(offset, 50); }
-    CHECK(!exteria_tl_has(request, "top_msg_id"));
+    CHECK_EQ_INT(noshi_history_request(&arena, &user, 0, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getHistory);
+    CHECK_EQ_INT(noshi_shared_request(&arena, &channel, NOSHI_SHARED_VOICE, 0, 30, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "filter")), NOSHI_TL_ID_inputMessagesFilterRoundVoice);
+    CHECK_EQ_INT(noshi_shared_request(&arena, &channel, NOSHI_SHARED_VOICE, 50, 30, &request), NOSHI_OK);
+    { int32_t offset = 0; CHECK_EQ_INT(noshi_tl_get_i32(request, "offset_id", &offset), NOSHI_OK); CHECK_EQ_INT(offset, 50); }
+    CHECK(!noshi_tl_has(request, "top_msg_id"));
     /* the media tabs of a topic ask for its thread, the general topic and a plain group do not */
     {
-        exteria_peer_ref topic = {3, 7, 88, 0, 12}, general = {3, 7, 88, 0, 1};
+        noshi_peer_ref topic = {3, 7, 88, 0, 12}, general = {3, 7, 88, 0, 1};
         int32_t top = 0;
-        CHECK_EQ_INT(exteria_shared_request(&arena, &topic, EXTERIA_SHARED_FILES, 0, 30, &request), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_get_i32(request, "top_msg_id", &top), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_shared_request(&arena, &topic, NOSHI_SHARED_FILES, 0, 30, &request), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(request, "top_msg_id", &top), NOSHI_OK);
         CHECK_EQ_INT(top, 12);
-        CHECK_EQ_INT(exteria_shared_oldest_request(&arena, &topic, EXTERIA_SHARED_FILES, 1, &request), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_get_i32(request, "top_msg_id", &top), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_shared_oldest_request(&arena, &topic, NOSHI_SHARED_FILES, 1, &request), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(request, "top_msg_id", &top), NOSHI_OK);
         CHECK_EQ_INT(top, 12);
-        CHECK_EQ_INT(exteria_shared_request(&arena, &general, EXTERIA_SHARED_FILES, 0, 30, &request), EXTERIA_OK);
-        CHECK(!exteria_tl_has(request, "top_msg_id"));
+        CHECK_EQ_INT(noshi_shared_request(&arena, &general, NOSHI_SHARED_FILES, 0, 30, &request), NOSHI_OK);
+        CHECK(!noshi_tl_has(request, "top_msg_id"));
     }
-    CHECK_EQ_INT(exteria_history_request(&arena, &chat, 120, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getHistory);
-    CHECK_EQ_INT(exteria_history_request(&arena, &channel, 120, 40, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_request(&arena, &self, 0, 40, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "peer")), EXTERIA_TL_ID_inputPeerSelf);
+    CHECK_EQ_INT(noshi_history_request(&arena, &chat, 120, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getHistory);
+    CHECK_EQ_INT(noshi_history_request(&arena, &channel, 120, 40, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_request(&arena, &self, 0, 40, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "peer")), NOSHI_TL_ID_inputPeerSelf);
     /* a window around a message, and the page after the newest one held */
-    CHECK_EQ_INT(exteria_history_window_request(&arena, &chat, 121, -20, 40, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getHistory);
-    { int32_t shift = 0; CHECK_EQ_INT(exteria_tl_get_i32(request, "add_offset", &shift), EXTERIA_OK); CHECK_EQ_INT(shift, -20); }
-    CHECK_EQ_INT(exteria_history_window_request(&arena, &chat, 500, -39, 40, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_history_window_request(&arena, &chat, 121, -40, 40, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_history_window_request(&arena, &chat, 121, 5, 40, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_history_request(&arena, &user, 0, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_history_request(&arena, &user, 0, EXTERIA_MESSAGES_MAX + 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_history_request(&arena, &user, -1, 10, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_history_window_request(&arena, &chat, 121, -20, 40, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getHistory);
+    { int32_t shift = 0; CHECK_EQ_INT(noshi_tl_get_i32(request, "add_offset", &shift), NOSHI_OK); CHECK_EQ_INT(shift, -20); }
+    CHECK_EQ_INT(noshi_history_window_request(&arena, &chat, 500, -39, 40, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_history_window_request(&arena, &chat, 121, -40, 40, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_history_window_request(&arena, &chat, 121, 5, 40, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_history_request(&arena, &user, 0, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_history_request(&arena, &user, 0, NOSHI_MESSAGES_MAX + 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_history_request(&arena, &user, -1, 10, &request), NOSHI_E_ARG);
     user.access_hash = 0;
-    CHECK_EQ_INT(exteria_history_request(&arena, &user, 0, 10, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_history_request(&arena, &user, 0, 10, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
     user.access_hash = 77;
     channel.access_hash = 0;
-    CHECK_EQ_INT(exteria_input_peer(&arena, &channel, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_input_peer(&arena, &channel, &request), NOSHI_E_ARG);
     channel.access_hash = 88;
 
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "hello", NULL, 0, 42, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMessage);
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "hello", NULL, 0, 42, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMessage);
     {
         char text[8193];
         for (size_t i = 0; i < 4096; ++i) { text[2 * i] = (char)0xd0; text[2 * i + 1] = (char)0xb0; }
         text[8192] = 0;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, text, NULL, 0, 42, &request), EXTERIA_OK);
-        const exteria_tl_value *sent = exteria_tl_get(request, "message");
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, text, NULL, 0, 42, &request), NOSHI_OK);
+        const noshi_tl_value *sent = noshi_tl_get(request, "message");
         CHECK(sent && sent->u.bytes.len == 8192 && !memcmp(sent->u.bytes.data, text, 8192));
-        exteria_tl_value *long_message = message(123, text);
-        exteria_message_row *long_row = calloc(1, sizeof(*long_row));
+        noshi_tl_value *long_message = message(123, text);
+        noshi_message_row *long_row = calloc(1, sizeof(*long_row));
         CHECK(long_row != NULL);
-        CHECK_EQ_INT(exteria_message_read(long_message, long_row), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_message_read(long_message, long_row), NOSHI_OK);
         CHECK(!strcmp(long_row->text, text));
         free(long_row);
     }
-    CHECK_EQ_INT(exteria_send_text_reply_request(&arena, &user, "hello", NULL, 0, 42, 77, &request), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_send_text_reply_request(&arena, &user, "hello", NULL, 0, 42, 77, &request), NOSHI_OK);
     {
-        const exteria_tl_value *reply = exteria_tl_get(request, "reply_to");
+        const noshi_tl_value *reply = noshi_tl_get(request, "reply_to");
         int32_t id = 0;
-        CHECK_EQ_INT(exteria_tl_id(reply), EXTERIA_TL_ID_inputReplyToMessage);
-        CHECK_EQ_INT(exteria_tl_get_i32(reply, "reply_to_msg_id", &id), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_id(reply), NOSHI_TL_ID_inputReplyToMessage);
+        CHECK_EQ_INT(noshi_tl_get_i32(reply, "reply_to_msg_id", &id), NOSHI_OK);
         CHECK_EQ_INT(id, 77);
-        CHECK_EQ_INT(exteria_tl_has(reply, "top_msg_id"), 0);
+        CHECK_EQ_INT(noshi_tl_has(reply, "top_msg_id"), 0);
     }
     {
-        exteria_peer_ref topic = {3, 7, 88, 0, 12};
-        CHECK_EQ_INT(exteria_send_text_reply_request(&arena, &topic, "hello", NULL, 0, 42, 77, &request), EXTERIA_OK);
-        const exteria_tl_value *reply = exteria_tl_get(request, "reply_to");
+        noshi_peer_ref topic = {3, 7, 88, 0, 12};
+        CHECK_EQ_INT(noshi_send_text_reply_request(&arena, &topic, "hello", NULL, 0, 42, 77, &request), NOSHI_OK);
+        const noshi_tl_value *reply = noshi_tl_get(request, "reply_to");
         int32_t id = 0;
-        CHECK_EQ_INT(exteria_tl_get_i32(reply, "top_msg_id", &id), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(reply, "top_msg_id", &id), NOSHI_OK);
         CHECK_EQ_INT(id, 12);
-        CHECK_EQ_INT(exteria_send_text_reply_request(&arena, &topic, "hello", NULL, 0, 42, 0, &request), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_get_i32(exteria_tl_get(request, "reply_to"), "reply_to_msg_id", &id), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_send_text_reply_request(&arena, &topic, "hello", NULL, 0, 42, 0, &request), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(noshi_tl_get(request, "reply_to"), "reply_to_msg_id", &id), NOSHI_OK);
         CHECK_EQ_INT(id, 12);
     }
-    CHECK_EQ_INT(exteria_send_text_reply_request(&arena, &user, "hello", NULL, 0, 42, -1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "", NULL, 0, 42, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "x", NULL, 0, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_text_reply_request(&arena, &user, "hello", NULL, 0, 42, -1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "", NULL, 0, 42, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "x", NULL, 0, 0, &request), NOSHI_E_ARG);
     {
         /* "a", a smiley of two UTF-16 units, "b": the emoji entity covers units 1 and 2 */
-        exteria_send_entity custom[2];
+        noshi_send_entity custom[2];
         memset(custom, 0, sizeof(custom));
-        custom[0].kind = EXTERIA_ENTITY_BOLD;
+        custom[0].kind = NOSHI_ENTITY_BOLD;
         custom[0].offset = 0;
         custom[0].length = 1;
-        custom[1].kind = EXTERIA_ENTITY_CUSTOM_EMOJI;
+        custom[1].kind = NOSHI_ENTITY_CUSTOM_EMOJI;
         custom[1].offset = 1;
         custom[1].length = 2;
         custom[1].id = 5368324170671202286ll;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMessage);
-        CHECK(exteria_tl_has(request, "entities"));
-        CHECK_EQ_INT(exteria_tl_get(request, "entities")->u.vec.count, 2);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMessage);
+        CHECK(noshi_tl_has(request, "entities"));
+        CHECK_EQ_INT(noshi_tl_get(request, "entities")->u.vec.count, 2);
         /* the kinds the server finds in the text itself are not sent, so the field is absent */
-        custom[0].kind = EXTERIA_ENTITY_URL;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), EXTERIA_OK);
-        CHECK(!exteria_tl_has(request, "entities"));
-        custom[0].kind = EXTERIA_ENTITY_BOLD;
+        custom[0].kind = NOSHI_ENTITY_URL;
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), NOSHI_OK);
+        CHECK(!noshi_tl_has(request, "entities"));
+        custom[0].kind = NOSHI_ENTITY_BOLD;
         custom[1].offset = 3;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), NOSHI_E_ARG);
         custom[1].offset = 2;
         custom[1].length = 3;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), NOSHI_E_ARG);
         custom[1].offset = 1;
         custom[1].length = 2;
         custom[1].id = 0;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "ab", NULL, 1, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "a\xF0\x9F\x98\x80" "b", custom, 2, 42, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "ab", NULL, 1, 42, &request), NOSHI_E_ARG);
         /* a range of nothing, or one that starts before the text, is refused whatever its kind */
         custom[0].length = 0;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), NOSHI_E_ARG);
         custom[0].length = 1;
         custom[0].offset = -1;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "ab", custom, 1, 42, &request), NOSHI_E_ARG);
     }
     {
         /* every kind a person can pick in the field, over "bold quote link name when" */
-        exteria_send_entity fmt[12];
-        const exteria_tl_value *list;
+        noshi_send_entity fmt[12];
+        const noshi_tl_value *list;
         memset(fmt, 0, sizeof(fmt));
-        fmt[0].kind = EXTERIA_ENTITY_ITALIC;
-        fmt[1].kind = EXTERIA_ENTITY_UNDERLINE;
-        fmt[2].kind = EXTERIA_ENTITY_STRIKE;
-        fmt[3].kind = EXTERIA_ENTITY_CODE;
-        fmt[4].kind = EXTERIA_ENTITY_SPOILER;
-        fmt[5].kind = EXTERIA_ENTITY_PRE;
+        fmt[0].kind = NOSHI_ENTITY_ITALIC;
+        fmt[1].kind = NOSHI_ENTITY_UNDERLINE;
+        fmt[2].kind = NOSHI_ENTITY_STRIKE;
+        fmt[3].kind = NOSHI_ENTITY_CODE;
+        fmt[4].kind = NOSHI_ENTITY_SPOILER;
+        fmt[5].kind = NOSHI_ENTITY_PRE;
         fmt[5].text = "c";
-        fmt[6].kind = EXTERIA_ENTITY_BLOCKQUOTE;
-        fmt[6].flags = EXTERIA_ENTITY_COLLAPSED;
-        fmt[7].kind = EXTERIA_ENTITY_TEXT_URL;
+        fmt[6].kind = NOSHI_ENTITY_BLOCKQUOTE;
+        fmt[6].flags = NOSHI_ENTITY_COLLAPSED;
+        fmt[7].kind = NOSHI_ENTITY_TEXT_URL;
         fmt[7].text = "https://example.org/";
-        fmt[8].kind = EXTERIA_ENTITY_MENTION_NAME;
+        fmt[8].kind = NOSHI_ENTITY_MENTION_NAME;
         fmt[8].id = 77;
         fmt[8].access_hash = 99;
-        fmt[9].kind = EXTERIA_ENTITY_FORMATTED_DATE;
+        fmt[9].kind = NOSHI_ENTITY_FORMATTED_DATE;
         fmt[9].date = 1700000000;
-        fmt[9].flags = EXTERIA_DATE_SHORT_DATE | EXTERIA_DATE_SHORT_TIME;
-        fmt[10].kind = EXTERIA_ENTITY_PRE;
-        fmt[11].kind = EXTERIA_ENTITY_BOLD;
+        fmt[9].flags = NOSHI_DATE_SHORT_DATE | NOSHI_DATE_SHORT_TIME;
+        fmt[10].kind = NOSHI_ENTITY_PRE;
+        fmt[11].kind = NOSHI_ENTITY_BOLD;
         for (int k = 0; k < 12; ++k) {
             fmt[k].offset = k % 3;
             fmt[k].length = 4;
         }
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMessage);
-        list = exteria_tl_get(request, "entities");
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMessage);
+        list = noshi_tl_get(request, "entities");
         CHECK(list != NULL);
         CHECK_EQ_INT(list->u.vec.count, 12);
-        CHECK(exteria_tl_is(list->u.vec.items[4], EXTERIA_TL_ID_messageEntitySpoiler));
-        CHECK(exteria_tl_is(list->u.vec.items[5], EXTERIA_TL_ID_messageEntityPre));
-        CHECK(exteria_tl_has(list->u.vec.items[6], "collapsed"));
-        CHECK(exteria_tl_is(list->u.vec.items[8], EXTERIA_TL_ID_inputMessageEntityMentionName));
-        CHECK(exteria_tl_has(list->u.vec.items[9], "short_date") && exteria_tl_has(list->u.vec.items[9], "short_time"));
-        CHECK(!exteria_tl_has(list->u.vec.items[9], "relative"));
+        CHECK(noshi_tl_is(list->u.vec.items[4], NOSHI_TL_ID_messageEntitySpoiler));
+        CHECK(noshi_tl_is(list->u.vec.items[5], NOSHI_TL_ID_messageEntityPre));
+        CHECK(noshi_tl_has(list->u.vec.items[6], "collapsed"));
+        CHECK(noshi_tl_is(list->u.vec.items[8], NOSHI_TL_ID_inputMessageEntityMentionName));
+        CHECK(noshi_tl_has(list->u.vec.items[9], "short_date") && noshi_tl_has(list->u.vec.items[9], "short_time"));
+        CHECK(!noshi_tl_has(list->u.vec.items[9], "relative"));
         /* a block of code with no language still goes out, with an empty one */
-        CHECK(exteria_tl_is(list->u.vec.items[10], EXTERIA_TL_ID_messageEntityPre));
+        CHECK(noshi_tl_is(list->u.vec.items[10], NOSHI_TL_ID_messageEntityPre));
         /* a link without an address, a name without its hash and a date without a moment are refused: the server would drop the whole message */
         fmt[7].text = "";
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), NOSHI_E_ARG);
         fmt[7].text = "https://example.org/";
         fmt[8].access_hash = 0;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), NOSHI_E_ARG);
         fmt[8].access_hash = 99;
         fmt[9].date = 0;
-        CHECK_EQ_INT(exteria_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_text_request(&arena, &user, "bold quote link name when", fmt, 12, 42, &request), NOSHI_E_ARG);
     }
 
-    sticker.source = EXTERIA_MEDIA_SOURCE_DOCUMENT;
+    sticker.source = NOSHI_MEDIA_SOURCE_DOCUMENT;
     sticker.id = 5;
     sticker.access_hash = 6;
     sticker.dc = 2;
     sticker.ref_len = 2;
     sticker.file_ref[0] = 9;
-    CHECK_EQ_INT(exteria_send_sticker_request(&arena, &chat, &sticker, 43, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+    CHECK_EQ_INT(noshi_send_sticker_request(&arena, &chat, &sticker, 43, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
     check_media_reply(request, &chat);
     strcpy(sticker.thumb, "m");
-    CHECK_EQ_INT(exteria_send_sticker_request(&arena, &chat, &sticker, 43, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_sticker_request(&arena, &chat, &sticker, 43, &request), NOSHI_E_ARG);
     sticker.thumb[0] = 0;
-    sticker.source = EXTERIA_MEDIA_SOURCE_PHOTO;
-    CHECK_EQ_INT(exteria_send_sticker_request(&arena, &chat, &sticker, 43, &request), EXTERIA_E_ARG);
+    sticker.source = NOSHI_MEDIA_SOURCE_PHOTO;
+    CHECK_EQ_INT(noshi_send_sticker_request(&arena, &chat, &sticker, 43, &request), NOSHI_E_ARG);
 
     {
-        exteria_tl_value *file = exteria_tl_new_obj(&arena, "inputFile");
-        uint8_t wave[EXTERIA_WAVEFORM_BYTES] = {1, 2, 3};
-        const exteria_tl_value *media, *attributes;
+        noshi_tl_value *file = noshi_tl_new_obj(&arena, "inputFile");
+        uint8_t wave[NOSHI_WAVEFORM_BYTES] = {1, 2, 3};
+        const noshi_tl_value *media, *attributes;
         CHECK(file != NULL);
-        CHECK_EQ_INT(exteria_tl_set_i64(&arena, file, "id", 77), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_set_i32(&arena, file, "parts", 2), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_set_str(&arena, file, "name", "voice.ogg"), EXTERIA_OK);
-        CHECK_EQ_INT(exteria_tl_set_str(&arena, file, "md5_checksum", ""), EXTERIA_OK);
-        exteria_upload_spec spec;
+        CHECK_EQ_INT(noshi_tl_set_i64(&arena, file, "id", 77), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_set_i32(&arena, file, "parts", 2), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_set_str(&arena, file, "name", "voice.ogg"), NOSHI_OK);
+        CHECK_EQ_INT(noshi_tl_set_str(&arena, file, "md5_checksum", ""), NOSHI_OK);
+        noshi_upload_spec spec;
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_VOICE;
+        spec.kind = NOSHI_UPLOAD_VOICE;
         spec.duration_ms = 2600;
         spec.waveform = wave;
         spec.waveform_len = sizeof(wave);
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 51, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 51, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
         check_media_reply(request, &chat);
-        media = exteria_tl_get(request, "media");
-        attributes = exteria_tl_get(media, "attributes");
-        CHECK_EQ_INT(exteria_tl_id(media), EXTERIA_TL_ID_inputMediaUploadedDocument);
+        media = noshi_tl_get(request, "media");
+        attributes = noshi_tl_get(media, "attributes");
+        CHECK_EQ_INT(noshi_tl_id(media), NOSHI_TL_ID_inputMediaUploadedDocument);
         CHECK(attributes && attributes->u.vec.count == 1);
-        CHECK(exteria_tl_has(attributes->u.vec.items[0], "voice"));
+        CHECK(noshi_tl_has(attributes->u.vec.items[0], "voice"));
         {
             int32_t seconds = 0;
-            CHECK_EQ_INT(exteria_tl_get_i32(attributes->u.vec.items[0], "duration", &seconds), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tl_get_i32(attributes->u.vec.items[0], "duration", &seconds), NOSHI_OK);
             CHECK_EQ_INT(seconds, 3);
         }
         spec.waveform_len = sizeof(wave) - 1;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 51, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 51, &request), NOSHI_E_ARG);
         spec.waveform = NULL;
         spec.waveform_len = 0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 51, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 51, &request), NOSHI_E_ARG);
         spec.waveform = wave;
         spec.waveform_len = sizeof(wave);
         spec.duration_ms = 0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 51, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 51, &request), NOSHI_E_ARG);
 
         /* a gif plays as an animation: the animated attribute follows the name, and the file is not forced to stay a file */
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_FILE;
+        spec.kind = NOSHI_UPLOAD_FILE;
         snprintf(spec.name, sizeof(spec.name), "cat.gif");
         snprintf(spec.mime, sizeof(spec.mime), "image/gif");
         spec.animated = 1;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 53, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
-        media = exteria_tl_get(request, "media");
-        attributes = exteria_tl_get(media, "attributes");
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 53, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
+        media = noshi_tl_get(request, "media");
+        attributes = noshi_tl_get(media, "attributes");
         CHECK(attributes && attributes->u.vec.count == 2);
-        CHECK_EQ_INT(exteria_tl_id(attributes->u.vec.items[1]), EXTERIA_TL_ID_documentAttributeAnimated);
-        CHECK(!exteria_tl_has(media, "force_file"));
+        CHECK_EQ_INT(noshi_tl_id(attributes->u.vec.items[1]), NOSHI_TL_ID_documentAttributeAnimated);
+        CHECK(!noshi_tl_has(media, "force_file"));
         snprintf(spec.mime, sizeof(spec.mime), "image/png");
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 53, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 53, &request), NOSHI_E_ARG);
         spec.animated = 0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 53, &request), EXTERIA_OK);
-        CHECK(exteria_tl_has(exteria_tl_get(request, "media"), "force_file"));
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 53, &request), NOSHI_OK);
+        CHECK(noshi_tl_has(noshi_tl_get(request, "media"), "force_file"));
 
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_ROUND;
+        spec.kind = NOSHI_UPLOAD_ROUND;
         spec.duration_ms = 4000;
         spec.width = 384;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 52, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 52, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
         check_media_reply(request, &chat);
-        attributes = exteria_tl_get(exteria_tl_get(request, "media"), "attributes");
-        CHECK(exteria_tl_has(attributes->u.vec.items[0], "round_message"));
+        attributes = noshi_tl_get(noshi_tl_get(request, "media"), "attributes");
+        CHECK(noshi_tl_has(attributes->u.vec.items[0], "round_message"));
         spec.width = 0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 52, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 52, &request), NOSHI_E_ARG);
         spec.width = 384;
         spec.waveform = wave;
         spec.waveform_len = sizeof(wave);
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 52, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 52, &request), NOSHI_E_ARG);
 
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_VIDEO;
+        spec.kind = NOSHI_UPLOAD_VIDEO;
         spec.duration_ms = 9000;
         spec.width = 640;
         spec.height = 480;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 53, &request), EXTERIA_OK);
-        attributes = exteria_tl_get(exteria_tl_get(request, "media"), "attributes");
-        CHECK(exteria_tl_has(attributes->u.vec.items[0], "supports_streaming"));
-        CHECK(!exteria_tl_has(attributes->u.vec.items[0], "round_message"));
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 53, &request), NOSHI_OK);
+        attributes = noshi_tl_get(noshi_tl_get(request, "media"), "attributes");
+        CHECK(noshi_tl_has(attributes->u.vec.items[0], "supports_streaming"));
+        CHECK(!noshi_tl_has(attributes->u.vec.items[0], "round_message"));
         spec.height = 0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 53, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 53, &request), NOSHI_E_ARG);
 
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_FILE;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 54, &request), EXTERIA_E_ARG);
+        spec.kind = NOSHI_UPLOAD_FILE;
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 54, &request), NOSHI_E_ARG);
         strcpy(spec.name, "notes.txt");
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 54, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 54, &request), NOSHI_E_ARG);
         strcpy(spec.mime, "text/plain");
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 54, &request), EXTERIA_OK);
-        media = exteria_tl_get(request, "media");
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 54, &request), NOSHI_OK);
+        media = noshi_tl_get(request, "media");
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
         check_media_reply(request, &chat);
-        CHECK(exteria_tl_has(media, "force_file"));
-        CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(media, "attributes")->u.vec.items[0]), EXTERIA_TL_ID_documentAttributeFilename);
+        CHECK(noshi_tl_has(media, "force_file"));
+        CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(media, "attributes")->u.vec.items[0]), NOSHI_TL_ID_documentAttributeFilename);
         /* a name that fills its buffer without an end would be read past it */
         memset(spec.name, 'a', sizeof(spec.name));
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 54, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 54, &request), NOSHI_E_ARG);
 
         memset(&spec, 0, sizeof(spec));
-        spec.kind = EXTERIA_UPLOAD_PHOTO;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 55, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+        spec.kind = NOSHI_UPLOAD_PHOTO;
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 55, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
         check_media_reply(request, &chat);
-        CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "media")), EXTERIA_TL_ID_inputMediaUploadedPhoto);
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, NULL, &spec, 55, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 0, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, NULL, 55, &request), EXTERIA_E_ARG);
-        spec.kind = (exteria_upload_kind)9;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 55, &request), EXTERIA_E_ARG);
-        spec.kind = (exteria_upload_kind)0;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &chat, file, &spec, 55, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "media")), NOSHI_TL_ID_inputMediaUploadedPhoto);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, NULL, &spec, 55, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 0, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, NULL, 55, &request), NOSHI_E_ARG);
+        spec.kind = (noshi_upload_kind)9;
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 55, &request), NOSHI_E_ARG);
+        spec.kind = (noshi_upload_kind)0;
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &chat, file, &spec, 55, &request), NOSHI_E_ARG);
     }
 
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, 55.75, 37.62, 56, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, 55.75, 37.62, 56, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
     check_media_reply(request, &chat);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "media")), EXTERIA_TL_ID_inputMediaGeoPoint);
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, -90.0, 180.0, 56, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, 90.1, 0, 56, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, 0, -180.1, 56, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, NAN, 0, 56, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_geo_request(&arena, &chat, 0, 0, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "media")), NOSHI_TL_ID_inputMediaGeoPoint);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, -90.0, 180.0, 56, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, 90.1, 0, 56, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, 0, -180.1, 56, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, NAN, 0, 56, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_geo_request(&arena, &chat, 0, 0, 0, &request), NOSHI_E_ARG);
 
     {
         const int64_t ids[2] = {11, 22};
-        exteria_custom_emoji rows[4];
-        exteria_tl_value *list = exteria_tl_new_vec(&arena, 3), *answer;
+        noshi_custom_emoji rows[4];
+        noshi_tl_value *list = noshi_tl_new_vec(&arena, 3), *answer;
         size_t n = 0;
-        CHECK_EQ_INT(exteria_custom_emoji_request(&arena, ids, 2, &request), EXTERIA_OK);
-        check_encodes(request, EXTERIA_TL_ID_messages_getCustomEmojiDocuments);
-        CHECK_EQ_INT(exteria_custom_emoji_request(&arena, ids, 0, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_custom_emoji_request(&arena, ids, EXTERIA_CUSTOM_EMOJI_MAX + 1, &request), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_custom_emoji_request(&arena, NULL, 1, &request), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_custom_emoji_request(&arena, ids, 2, &request), NOSHI_OK);
+        check_encodes(request, NOSHI_TL_ID_messages_getCustomEmojiDocuments);
+        CHECK_EQ_INT(noshi_custom_emoji_request(&arena, ids, 0, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_custom_emoji_request(&arena, ids, NOSHI_CUSTOM_EMOJI_MAX + 1, &request), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_custom_emoji_request(&arena, NULL, 1, &request), NOSHI_E_ARG);
         CHECK(list != NULL);
         for (int k = 0; k < 3; ++k) {
-            exteria_tl_value *document = exteria_tl_new_obj(&arena, "document");
-            exteria_tl_value *attributes = exteria_tl_new_vec(&arena, 1);
-            exteria_tl_value *attribute = exteria_tl_new_obj(&arena, k == 1 ? "documentAttributeFilename" : "documentAttributeCustomEmoji");
+            noshi_tl_value *document = noshi_tl_new_obj(&arena, "document");
+            noshi_tl_value *attributes = noshi_tl_new_vec(&arena, 1);
+            noshi_tl_value *attribute = noshi_tl_new_obj(&arena, k == 1 ? "documentAttributeFilename" : "documentAttributeCustomEmoji");
             CHECK(document && attributes && attribute);
-            CHECK_EQ_INT(exteria_tl_set_i64(&arena, document, "id", 100 + k), EXTERIA_OK);
-            if (k == 1) CHECK_EQ_INT(exteria_tl_set_str(&arena, attribute, "file_name", "x"), EXTERIA_OK);
-            else CHECK_EQ_INT(exteria_tl_set_str(&arena, attribute, "alt", k == 0 ? "\xF0\x9F\x98\x80" : ""), EXTERIA_OK);
-            CHECK_EQ_INT(exteria_tl_vec_set(attributes, 0, attribute), EXTERIA_OK);
-            CHECK_EQ_INT(exteria_tl_set(document, "attributes", attributes), EXTERIA_OK);
-            CHECK_EQ_INT(exteria_tl_vec_set(list, (uint32_t)k, document), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tl_set_i64(&arena, document, "id", 100 + k), NOSHI_OK);
+            if (k == 1) CHECK_EQ_INT(noshi_tl_set_str(&arena, attribute, "file_name", "x"), NOSHI_OK);
+            else CHECK_EQ_INT(noshi_tl_set_str(&arena, attribute, "alt", k == 0 ? "\xF0\x9F\x98\x80" : ""), NOSHI_OK);
+            CHECK_EQ_INT(noshi_tl_vec_set(attributes, 0, attribute), NOSHI_OK);
+            CHECK_EQ_INT(noshi_tl_set(document, "attributes", attributes), NOSHI_OK);
+            CHECK_EQ_INT(noshi_tl_vec_set(list, (uint32_t)k, document), NOSHI_OK);
         }
         answer = list;
         /* only the first document has the attribute with a text */
-        CHECK_EQ_INT(exteria_custom_emoji_parse(answer, rows, 4, &n), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_custom_emoji_parse(answer, rows, 4, &n), NOSHI_OK);
         CHECK_EQ_INT(n, 1);
         CHECK_EQ_INT(rows[0].id, 100);
         CHECK(!strcmp(rows[0].alt, "\xF0\x9F\x98\x80"));
         /* the files that draw it come with the row, and the format follows the mime type */
-        CHECK_EQ_INT(rows[0].format, EXTERIA_STICKER_STATIC);
+        CHECK_EQ_INT(rows[0].format, NOSHI_STICKER_STATIC);
         {
             static const char *const mimes[3] = {"image/webp", "application/x-tgsticker", "video/webm"};
             for (int k = 0; k < 3; ++k) {
-                exteria_tl_value *attribute = obj("documentAttributeCustomEmoji");
-                exteria_tl_value *one = exteria_tl_new_vec(&arena, 1);
+                noshi_tl_value *attribute = obj("documentAttributeCustomEmoji");
+                noshi_tl_value *one = noshi_tl_new_vec(&arena, 1);
                 set_str(attribute, "alt", "x");
-                CHECK_EQ_INT(exteria_tl_vec_set(one, 0, document(40 + k, mimes[k], &attribute, 1)), EXTERIA_OK);
-                CHECK_EQ_INT(exteria_custom_emoji_parse(one, rows, 4, &n), EXTERIA_OK);
+                CHECK_EQ_INT(noshi_tl_vec_set(one, 0, document(40 + k, mimes[k], &attribute, 1)), NOSHI_OK);
+                CHECK_EQ_INT(noshi_custom_emoji_parse(one, rows, 4, &n), NOSHI_OK);
                 CHECK_EQ_INT(n, 1);
-                CHECK_EQ_INT(rows[0].format, k == 0 ? EXTERIA_STICKER_STATIC : k == 1 ? EXTERIA_STICKER_ANIMATED : EXTERIA_STICKER_VIDEO);
-                CHECK_EQ_INT(rows[0].ref.source, EXTERIA_MEDIA_SOURCE_DOCUMENT);
+                CHECK_EQ_INT(rows[0].format, k == 0 ? NOSHI_STICKER_STATIC : k == 1 ? NOSHI_STICKER_ANIMATED : NOSHI_STICKER_VIDEO);
+                CHECK_EQ_INT(rows[0].ref.source, NOSHI_MEDIA_SOURCE_DOCUMENT);
                 CHECK_EQ_INT(rows[0].ref.id, 40 + k);
                 CHECK_EQ_INT(rows[0].ref.dc, 2);
-                CHECK_EQ_INT(rows[0].preview.source, EXTERIA_MEDIA_SOURCE_DOCUMENT);
+                CHECK_EQ_INT(rows[0].preview.source, NOSHI_MEDIA_SOURCE_DOCUMENT);
             }
         }
-        CHECK_EQ_INT(exteria_custom_emoji_parse(answer, rows, 0, &n), EXTERIA_E_ARG);
-        CHECK_EQ_INT(exteria_custom_emoji_parse(exteria_tl_new_obj(&arena, "boolTrue"), rows, 4, &n), EXTERIA_E_MALFORMED);
+        CHECK_EQ_INT(noshi_custom_emoji_parse(answer, rows, 0, &n), NOSHI_E_ARG);
+        CHECK_EQ_INT(noshi_custom_emoji_parse(noshi_tl_new_obj(&arena, "boolTrue"), rows, 4, &n), NOSHI_E_MALFORMED);
         CHECK_EQ_INT(n, 0);
     }
 
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", EXTERIA_SEARCH_ALL, 0, 20, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_searchGlobal);
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", EXTERIA_SEARCH_POSTS, 7, 20, &request), EXTERIA_OK);
-    CHECK(exteria_tl_has(request, "broadcasts_only"));
-    check_encodes(request, EXTERIA_TL_ID_messages_searchGlobal);
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", EXTERIA_SEARCH_VOICE, 0, 20, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "filter")), EXTERIA_TL_ID_inputMessagesFilterVoice);
-    CHECK_EQ_INT(exteria_search_request(&arena, "", EXTERIA_SEARCH_MEDIA, 0, 20, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", (exteria_search_kind)99, 0, 20, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", EXTERIA_SEARCH_ALL, -1, 20, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_search_request(&arena, "duck", EXTERIA_SEARCH_ALL, 0, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", NOSHI_SEARCH_ALL, 0, 20, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_searchGlobal);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", NOSHI_SEARCH_POSTS, 7, 20, &request), NOSHI_OK);
+    CHECK(noshi_tl_has(request, "broadcasts_only"));
+    check_encodes(request, NOSHI_TL_ID_messages_searchGlobal);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", NOSHI_SEARCH_VOICE, 0, 20, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "filter")), NOSHI_TL_ID_inputMessagesFilterVoice);
+    CHECK_EQ_INT(noshi_search_request(&arena, "", NOSHI_SEARCH_MEDIA, 0, 20, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", (noshi_search_kind)99, 0, 20, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", NOSHI_SEARCH_ALL, -1, 20, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_search_request(&arena, "duck", NOSHI_SEARCH_ALL, 0, 0, &request), NOSHI_E_ARG);
 
-    CHECK_EQ_INT(exteria_read_history_request(&arena, &user, 10, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_readHistory);
-    CHECK_EQ_INT(exteria_read_history_request(&arena, &channel, 10, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_channels_readHistory);
-    CHECK_EQ_INT(exteria_read_history_request(&arena, &user, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_read_history_request(&arena, &user, 10, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_readHistory);
+    CHECK_EQ_INT(noshi_read_history_request(&arena, &channel, 10, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_channels_readHistory);
+    CHECK_EQ_INT(noshi_read_history_request(&arena, &user, 0, &request), NOSHI_E_ARG);
     {
-        exteria_tl_value *affected = obj("messages.affectedMessages");
-        exteria_tl_value *yes = obj("boolTrue");
-        exteria_tl_value *no = obj("boolFalse");
-        CHECK(exteria_read_history_answer_valid(&user, affected));
-        CHECK(!exteria_read_history_answer_valid(&user, yes));
-        CHECK(exteria_read_history_answer_valid(&channel, yes));
-        CHECK(!exteria_read_history_answer_valid(&channel, no));
-        CHECK(!exteria_read_history_answer_valid(&channel, affected));
-        CHECK(!exteria_read_history_answer_valid(NULL, yes));
-        CHECK(!exteria_read_history_answer_valid(&user, NULL));
+        noshi_tl_value *affected = obj("messages.affectedMessages");
+        noshi_tl_value *yes = obj("boolTrue");
+        noshi_tl_value *no = obj("boolFalse");
+        CHECK(noshi_read_history_answer_valid(&user, affected));
+        CHECK(!noshi_read_history_answer_valid(&user, yes));
+        CHECK(noshi_read_history_answer_valid(&channel, yes));
+        CHECK(!noshi_read_history_answer_valid(&channel, no));
+        CHECK(!noshi_read_history_answer_valid(&channel, affected));
+        CHECK(!noshi_read_history_answer_valid(NULL, yes));
+        CHECK(!noshi_read_history_answer_valid(&user, NULL));
     }
 
-    sticker.source = EXTERIA_MEDIA_SOURCE_DOCUMENT;
-    CHECK_EQ_INT(exteria_media_location(&arena, &sticker, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_inputDocumentFileLocation);
-    sticker.source = EXTERIA_MEDIA_SOURCE_PHOTO;
+    sticker.source = NOSHI_MEDIA_SOURCE_DOCUMENT;
+    CHECK_EQ_INT(noshi_media_location(&arena, &sticker, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_inputDocumentFileLocation);
+    sticker.source = NOSHI_MEDIA_SOURCE_PHOTO;
     strcpy(sticker.thumb, "x");
-    CHECK_EQ_INT(exteria_media_location(&arena, &sticker, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_inputPhotoFileLocation);
-    sticker.source = EXTERIA_MEDIA_SOURCE_NONE;
-    CHECK_EQ_INT(exteria_media_location(&arena, &sticker, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_media_location(&arena, &sticker, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_inputPhotoFileLocation);
+    sticker.source = NOSHI_MEDIA_SOURCE_NONE;
+    CHECK_EQ_INT(noshi_media_location(&arena, &sticker, &request), NOSHI_E_ARG);
 
     set.id = 3;
     set.access_hash = 4;
-    CHECK_EQ_INT(exteria_sticker_set_thumb_location(&arena, &set, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_thumb_location(&arena, &set, &request), NOSHI_E_ARG);
     set.thumb_dc = 2;
     set.thumb_version = 1;
-    CHECK_EQ_INT(exteria_sticker_set_thumb_location(&arena, &set, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_inputStickerSetThumb);
-    CHECK_EQ_INT(exteria_sticker_set_request(&arena, &set, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getStickerSet);
+    CHECK_EQ_INT(noshi_sticker_set_thumb_location(&arena, &set, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_inputStickerSetThumb);
+    CHECK_EQ_INT(noshi_sticker_set_request(&arena, &set, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getStickerSet);
 }
 
-static exteria_tl_value *emoji_pack(const char *emoticon, int64_t id) {
-    exteria_tl_value *pack = obj("stickerPack");
+static noshi_tl_value *emoji_pack(const char *emoticon, int64_t id) {
+    noshi_tl_value *pack = obj("stickerPack");
     set_str(pack, "emoticon", emoticon);
-    CHECK_EQ_INT(exteria_tl_set_i64_vec(&arena, pack, "documents", &id, 1), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_set_i64_vec(&arena, pack, "documents", &id, 1), NOSHI_OK);
     return pack;
 }
 
 static void test_dice(void) {
     const char *dice = "\xf0\x9f\x8e\xb2", *football = "\xe2\x9a\xbd", *football_look = "\xe2\x9a\xbd\xef\xb8\x8f";
-    CHECK(exteria_dice_emoticon(dice));
-    CHECK(exteria_dice_emoticon("\xf0\x9f\x8e\xaf"));
-    CHECK(exteria_dice_emoticon("\xf0\x9f\x8f\x80"));
-    CHECK(exteria_dice_emoticon(football));
-    CHECK(exteria_dice_emoticon(football_look));
-    CHECK(exteria_dice_emoticon("\xf0\x9f\x8e\xb3"));
-    CHECK(exteria_dice_emoticon("\xf0\x9f\x8e\xb0"));
-    CHECK(!exteria_dice_emoticon(NULL));
-    CHECK(!exteria_dice_emoticon(""));
-    CHECK(!exteria_dice_emoticon("\xef\xb8\x8f"));
-    CHECK(!exteria_dice_emoticon("\xf0\x9f\x98\x80"));
-    CHECK(!exteria_dice_emoticon("\xf0\x9f\x8e\xb2\xf0\x9f\x8e\xb2"));
-    CHECK(!exteria_dice_emoticon("\xf0\x9f\x8e\xb2 "));
-    CHECK(!exteria_dice_emoticon("a\xf0\x9f\x8e\xb2"));
-    CHECK(!exteria_dice_emoticon("\xf0\x9f\x8e"));
+    CHECK(noshi_dice_emoticon(dice));
+    CHECK(noshi_dice_emoticon("\xf0\x9f\x8e\xaf"));
+    CHECK(noshi_dice_emoticon("\xf0\x9f\x8f\x80"));
+    CHECK(noshi_dice_emoticon(football));
+    CHECK(noshi_dice_emoticon(football_look));
+    CHECK(noshi_dice_emoticon("\xf0\x9f\x8e\xb3"));
+    CHECK(noshi_dice_emoticon("\xf0\x9f\x8e\xb0"));
+    CHECK(!noshi_dice_emoticon(NULL));
+    CHECK(!noshi_dice_emoticon(""));
+    CHECK(!noshi_dice_emoticon("\xef\xb8\x8f"));
+    CHECK(!noshi_dice_emoticon("\xf0\x9f\x98\x80"));
+    CHECK(!noshi_dice_emoticon("\xf0\x9f\x8e\xb2\xf0\x9f\x8e\xb2"));
+    CHECK(!noshi_dice_emoticon("\xf0\x9f\x8e\xb2 "));
+    CHECK(!noshi_dice_emoticon("a\xf0\x9f\x8e\xb2"));
+    CHECK(!noshi_dice_emoticon("\xf0\x9f\x8e"));
 
-    exteria_media_info info;
-    exteria_tl_value *media = obj("messageMediaDice");
+    noshi_media_info info;
+    noshi_tl_value *media = obj("messageMediaDice");
     set_i32(media, "value", 5);
     set_str(media, "emoticon", dice);
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_DICE);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_DICE);
     CHECK(!strcmp(info.alt, dice));
     CHECK_EQ_INT(info.dice_value, 5);
     CHECK_EQ_INT(info.width, 512);
     set_i32(media, "value", 0);
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_DICE);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_DICE);
     CHECK_EQ_INT(info.dice_value, 0);
-    set_i32(media, "value", EXTERIA_DICE_VALUE_MAX);
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.dice_value, EXTERIA_DICE_VALUE_MAX);
-    set_i32(media, "value", EXTERIA_DICE_VALUE_MAX + 1);
-    exteria_media_classify(media, &info);
+    set_i32(media, "value", NOSHI_DICE_VALUE_MAX);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.dice_value, NOSHI_DICE_VALUE_MAX);
+    set_i32(media, "value", NOSHI_DICE_VALUE_MAX + 1);
+    noshi_media_classify(media, &info);
     CHECK_EQ_INT(info.dice_value, 0);
     set_i32(media, "value", -3);
-    exteria_media_classify(media, &info);
+    noshi_media_classify(media, &info);
     CHECK_EQ_INT(info.dice_value, 0);
     /* an emoji that is no game is not drawn as one */
     set_str(media, "emoticon", "\xf0\x9f\x98\x80");
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_OTHER);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_OTHER);
     CHECK(!info.alt[0]);
     set_str(media, "emoticon", "");
-    exteria_media_classify(media, &info);
-    CHECK_EQ_INT(info.kind, EXTERIA_PREVIEW_OTHER);
+    noshi_media_classify(media, &info);
+    CHECK_EQ_INT(info.kind, NOSHI_PREVIEW_OTHER);
 
-    exteria_peer_ref peer;
+    noshi_peer_ref peer;
     memset(&peer, 0, sizeof(peer));
     peer.kind = 1;
     peer.id = 77;
     peer.access_hash = 5;
-    exteria_tl_value *request = NULL;
-    CHECK_EQ_INT(exteria_send_dice_request(&arena, &peer, football_look, 9, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "media")), EXTERIA_TL_ID_inputMediaDice);
-    CHECK_EQ_INT(exteria_send_dice_request(&arena, &peer, "hello", 9, &request), EXTERIA_E_ARG);
+    noshi_tl_value *request = NULL;
+    CHECK_EQ_INT(noshi_send_dice_request(&arena, &peer, football_look, 9, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "media")), NOSHI_TL_ID_inputMediaDice);
+    CHECK_EQ_INT(noshi_send_dice_request(&arena, &peer, "hello", 9, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_send_dice_request(&arena, &peer, dice, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_dice_request(&arena, NULL, dice, 9, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_send_dice_request(NULL, &peer, dice, 9, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_dice_request(&arena, &peer, dice, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_dice_request(&arena, NULL, dice, 9, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_send_dice_request(NULL, &peer, dice, 9, &request), NOSHI_E_ARG);
 
-    CHECK_EQ_INT(exteria_dice_set_request(&arena, dice, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getStickerSet);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "stickerset")), EXTERIA_TL_ID_inputStickerSetDice);
-    CHECK_EQ_INT(exteria_dice_set_request(&arena, "x", &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_dice_set_request(&arena, dice, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getStickerSet);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "stickerset")), NOSHI_TL_ID_inputStickerSetDice);
+    CHECK_EQ_INT(noshi_dice_set_request(&arena, "x", &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_dice_set_request(&arena, NULL, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_dice_set_request(&arena, NULL, &request), NOSHI_E_ARG);
 
     /* the row of a document that is no sticker keeps its place, so the index of a row stays the value it shows */
-    exteria_tl_value *attributes[1] = {sticker_attribute(dice)};
-    exteria_tl_value *docs[3];
+    noshi_tl_value *attributes[1] = {sticker_attribute(dice)};
+    noshi_tl_value *docs[3];
     docs[0] = document(701, "application/x-tgsticker", attributes, 1);
     docs[1] = document(702, "image/jpeg", NULL, 0);
     docs[2] = document(703, "application/x-tgsticker", attributes, 1);
-    exteria_tl_value *reply = obj("messages.stickerSet");
+    noshi_tl_value *reply = obj("messages.stickerSet");
     set(reply, "set", sticker_set(1, "Dice", 0));
     set(reply, "documents", vec_of(docs, 3));
-    exteria_sticker_row rows[4];
+    noshi_sticker_row rows[4];
     size_t count = 99;
-    CHECK_EQ_INT(exteria_dice_set_parse(reply, rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_dice_set_parse(reply, rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 3);
     CHECK_EQ_INT(rows[0].media.ref.id, 701);
-    CHECK_EQ_INT(rows[1].media.ref.source, EXTERIA_MEDIA_SOURCE_NONE);
+    CHECK_EQ_INT(rows[1].media.ref.source, NOSHI_MEDIA_SOURCE_NONE);
     CHECK_EQ_INT(rows[2].media.ref.id, 703);
-    CHECK_EQ_INT(exteria_dice_set_parse(reply, rows, 2, &count), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_dice_set_parse(reply, rows, 2, &count), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
-    set(reply, "documents", exteria_tl_new_vec(&arena, EXTERIA_DICE_STICKERS_MAX + 1));
-    CHECK_EQ_INT(exteria_dice_set_parse(reply, rows, 4, &count), EXTERIA_E_LIMIT);
-    CHECK_EQ_INT(exteria_dice_set_parse(obj("messages.stickerSet"), rows, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_dice_set_parse(obj("messages.stickerSetNotModified"), rows, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_dice_set_parse(NULL, rows, 4, &count), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_dice_set_parse(reply, rows, 0, &count), EXTERIA_E_ARG);
+    set(reply, "documents", noshi_tl_new_vec(&arena, NOSHI_DICE_STICKERS_MAX + 1));
+    CHECK_EQ_INT(noshi_dice_set_parse(reply, rows, 4, &count), NOSHI_E_LIMIT);
+    CHECK_EQ_INT(noshi_dice_set_parse(obj("messages.stickerSet"), rows, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_dice_set_parse(obj("messages.stickerSetNotModified"), rows, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_dice_set_parse(NULL, rows, 4, &count), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_dice_set_parse(reply, rows, 0, &count), NOSHI_E_ARG);
 }
 
 static void test_animated_emoji(void) {
-    exteria_tl_value *request = NULL;
-    CHECK_EQ_INT(exteria_animated_emoji_request(&arena, &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getStickerSet);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "stickerset")), EXTERIA_TL_ID_inputStickerSetAnimatedEmoji);
+    noshi_tl_value *request = NULL;
+    CHECK_EQ_INT(noshi_animated_emoji_request(&arena, &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getStickerSet);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "stickerset")), NOSHI_TL_ID_inputStickerSetAnimatedEmoji);
     int32_t hash = -1;
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "hash", &hash), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "hash", &hash), NOSHI_OK);
     CHECK_EQ_INT(hash, 0);
-    CHECK_EQ_INT(exteria_animated_emoji_request(NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(&arena, "tg_placeholders_android", &request), EXTERIA_OK);
-    check_encodes(request, EXTERIA_TL_ID_messages_getStickerSet);
-    CHECK_EQ_INT(exteria_tl_id(exteria_tl_get(request, "stickerset")), EXTERIA_TL_ID_inputStickerSetShortName);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(&arena, "", &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_animated_emoji_request(NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(&arena, "tg_placeholders_android", &request), NOSHI_OK);
+    check_encodes(request, NOSHI_TL_ID_messages_getStickerSet);
+    CHECK_EQ_INT(noshi_tl_id(noshi_tl_get(request, "stickerset")), NOSHI_TL_ID_inputStickerSetShortName);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(&arena, "", &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(&arena, "no spaces", &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(&arena, "a/b", &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(&arena, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_sticker_set_by_name_request(NULL, "x", &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(&arena, "no spaces", &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(&arena, "a/b", &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(&arena, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_sticker_set_by_name_request(NULL, "x", &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_animated_emoji_request(&arena, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_animated_emoji_request(&arena, NULL), NOSHI_E_ARG);
 
-    exteria_tl_value *attributes[1] = {sticker_attribute("different document alt")};
-    exteria_tl_value *docs[4];
+    noshi_tl_value *attributes[1] = {sticker_attribute("different document alt")};
+    noshi_tl_value *docs[4];
     docs[0] = document(601, "application/x-tgsticker", attributes, 1);
     docs[1] = document(602, "image/webp", attributes, 1);
     docs[2] = document(603, "application/x-tgsticker", attributes, 1);
     docs[3] = document(604, "application/x-tgsticker", attributes, 1);
-    set_i64(docs[2], "size", EXTERIA_ANIMATED_EMOJI_BYTES_MAX + 1);
-    set_i64(docs[3], "size", EXTERIA_ANIMATED_EMOJI_BYTES_MAX);
-    exteria_tl_value *packs[6] = {
+    set_i64(docs[2], "size", NOSHI_ANIMATED_EMOJI_BYTES_MAX + 1);
+    set_i64(docs[3], "size", NOSHI_ANIMATED_EMOJI_BYTES_MAX);
+    noshi_tl_value *packs[6] = {
         emoji_pack("\xf0\x9f\x98\x80", 601), emoji_pack("static", 602),
         emoji_pack("too big", 603), emoji_pack("missing", 605),
         emoji_pack("\xe2\x9d\xa4", 604), emoji_pack("", 601)
     };
-    exteria_tl_value *answer = obj("messages.stickerSet");
+    noshi_tl_value *answer = obj("messages.stickerSet");
     set(answer, "set", sticker_set(1, "AnimatedEmojies", 0));
     set(answer, "documents", vec_of(docs, 4));
     set(answer, "packs", vec_of(packs, 6));
-    exteria_sticker_row rows[4];
+    noshi_sticker_row rows[4];
     size_t count = 99;
-    CHECK_EQ_INT(exteria_animated_emoji_parse(answer, rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(answer, rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 2);
     CHECK_EQ_INT(rows[0].media.ref.id, 601);
     CHECK(!strcmp(rows[0].media.alt, "\xf0\x9f\x98\x80"));
     CHECK_EQ_INT(rows[1].media.ref.id, 604);
     CHECK(!strcmp(rows[1].media.alt, "\xe2\x9d\xa4"));
-    CHECK_EQ_INT(exteria_animated_emoji_parse(answer, rows, 1, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(answer, rows, 1, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 1);
     set(answer, "packs", vec_of(NULL, 0));
-    CHECK_EQ_INT(exteria_animated_emoji_parse(answer, rows, 4, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(answer, rows, 4, &count), NOSHI_OK);
     CHECK_EQ_INT(count, 0);
-    set(answer, "packs", exteria_tl_new_vec(&arena, EXTERIA_ANIMATED_EMOJI_MAX + 1));
-    CHECK_EQ_INT(exteria_animated_emoji_parse(answer, rows, 4, &count), EXTERIA_E_LIMIT);
+    set(answer, "packs", noshi_tl_new_vec(&arena, NOSHI_ANIMATED_EMOJI_MAX + 1));
+    CHECK_EQ_INT(noshi_animated_emoji_parse(answer, rows, 4, &count), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
-    CHECK_EQ_INT(exteria_animated_emoji_parse(obj("messages.stickerSet"), rows, 4, &count), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_animated_emoji_parse(obj("messages.stickerSetNotModified"), rows, 4, &count), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_animated_emoji_parse(NULL, rows, 4, &count), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_animated_emoji_parse(answer, rows, 0, &count), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(obj("messages.stickerSet"), rows, 4, &count), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(obj("messages.stickerSetNotModified"), rows, 4, &count), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(NULL, rows, 4, &count), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_animated_emoji_parse(answer, rows, 0, &count), NOSHI_E_ARG);
     CHECK_EQ_INT(count, 0);
 }
 
 static void test_sender_rank(void) {
-    exteria_tl_value *m = message(12, "group message");
-    exteria_message_row row;
-    CHECK_EQ_INT(exteria_message_read(m, &row), EXTERIA_OK);
+    noshi_tl_value *m = message(12, "group message");
+    noshi_message_row row;
+    CHECK_EQ_INT(noshi_message_read(m, &row), NOSHI_OK);
     CHECK(!row.from_rank[0]);
     set_str(m, "from_rank", "custom\nadmin");
-    CHECK_EQ_INT(exteria_message_read(m, &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, &row), NOSHI_OK);
     CHECK(!strcmp(row.from_rank, "custom admin"));
     char rank[300];
     memset(rank, 'x', sizeof(rank) - 1);
     rank[sizeof(rank) - 1] = 0;
     set_str(m, "from_rank", rank);
-    CHECK_EQ_INT(exteria_message_read(m, &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, &row), NOSHI_OK);
     CHECK_EQ_INT(strlen(row.from_rank), sizeof(row.from_rank) - 1);
 }
 
@@ -2030,93 +2030,93 @@ static void test_service_summary(void) {
     char text[64];
     int32_t value = -1;
     int64_t target = -1;
-    exteria_tl_value *action = obj("messageActionContactSignUp");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_CONTACT_JOINED + 1);
+    noshi_tl_value *action = obj("messageActionContactSignUp");
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_CONTACT_JOINED + 1);
     CHECK_EQ_INT(value, 0);
     CHECK_EQ_INT(target, 0);
     CHECK(!text[0]);
     action = obj("messageActionCustomAction");
     set_str(action, "message", "Welcome back");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_CUSTOM + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_CUSTOM + 1);
     CHECK(!strcmp(text, "Welcome back"));
     action = obj("messageActionGroupCall");
     set_i32(action, "duration", 125);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_VIDEO_CHAT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_VIDEO_CHAT + 1);
     CHECK_EQ_INT(value, 125);
     action = obj("messageActionSetMessagesTTL");
     set_i32(action, "period", 86400);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_TTL + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_TTL + 1);
     CHECK_EQ_INT(value, 86400);
     action = obj("messageActionTopicCreate");
     set_str(action, "title", "Rules");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_TOPIC_CREATE + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_TOPIC_CREATE + 1);
     CHECK(!strcmp(text, "Rules"));
     /* a text longer than the room is cut, not overrun */
     set_str(action, "title", "a title that does not fit into the small buffer given to the call, which is only sixty-four bytes");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_TOPIC_CREATE + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_TOPIC_CREATE + 1);
     CHECK(strlen(text) < sizeof(text));
     /* a gift of Stars carries the amount; an amount past int32 is capped, and a missing one reads as zero */
     action = obj("messageActionGiftStars");
     set_i64(action, "stars", 500);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_STARS_GIFT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_STARS_GIFT + 1);
     CHECK_EQ_INT(value, 500);
     set_i64(action, "stars", 5000000000LL);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_STARS_GIFT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_STARS_GIFT + 1);
     CHECK_EQ_INT(value, INT32_MAX);
     set_i64(action, "stars", -4);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_STARS_GIFT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_STARS_GIFT + 1);
     CHECK_EQ_INT(value, 0);
     action = obj("messageActionPaymentSent");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_PAYMENT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_PAYMENT + 1);
     action = obj("messageActionNoForwardsRequest");
     set(action, "prev_value", obj("boolTrue"));
     set(action, "new_value", obj("boolFalse"));
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_SHARING_REQUEST + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_SHARING_REQUEST + 1);
     CHECK_EQ_INT(value, 1);
     set_flag(action, "expired");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_SHARING_REQUEST + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_SHARING_REQUEST + 1);
     CHECK_EQ_INT(value, 5);
     action = obj("messageActionNoForwardsToggle");
     set(action, "prev_value", obj("boolFalse"));
     set(action, "new_value", obj("boolTrue"));
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_SHARING_TOGGLE + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_SHARING_TOGGLE + 1);
     CHECK_EQ_INT(value, 2);
     {
-        exteria_tl_value *answer = obj("pollAnswer"), *words = obj("textWithEntities");
+        noshi_tl_value *answer = obj("pollAnswer"), *words = obj("textWithEntities");
         set_str(words, "text", "Option B");
         set(words, "entities", vec_of(NULL, 0));
         set(answer, "text", words);
         action = obj("messageActionPollDeleteAnswer");
         set(action, "answer", answer);
-        CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_POLL_ANSWER_REMOVED + 1);
+        CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_POLL_ANSWER_REMOVED + 1);
         CHECK(!strcmp(text, "Option B"));
         action = obj("messageActionPollAppendAnswer");
         set(action, "answer", answer);
-        CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_POLL_ANSWER_ADDED + 1);
+        CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_POLL_ANSWER_ADDED + 1);
         CHECK(!strcmp(text, "Option B"));
         action = obj("messageActionPollDeleteAnswer");
-        CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_POLL_ANSWER_REMOVED + 1);
+        CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_POLL_ANSWER_REMOVED + 1);
         CHECK_EQ_INT(text[0], 0);
     }
     action = obj("messageActionEmpty");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_OTHER + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_OTHER + 1);
     CHECK(!strcmp(text, "Empty"));
     action = obj("messageActionSuggestBirthday");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_OTHER + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_OTHER + 1);
     CHECK(!strcmp(text, "Suggest birthday"));
-    CHECK_EQ_INT(exteria_service_summary(action, text, 8, &value, &target), EXTERIA_SERVICE_OTHER + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, 8, &value, &target), NOSHI_SERVICE_OTHER + 1);
     CHECK(strlen(text) < 8);
-    CHECK_EQ_INT(exteria_service_summary(NULL, text, sizeof(text), &value, &target), EXTERIA_SERVICE_OTHER + 1);
+    CHECK_EQ_INT(noshi_service_summary(NULL, text, sizeof(text), &value, &target), NOSHI_SERVICE_OTHER + 1);
 }
 
 /* a forwarded message names who wrote it: a user by id, a channel by the negative of its id, and nobody when the header hides it */
 static void test_forward_origin(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(50, "passed on"), *header = obj("messageFwdHeader"), *channel = obj("peerChannel");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(50, "passed on"), *header = obj("messageFwdHeader"), *channel = obj("peerChannel");
     CHECK(row != NULL);
     set(header, "from_id", peer_user(77));
     set(m, "fwd_from", header);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->forwarded, 1);
     CHECK_EQ_INT(row->forward_from, 77);
     m = message(51, "from a channel");
@@ -2124,13 +2124,13 @@ static void test_forward_origin(void) {
     set_i64(channel, "channel_id", 900);
     set(header, "from_id", channel);
     set(m, "fwd_from", header);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->forward_from, -900);
     m = message(52, "hidden origin");
     header = obj("messageFwdHeader");
     set_str(header, "from_name", "Hidden Person");
     set(m, "fwd_from", header);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->forward_from, 0);
     CHECK(!strcmp(row->forward_name, "Hidden Person"));
     CHECK_EQ_INT(row->forward_origin_kind, 0);
@@ -2143,7 +2143,7 @@ static void test_forward_origin(void) {
     set(header, "saved_from_peer", channel);
     set_i32(header, "saved_from_msg_id", 318);
     set(m, "fwd_from", header);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->forward_origin_kind, 3);
     CHECK_EQ_INT(row->forward_origin_id, 4242);
     CHECK_EQ_INT(row->forward_origin_message, 318);
@@ -2152,8 +2152,8 @@ static void test_forward_origin(void) {
 
 /* a chat added to a community or taken out of it: who acted, and which community, are read from the message and the action */
 static void test_community_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = obj("messageService"), *action = obj("messageActionChangeCommunity");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = obj("messageService"), *action = obj("messageActionChangeCommunity");
     CHECK(row != NULL);
     set_i32(m, "id", 70);
     set(m, "peer_id", peer_user(5));
@@ -2161,8 +2161,8 @@ static void test_community_message(void) {
     set(m, "from_id", peer_user(8));
     set_i64(action, "community_id", 777);
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->service, EXTERIA_SERVICE_COMMUNITY + 1);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->service, NOSHI_SERVICE_COMMUNITY + 1);
     CHECK_EQ_INT(row->service_value, 0);
     CHECK_EQ_INT(row->service_community, 777);
     /* no community_id: the chat was taken out */
@@ -2174,7 +2174,7 @@ static void test_community_message(void) {
     set_i32(m, "date", 9);
     set(m, "from_id", peer_user(8));
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->service_value, 1);
     CHECK_EQ_INT(row->service_community, 0);
     /* a line with no sender (the chat itself, or a post of a channel) has no person behind it */
@@ -2186,15 +2186,15 @@ static void test_community_message(void) {
     set(m, "peer_id", peer_user(5));
     set_i32(m, "date", 9);
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(row->service_value, 2);
     free(row);
 }
 
 /* a call service message keeps how it ended, whether it had video and how long it lasted */
 static void test_call_message(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = obj("messageService"), *action = obj("messageActionPhoneCall");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = obj("messageService"), *action = obj("messageActionPhoneCall");
     CHECK(row != NULL);
     set_i32(m, "id", 60);
     set(m, "peer_id", peer_user(5));
@@ -2204,10 +2204,10 @@ static void test_call_message(void) {
     set(action, "reason", obj("phoneCallDiscardReasonBusy"));
     set_flag(action, "video");
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->service, EXTERIA_SERVICE_CALL + 1);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->service, NOSHI_SERVICE_CALL + 1);
     CHECK_EQ_INT(row->service_value, 20);
-    CHECK_EQ_INT(row->call_reason, EXTERIA_OUTCOME_BUSY);
+    CHECK_EQ_INT(row->call_reason, NOSHI_OUTCOME_BUSY);
     CHECK_EQ_INT(row->call_video, 1);
     /* a call that was talked through has no reason, and one without video says so */
     m = obj("messageService");
@@ -2217,8 +2217,8 @@ static void test_call_message(void) {
     set_i32(m, "date", 9);
     set_i32(action, "duration", 3);
     set(m, "action", action);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
-    CHECK_EQ_INT(row->call_reason, EXTERIA_OUTCOME_ENDED);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
+    CHECK_EQ_INT(row->call_reason, NOSHI_OUTCOME_ENDED);
     CHECK_EQ_INT(row->call_video, 0);
     CHECK_EQ_INT(row->service_value, 3);
     free(row);
@@ -2228,40 +2228,40 @@ static void test_more_service_kinds(void) {
     char text[64];
     int32_t value = -1;
     int64_t target = -1;
-    exteria_tl_value *action = obj("messageActionGiftPremium");
+    noshi_tl_value *action = obj("messageActionGiftPremium");
     set_i32(action, "days", 180);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_PREMIUM_GIFT + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_PREMIUM_GIFT + 1);
     CHECK_EQ_INT(value, 6);
     action = obj("messageActionGameScore");
     set_i32(action, "score", 1200);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_GAME_SCORE + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_GAME_SCORE + 1);
     CHECK_EQ_INT(value, 1200);
     action = obj("messageActionGiveawayResults");
     set_i32(action, "winners_count", 3);
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_GIVEAWAY_RESULTS + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_GIVEAWAY_RESULTS + 1);
     CHECK_EQ_INT(value, 3);
     action = obj("messageActionSetChatTheme");
     {
-        exteria_tl_value *theme = obj("chatTheme");
+        noshi_tl_value *theme = obj("chatTheme");
         set_str(theme, "emoticon", "\xF0\x9F\x8E\x84");
         set(action, "theme", theme);
     }
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_THEME + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_THEME + 1);
     CHECK(!strcmp(text, "\xF0\x9F\x8E\x84"));
     action = obj("messageActionSetChatWallPaper");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_WALLPAPER + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_WALLPAPER + 1);
     action = obj("messageActionSuggestProfilePhoto");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_PHOTO_SUGGESTED + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_PHOTO_SUGGESTED + 1);
     action = obj("messageActionPaymentRefunded");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_PAYMENT_REFUNDED + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_PAYMENT_REFUNDED + 1);
     action = obj("messageActionGiveawayLaunch");
-    CHECK_EQ_INT(exteria_service_summary(action, text, sizeof(text), &value, &target), EXTERIA_SERVICE_GIVEAWAY + 1);
+    CHECK_EQ_INT(noshi_service_summary(action, text, sizeof(text), &value, &target), NOSHI_SERVICE_GIVEAWAY + 1);
 }
 
 static void test_reply_boundaries(void) {
-    exteria_message_row *row = calloc(1, sizeof(*row));
-    exteria_tl_value *m = message(101, "answer");
-    exteria_tl_value *reply = obj("messageReplyHeader");
+    noshi_message_row *row = calloc(1, sizeof(*row));
+    noshi_tl_value *m = message(101, "answer");
+    noshi_tl_value *reply = obj("messageReplyHeader");
     char quote[1100];
     CHECK(row != NULL);
     set_i32(reply, "reply_to_msg_id", 5);
@@ -2271,46 +2271,46 @@ static void test_reply_boundaries(void) {
     quote[1023] = (char)0xb0;
     quote[sizeof(quote) - 1] = 0;
     set_str(reply, "quote_text", quote);
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_OK);
     CHECK_EQ_INT(strlen(row->reply_quote), 1022);
     set(reply, "reply_to_peer_id", obj("peerUser"));
-    CHECK_EQ_INT(exteria_message_read(m, row), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_message_read(m, row), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(row->id, 0);
     CHECK_EQ_INT(row->reply_to, 0);
     free(row);
 }
 
 static void test_uploaded_media_reply(void) {
-    exteria_tl_value *file = obj("inputFile"), *request = NULL;
+    noshi_tl_value *file = obj("inputFile"), *request = NULL;
     set_i64(file, "id", 42);
     set_i32(file, "parts", 1);
     set_str(file, "name", "photo.jpg");
     set_str(file, "md5_checksum", "");
-    exteria_upload_spec spec;
+    noshi_upload_spec spec;
     memset(&spec, 0, sizeof(spec));
-    spec.kind = EXTERIA_UPLOAD_PHOTO;
-    exteria_peer_ref peer = {1, 7, 99, 0, 0};
+    spec.kind = NOSHI_UPLOAD_PHOTO;
+    noshi_peer_ref peer = {1, 7, 99, 0, 0};
     for (int topic = 0; topic < 2; ++topic) {
         peer.topic_id = topic ? 18 : 0;
         spec.reply_to = 77;
-        CHECK_EQ_INT(exteria_send_upload_request(&arena, &peer, file, &spec, 42, &request), EXTERIA_OK);
-        const exteria_tl_value *reply = exteria_tl_get(request, "reply_to");
+        CHECK_EQ_INT(noshi_send_upload_request(&arena, &peer, file, &spec, 42, &request), NOSHI_OK);
+        const noshi_tl_value *reply = noshi_tl_get(request, "reply_to");
         int32_t id = 0;
-        CHECK_EQ_INT(exteria_tl_get_i32(reply, "reply_to_msg_id", &id), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tl_get_i32(reply, "reply_to_msg_id", &id), NOSHI_OK);
         CHECK_EQ_INT(id, 77);
         if (topic) {
-            CHECK_EQ_INT(exteria_tl_get_i32(reply, "top_msg_id", &id), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_tl_get_i32(reply, "top_msg_id", &id), NOSHI_OK);
             CHECK_EQ_INT(id, 18);
-        } else CHECK(!exteria_tl_has(reply, "top_msg_id"));
-        check_encodes(request, EXTERIA_TL_ID_messages_sendMedia);
+        } else CHECK(!noshi_tl_has(reply, "top_msg_id"));
+        check_encodes(request, NOSHI_TL_ID_messages_sendMedia);
     }
     spec.reply_to = -1;
-    CHECK_EQ_INT(exteria_send_upload_request(&arena, &peer, file, &spec, 42, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_send_upload_request(&arena, &peer, file, &spec, 42, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
 }
 
 int main(void) {
-    exteria_arena_init(&arena, 1u << 20);
+    noshi_arena_init(&arena, 1u << 20);
     test_paid_media();
     test_story_media();
     test_history_page_cursor();
@@ -2357,7 +2357,7 @@ int main(void) {
     test_call_message();
     test_community_message();
     test_more_service_kinds();
-    exteria_arena_free(&arena);
+    noshi_arena_free(&arena);
     if (g_failures) {
         fprintf(stderr, "test_messages: %d of %d checks failed\n", g_failures, g_checks);
         return 1;

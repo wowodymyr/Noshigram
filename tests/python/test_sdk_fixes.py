@@ -20,7 +20,7 @@ from android_utils import _plugin_mark  # noqa: E402
 from app.exteraless import plugins as bridge  # noqa: E402
 from elyx_runtime.assets import Assets, AssetNotFoundException  # noqa: E402
 from elyx_runtime.metadata import parse_mapping_file  # noqa: E402
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
 
@@ -53,7 +53,7 @@ class SettingsPage(unittest.TestCase):
         saved = plugin_loader.get_settings_json
         plugin_loader.get_settings_json = lambda plugin_id: "null"
         try:
-            self.assertEqual(exteria_host.settings("nothing"), [])
+            self.assertEqual(noshi_host.settings("nothing"), [])
         finally:
             plugin_loader.get_settings_json = saved
 
@@ -94,11 +94,11 @@ class Bridge(unittest.TestCase):
 
 class ArchiveMetadata(unittest.TestCase):
     def test_a_python_metainfo_is_read_and_not_run(self):
-        os.environ.pop("EXTERIA_METADATA_RAN", None)
-        source = b"import os\nos.environ['EXTERIA_METADATA_RAN'] = '1'\nname = 'a'\nitems = [1, 2]\ncomputed = 1 + 2\n_hidden = 'x'\n"
+        os.environ.pop("NOSHI_METADATA_RAN", None)
+        source = b"import os\nos.environ['NOSHI_METADATA_RAN'] = '1'\nname = 'a'\nitems = [1, 2]\ncomputed = 1 + 2\n_hidden = 'x'\n"
         mapping = parse_mapping_file("metainfo.py", source)
         self.assertEqual(mapping, {"name": "a", "items": [1, 2]})
-        self.assertNotIn("EXTERIA_METADATA_RAN", os.environ)
+        self.assertNotIn("NOSHI_METADATA_RAN", os.environ)
 
     def test_a_python_file_with_a_syntax_error_is_refused(self):
         from elyx_runtime.errors import MetainfoError
@@ -108,7 +108,7 @@ class ArchiveMetadata(unittest.TestCase):
 
 class ArchivePaths(unittest.TestCase):
     def setUp(self):
-        self.root = tempfile.mkdtemp(prefix="exteria-assets-")
+        self.root = tempfile.mkdtemp(prefix="noshigram-assets-")
         os.makedirs(os.path.join(self.root, "assets"))
         with open(os.path.join(self.root, "secret.txt"), "w") as handle:
             handle.write("outside")

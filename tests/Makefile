@@ -29,13 +29,13 @@ CORE_SRC := $(BASE_SRC) $(CRYPTO_SRC) $(wildcard $(ROOT)/core/tl/*.c) $(wildcard
             $(wildcard $(ROOT)/core/secret_chats/*.c) $(wildcard $(ROOT)/core/client/*.c) \
             $(wildcard $(ROOT)/core/layout/*.c) $(wildcard $(ROOT)/core/phone/*.c) \
             $(wildcard $(ROOT)/core/session/*.c) $(wildcard $(ROOT)/core/chats/*.c) $(wildcard $(ROOT)/core/emoji/*.c) \
-            $(wildcard $(ROOT)/core/media/*.c) $(wildcard $(ROOT)/core/notify/*.c) $(wildcard $(ROOT)/core/calls/*.c) $(wildcard $(ROOT)/core/tgcalls/*.c) $(wildcard $(ROOT)/core/shiro/*.c) $(wildcard $(ROOT)/core/dexnative/*.c) $(ROOT)/core/video/exteria_yuv.c $(ROOT)/core/video/exteria_video_edit.c $(OPUS_SRC) $(OGG_SRC)
+            $(wildcard $(ROOT)/core/media/*.c) $(wildcard $(ROOT)/core/notify/*.c) $(wildcard $(ROOT)/core/calls/*.c) $(wildcard $(ROOT)/core/tgcalls/*.c) $(wildcard $(ROOT)/core/shiro/*.c) $(wildcard $(ROOT)/core/dexnative/*.c) $(ROOT)/core/video/noshi_yuv.c $(ROOT)/core/video/noshi_video_edit.c $(OPUS_SRC) $(OGG_SRC)
 CORE_OBJ := $(patsubst $(ROOT)/%.c,$(BUILD)/%.o,$(CORE_SRC))
 
-# the python host test embeds a real interpreter: EXTERIA_PYTHON_HOST_PREFIX is an install prefix of cpython 3.11
-# (include/python3.11, lib/libpython3.11.a) and EXTERIA_PYTHON_STDLIB the Lib directory of the same version.
+# the python host test embeds a real interpreter: NOSHI_PYTHON_HOST_PREFIX is an install prefix of cpython 3.11
+# (include/python3.11, lib/libpython3.11.a) and NOSHI_PYTHON_STDLIB the Lib directory of the same version.
 # build/python/host from scripts/build_python.sh is such a prefix
-PYHOST_TEST := $(if $(EXTERIA_PYTHON_HOST_PREFIX),$(BUILD)/test_pyhost)
+PYHOST_TEST := $(if $(NOSHI_PYTHON_HOST_PREFIX),$(BUILD)/test_pyhost)
 
 .PHONY: test sanitize test-pyhost test-python test-localization
 
@@ -43,8 +43,8 @@ PYHOST_TEST := $(if $(EXTERIA_PYTHON_HOST_PREFIX),$(BUILD)/test_pyhost)
 test: $(addprefix $(BUILD)/,$(TESTS)) $(PYHOST_TEST)
 	@set -e; for t in $(TESTS); do $(BUILD)/$$t; done
 	@$(MAKE) test-localization
-	@$(if $(PYHOST_TEST),$(PYHOST_TEST),echo "test_pyhost skipped: set EXTERIA_PYTHON_HOST_PREFIX and EXTERIA_PYTHON_STDLIB")
-	@$(if $(EXTERIA_PYTHON_HOST),$(MAKE) test-python,echo "python tests skipped: set EXTERIA_PYTHON_HOST to a python3.11")
+	@$(if $(PYHOST_TEST),$(PYHOST_TEST),echo "test_pyhost skipped: set NOSHI_PYTHON_HOST_PREFIX and NOSHI_PYTHON_STDLIB")
+	@$(if $(NOSHI_PYTHON_HOST),$(MAKE) test-python,echo "python tests skipped: set NOSHI_PYTHON_HOST to a python3.11")
 
 # the .strings files only need a plain python 3: a line that does not parse makes the old parser of ios 5 and 6 drop the whole language, and every text of it shows as its key
 test-localization:
@@ -52,20 +52,20 @@ test-localization:
 
 # the plugin sdk, the shims and the plugins of this repository, run by cpython 3.11 with a stand-in for the app (tests/python/fakeapp.py)
 test-python:
-	@test -x "$(EXTERIA_PYTHON_HOST)" || { echo "set EXTERIA_PYTHON_HOST to a python3.11" >&2; exit 1; }
-	$(EXTERIA_PYTHON_HOST) -I -m unittest discover -s python
+	@test -x "$(NOSHI_PYTHON_HOST)" || { echo "set NOSHI_PYTHON_HOST to a python3.11" >&2; exit 1; }
+	$(NOSHI_PYTHON_HOST) -I -m unittest discover -s python
 
 test-pyhost: $(BUILD)/test_pyhost
 	$(BUILD)/test_pyhost
 
-$(BUILD)/test_pyhost: core/test_pyhost.c $(ROOT)/core/pyhost/exteria_pyhost.c $(ROOT)/core/base/exteria_status.c core/test_util.h
-	@test -f "$(EXTERIA_PYTHON_HOST_PREFIX)/lib/libpython3.11.a" || { echo "set EXTERIA_PYTHON_HOST_PREFIX to a cpython 3.11 prefix" >&2; exit 1; }
-	@test -f "$(EXTERIA_PYTHON_STDLIB)/encodings/__init__.py" || { echo "set EXTERIA_PYTHON_STDLIB to the Lib directory of cpython 3.11" >&2; exit 1; }
+$(BUILD)/test_pyhost: core/test_pyhost.c $(ROOT)/core/pyhost/noshi_pyhost.c $(ROOT)/core/base/noshi_status.c core/test_util.h
+	@test -f "$(NOSHI_PYTHON_HOST_PREFIX)/lib/libpython3.11.a" || { echo "set NOSHI_PYTHON_HOST_PREFIX to a cpython 3.11 prefix" >&2; exit 1; }
+	@test -f "$(NOSHI_PYTHON_STDLIB)/encodings/__init__.py" || { echo "set NOSHI_PYTHON_STDLIB to the Lib directory of cpython 3.11" >&2; exit 1; }
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -isystem $(EXTERIA_PYTHON_HOST_PREFIX)/include/python3.11 \
-	    -DFIXTURE_DIR='"$(abspath core/pyhost)"' -DPY_STDLIB='"$(abspath $(EXTERIA_PYTHON_STDLIB))"' \
-	    core/test_pyhost.c $(ROOT)/core/pyhost/exteria_pyhost.c $(ROOT)/core/base/exteria_status.c \
-	    $(EXTERIA_PYTHON_HOST_PREFIX)/lib/libpython3.11.a -lpthread -ldl -lutil -lm -o $@
+	$(CC) $(CFLAGS) -isystem $(NOSHI_PYTHON_HOST_PREFIX)/include/python3.11 \
+	    -DFIXTURE_DIR='"$(abspath core/pyhost)"' -DPY_STDLIB='"$(abspath $(NOSHI_PYTHON_STDLIB))"' \
+	    core/test_pyhost.c $(ROOT)/core/pyhost/noshi_pyhost.c $(ROOT)/core/base/noshi_status.c \
+	    $(NOSHI_PYTHON_HOST_PREFIX)/lib/libpython3.11.a -lpthread -ldl -lutil -lm -o $@
 
 sanitize:
 	$(MAKE) BUILD=$(BUILD)-asan OPT="-O1 -g -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer" \

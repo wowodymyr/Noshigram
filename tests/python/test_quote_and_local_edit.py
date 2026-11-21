@@ -1,6 +1,6 @@
 """the host side of a reply with a quote, of the words a plugin shows for a message, of the dialog with a field, and of the reason a plugin
 did not load. the plugins here are small ones that do what quoteReply and LocalEdictor do; the real two run when the folder of
-EXTERIA_ZWYLIB holds them"""
+NOSHI_ZWYLIB holds them"""
 
 import json
 import os
@@ -19,7 +19,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
 PLUGINS = None
@@ -132,12 +132,12 @@ class Labelled(BasePlugin):
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-quote-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-quote-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -158,7 +158,7 @@ def pump(until, seconds=3):
     while time.time() < end:
         while fake.timers:
             token, _delay = fake.timers.pop(0)
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         if until():
             return True
         time.sleep(0.01)
@@ -174,14 +174,14 @@ class Quote(unittest.TestCase):
         fake.calls.clear()
         fake.settings.clear()
         self.path = write("quoter", QUOTE)
-        self.assertTrue(exteria_host.load(self.path, "quoter")["ok"])
+        self.assertTrue(noshi_host.load(self.path, "quoter")["ok"])
 
     def tearDown(self):
-        exteria_host.unload("quoter")
-        exteria_host.unload("clearer")
+        noshi_host.unload("quoter")
+        noshi_host.unload("clearer")
 
     def send(self, **params):
-        return exteria_host.send_message_hook("quoter", 0, dict({"message": "hi", "peer": 5, "replyToMsg": 0}, **params))
+        return noshi_host.send_message_hook("quoter", 0, dict({"message": "hi", "peer": 5, "replyToMsg": 0}, **params))
 
     def test_a_message_without_a_reply_has_no_reply_object(self):
         self.assertEqual(self.send(), {"strategy": "DEFAULT"})
@@ -207,8 +207,8 @@ class Quote(unittest.TestCase):
 
     def test_a_plugin_may_clear_the_quote(self):
         clear = write("clearer", CLEAR)
-        self.assertTrue(exteria_host.load(clear, "clearer")["ok"])
-        out = exteria_host.send_message_hook("clearer", 0, {"message": "hi", "peer": 5, "replyToMsg": 7, "replyText": "x", "quote": "x", "quoteOffset": 0})
+        self.assertTrue(noshi_host.load(clear, "clearer")["ok"])
+        out = noshi_host.send_message_hook("clearer", 0, {"message": "hi", "peer": 5, "replyToMsg": 7, "replyText": "x", "quote": "x", "quoteOffset": 0})
         self.assertEqual(out["params"]["replyQuote"], None)
 
     def test_the_comments_of_a_post_are_known_for_the_open_chat_only(self):
@@ -229,26 +229,26 @@ class LocalEdit(unittest.TestCase):
         fake.settings.clear()
         fake.menu.clear()
         self.path = write("editor", EDIT)
-        self.assertTrue(exteria_host.load(self.path, "editor")["ok"])
+        self.assertTrue(noshi_host.load(self.path, "editor")["ok"])
 
     def tearDown(self):
-        exteria_host.unload("editor")
-        exteria_host.unload("labelled")
+        noshi_host.unload("editor")
+        noshi_host.unload("labelled")
 
     def shown(self, *messages):
-        return exteria_host.display_messages(5, [{"id": i, "text": text, "out": False} for i, text in messages])
+        return noshi_host.display_messages(5, [{"id": i, "text": text, "out": False} for i, text in messages])
 
     def edit(self, message_id, text):
         calls = len(fake.calls)
-        exteria_host.menu_click("editor", "item1", {"message": {"id": message_id, "text": "original", "out": True, "dialog": 5}})
+        noshi_host.menu_click("editor", "item1", {"message": {"id": message_id, "text": "original", "out": True, "dialog": 5}})
         self.assertTrue(pump(lambda: any(name == "ui.alert" for name, _ in fake.calls[calls:])))
         alert = [data for name, data in fake.calls[calls:] if name == "ui.alert"][0]
-        exteria_host.alert_result(alert["token"], alert["buttons"].index("Save"), text)
+        noshi_host.alert_result(alert["token"], alert["buttons"].index("Save"), text)
         return alert
 
     def test_the_app_is_told_when_a_plugin_hooks_the_display_of_messages(self):
         self.assertEqual(asked("hook.display.add"), [{"plugin": "editor"}])
-        exteria_host.unload("editor")
+        noshi_host.unload("editor")
         self.assertEqual(asked("hook.display.remove"), [{"plugin": "editor"}])
         self.assertEqual(self.shown((1, "a")), {})
 
@@ -266,16 +266,16 @@ class LocalEdit(unittest.TestCase):
         self.edit(2, "changed")
         self.assertIn("chat.rebuild", [name for name, _ in fake.calls[calls:]])
         calls = len(fake.calls)
-        exteria_host.menu_click("editor", "item2", {})
+        noshi_host.menu_click("editor", "item2", {})
         self.assertIn("chat.rebuild", [name for name, _ in fake.calls[calls:]])
         self.assertEqual(self.shown((2, "original")), {})
 
     def test_cancel_changes_nothing(self):
         calls = len(fake.calls)
-        exteria_host.menu_click("editor", "item1", {"message": {"id": 2, "text": "original", "out": True, "dialog": 5}})
+        noshi_host.menu_click("editor", "item1", {"message": {"id": 2, "text": "original", "out": True, "dialog": 5}})
         pump(lambda: any(name == "ui.alert" for name, _ in fake.calls[calls:]))
         alert = [data for name, data in fake.calls[calls:] if name == "ui.alert"][0]
-        exteria_host.alert_result(alert["token"], alert["buttons"].index("Cancel"), "ignored")
+        noshi_host.alert_result(alert["token"], alert["buttons"].index("Cancel"), "ignored")
         self.assertEqual(self.shown((2, "original")), {})
 
     def test_the_actions_of_the_chat_menu_are_listed_with_the_others(self):
@@ -283,7 +283,7 @@ class LocalEdit(unittest.TestCase):
 
     def test_a_dialog_with_more_than_one_field_is_refused_in_words(self):
         write("labelled", LABELLED)
-        self.assertTrue(exteria_host.load(os.path.join(PLUGINS, "labelled.plugin"), "labelled")["ok"])
+        self.assertTrue(noshi_host.load(os.path.join(PLUGINS, "labelled.plugin"), "labelled")["ok"])
         self.assertIn("one text field", json.loads(fake.settings[("labelled", "refused")]))
 
 
@@ -295,21 +295,21 @@ def build_archive(path, files):
 
 class WhyNotLoaded(unittest.TestCase):
     def explain(self, source, error=""):
-        import exteria_diagnose
+        import noshi_diagnose
         path = os.path.join(PLUGINS, "diagnosed.plugin")
         with open(path, "w") as handle:
             handle.write(source)
-        return exteria_diagnose.explain(path, error)
+        return noshi_diagnose.explain(path, error)
 
     def test_a_loader_in_the_source_is_not_a_reason(self):
         why = self.explain("from dalvik.system import InMemoryDexClassLoader\nloader = InMemoryDexClassLoader\n", "ValueError: broken")
         self.assertEqual(why, {"kind": "other", "detail": "ValueError: broken"})
 
     def test_a_dex_in_an_archive_is_not_a_reason(self):
-        import exteria_diagnose
+        import noshi_diagnose
         path = os.path.join(PLUGINS, "withdex.elyx")
         build_archive(path, {"main.py": "x = 1\n", "classes.dex": "dex\n035"})
-        self.assertEqual(exteria_diagnose.explain(path, "ValueError: broken"), {"kind": "other", "detail": "ValueError: broken"})
+        self.assertEqual(noshi_diagnose.explain(path, "ValueError: broken"), {"kind": "other", "detail": "ValueError: broken"})
 
     def test_a_class_the_dex_program_lacks_is_named(self):
         why = self.explain("x = 1\n", "java.lang.NoClassDefFoundError: org/telegram/ui/Components/Paint")
@@ -335,48 +335,48 @@ class WhyNotLoaded(unittest.TestCase):
         self.assertEqual(why, {"kind": "other", "detail": "ValueError: broken"})
 
     def test_traceback_shows_the_exception_instead_of_the_header(self):
-        error = 'Traceback (most recent call last):\n  File "/private/var/Exteria.app/python/shim/exteria_host.py", line 25\nValueError: broken\n'
+        error = 'Traceback (most recent call last):\n  File "/private/var/Noshigram.app/python/shim/noshi_host.py", line 25\nValueError: broken\n'
         self.assertEqual(self.explain("x = 1\n", error), {"kind": "other", "detail": "ValueError: broken"})
 
     def test_a_class_held_in_a_variable_is_named(self):
-        import exteria_diagnose
+        import noshi_diagnose
         path = os.path.join(PLUGINS, "held.plugin")
         with open(path, "w") as handle:
             handle.write('layout = "org.telegram.ui.Components.ChatActivityEnterView"\ninner = "org.telegram.ui.Components.ChatActivityEnterView$Holder"\n'
                          'permission = "android.permission.CAMERA"\naction = "android.intent.action.VIEW"\nword = "org.telegram"\n')
-        notice = exteria_diagnose.unavailable(path)
+        notice = noshi_diagnose.unavailable(path)
         self.assertEqual(notice["kind"], "android")
         self.assertEqual(notice["classes"], ["org.telegram.ui.Components.ChatActivityEnterView", "org.telegram.ui.Components.ChatActivityEnterView$Holder"])
         self.assertEqual((notice["missing"], notice["total"]), (2, 2))
 
     def test_a_plugin_that_names_only_what_the_app_has_gets_no_notice(self):
-        import exteria_diagnose
+        import noshi_diagnose
         path = os.path.join(PLUGINS, "complete.plugin")
         with open(path, "w") as handle:
             handle.write("from android.widget import LinearLayout\nx = 1\n")
-        self.assertIsNone(exteria_diagnose.unavailable(path))
+        self.assertIsNone(noshi_diagnose.unavailable(path))
 
     def test_the_host_adds_a_notice_to_a_load_that_worked(self):
         path = write("hollow", HEADER + 'from base_plugin import BasePlugin\nclass H(BasePlugin):\n    target = "org.telegram.ui.Components.SharedMediaLayout"\n')
-        result = exteria_host.load(path, "hollow")
+        result = noshi_host.load(path, "hollow")
         self.assertTrue(result["ok"])
         self.assertEqual(result["notice"]["classes"], ["org.telegram.ui.Components.SharedMediaLayout"])
 
     def test_the_host_adds_the_reason_to_a_refused_load(self):
         path = write("lacking", HEADER + "from android.graphics import RuntimeShader\n")
-        result = exteria_host.load(path, "lacking")
+        result = noshi_host.load(path, "lacking")
         self.assertFalse(result["ok"])
         self.assertEqual(result["why"]["kind"], "android")
         self.assertEqual(result["why"]["classes"], ["android.graphics.RuntimeShader"])
-        self.assertIn("ok", exteria_host.load(write("fine", HEADER + "from base_plugin import BasePlugin\nclass F(BasePlugin):\n    pass\n"), "fine"))
-        exteria_host.unload("fine")
+        self.assertIn("ok", noshi_host.load(write("fine", HEADER + "from base_plugin import BasePlugin\nclass F(BasePlugin):\n    pass\n"), "fine"))
+        noshi_host.unload("fine")
 
 
-REAL = os.path.join(os.path.dirname(os.environ.get("EXTERIA_ZWYLIB", "")), "quoteReply.plugin")
+REAL = os.path.join(os.path.dirname(os.environ.get("NOSHI_ZWYLIB", "")), "quoteReply.plugin")
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_ZWYLIB") and os.path.isfile(REAL) and os.path.isfile(os.path.join(os.path.dirname(REAL), "LocalEdictor.plugin")),
-                     "set EXTERIA_ZWYLIB to the zwylib .elyx beside quoteReply.plugin and LocalEdictor.plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_ZWYLIB") and os.path.isfile(REAL) and os.path.isfile(os.path.join(os.path.dirname(REAL), "LocalEdictor.plugin")),
+                     "set NOSHI_ZWYLIB to the zwylib .elyx beside quoteReply.plugin and LocalEdictor.plugin")
 class RealPlugins(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -386,33 +386,33 @@ class RealPlugins(unittest.TestCase):
         folder = os.path.dirname(REAL)
         for name in ("quoteReply.plugin", "LocalEdictor.plugin"):
             shutil.copy(os.path.join(folder, name), PLUGINS)
-        assert exteria_host.load(os.environ["EXTERIA_ZWYLIB"], "zwylib")["ok"]
-        assert exteria_host.load(os.path.join(PLUGINS, "quoteReply.plugin"), "quoteReply")["ok"]
-        assert exteria_host.load(os.path.join(PLUGINS, "LocalEdictor.plugin"), "LocalEdictor")["ok"]
+        assert noshi_host.load(os.environ["NOSHI_ZWYLIB"], "zwylib")["ok"]
+        assert noshi_host.load(os.path.join(PLUGINS, "quoteReply.plugin"), "quoteReply")["ok"]
+        assert noshi_host.load(os.path.join(PLUGINS, "LocalEdictor.plugin"), "LocalEdictor")["ok"]
 
     @classmethod
     def tearDownClass(cls):
         for plugin_id in ("LocalEdictor", "quoteReply", "zwylib"):
-            exteria_host.unload(plugin_id)
+            noshi_host.unload(plugin_id)
 
     def test_quote_reply_quotes_a_reply_and_leaves_a_plain_message(self):
-        out = exteria_host.send_message_hook("quoteReply", 0, {"message": "hi", "peer": 5, "replyToMsg": 9, "replyText": "words"})
+        out = noshi_host.send_message_hook("quoteReply", 0, {"message": "hi", "peer": 5, "replyToMsg": 9, "replyText": "words"})
         self.assertEqual(out["params"]["replyQuote"], {"text": "words", "offset": 0})
-        self.assertEqual(exteria_host.send_message_hook("quoteReply", 0, {"message": "hi", "peer": 5, "replyToMsg": 0}), {"strategy": "DEFAULT"})
+        self.assertEqual(noshi_host.send_message_hook("quoteReply", 0, {"message": "hi", "peer": 5, "replyToMsg": 0}), {"strategy": "DEFAULT"})
         self.assertFalse([line for line in [d["message"] for n, d in fake.calls if n == "log"] if "AttributeError" in line])
 
     def test_local_edictor_edits_a_message_on_the_phone(self):
         calls = len(fake.calls)
         item = [i for i, m in enumerate(fake.menu, 1) if m.get("menu_type") == "MESSAGE_CONTEXT_MENU"][0]
-        exteria_host.menu_click("LocalEdictor", "item%d" % item, {"message": {"id": 4, "text": "before", "out": False, "dialog": 5}})
+        noshi_host.menu_click("LocalEdictor", "item%d" % item, {"message": {"id": 4, "text": "before", "out": False, "dialog": 5}})
         self.assertTrue(pump(lambda: any(n == "ui.alert" for n, _ in fake.calls[calls:])))
         alert = [d for n, d in fake.calls[calls:] if n == "ui.alert"][0]
         self.assertEqual(alert["field"]["initial"], "before")
-        exteria_host.alert_result(alert["token"], len(alert["buttons"]) - 1, "after")
-        self.assertEqual(exteria_host.display_messages(5, [{"id": 4, "text": "before", "out": False}]), {"4": "after"})
+        noshi_host.alert_result(alert["token"], len(alert["buttons"]) - 1, "after")
+        self.assertEqual(noshi_host.display_messages(5, [{"id": 4, "text": "before", "out": False}]), {"4": "after"})
         reset = [i for i, m in enumerate(fake.menu, 1) if m.get("menu_type") == "CHAT_ACTION_MENU"][0]
-        exteria_host.menu_click("LocalEdictor", "item%d" % reset, {})
-        self.assertEqual(exteria_host.display_messages(5, [{"id": 4, "text": "before", "out": False}]), {})
+        noshi_host.menu_click("LocalEdictor", "item%d" % reset, {})
+        self.assertEqual(noshi_host.display_messages(5, [{"id": 4, "text": "before", "out": False}]), {})
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android import notifications  # noqa: E402
 from android.app import AlarmManager, Notification, NotificationChannel, NotificationManager, PendingIntent, activity  # noqa: E402
 from android.content import Context, Intent  # noqa: E402
@@ -161,7 +161,7 @@ class Alarms(unittest.TestCase):
                 break
             pending.pop(0)
             self.clock.now = max(self.clock.now, due)
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
             for token, delay in fake.timers:
                 serial += 1
                 pending.append((self.clock.now + delay, serial, token))
@@ -221,7 +221,7 @@ class Alarms(unittest.TestCase):
         self.manager.setExact(0, int(self.clock.now) + 5000, "t", self.listener("a"), None)
         token, _delay = fake.timers.pop(0)
         self.clock.now += 3_600_000
-        exteria_host.run_token(token)
+        noshi_host.run_token(token)
         self.advance(self.clock.now)
         self.assertEqual(self.log, ["a"])
         self.assertEqual(fake.timers, [])

@@ -1,4 +1,4 @@
-#include "exteria_video_sticker_core.h"
+#include "noshi_video_sticker_core.h"
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,26 +33,26 @@ int main(int argc, char **argv) {
     size_t length;
     uint8_t *bytes = read_file(argv[1], &length);
     frames_seen seen = {0, 1, 0}; double duration = -1;
-    int count = exteria_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration);
+    int count = noshi_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration);
     assert(count == seen.count && count >= 14 && count <= 16 && seen.alpha);
     assert(duration > 0.95 && duration <= 1.05);
     seen = (frames_seen){0, 0, 0};
-    assert(exteria_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 1);
+    assert(noshi_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 1);
     assert(seen.count == 1 && seen.alpha);
     seen = (frames_seen){0, -1, 0};
-    assert(exteria_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 0);
     assert(duration == 0);
-    assert(exteria_video_sticker_decode(bytes, 64, 96, 15, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(NULL, length, 96, 15, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(bytes, 512 * 1024 + 1, 96, 15, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(bytes, length, 193, 15, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(bytes, length, 96, NAN, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(bytes, length, 96, 31, frame, &seen, &duration) == 0);
-    assert(exteria_video_sticker_decode(bytes, length, 96, 15, frame, &seen, NULL) == 0);
+    assert(noshi_video_sticker_decode(bytes, 64, 96, 15, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(NULL, length, 96, 15, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, 512 * 1024 + 1, 96, 15, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, length, 193, 15, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, length, 96, NAN, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, length, 96, 31, frame, &seen, &duration) == 0);
+    assert(noshi_video_sticker_decode(bytes, length, 96, 15, frame, &seen, NULL) == 0);
     free(bytes);
     for (int i = 2; i < argc; ++i) {
         bytes = read_file(argv[i], &length); seen = (frames_seen){0, 1, 0};
-        assert(exteria_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 0);
+        assert(noshi_video_sticker_decode(bytes, length, 96, 15, frame, &seen, &duration) == 0);
         assert(seen.count == 0 && duration == 0); free(bytes);
     }
     puts("video stickers: alpha, cadence, poster, cancellation, truncation, codec and bounds passed");

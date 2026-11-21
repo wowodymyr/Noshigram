@@ -1,0 +1,34 @@
+#import <Foundation/Foundation.h>
+#import "noshi_dialog.h"
+#include "noshi_folders.h"
+
+@interface NoshiChatFolder : NSObject <NSCopying> {
+    int32_t _folderId;
+    NSString *_title;
+    NSArray *_titleEntities;
+    BOOL _titleEntitiesChanged;
+    uint32_t _flags;
+    NSData *_included;
+    NSData *_excluded;
+    NSData *_pinned;
+    NSData *_original;
+    BOOL _shared;
+    NSString *_emoticon;
+}
+@property(nonatomic, assign) int32_t folderId;
+@property(nonatomic, copy) NSString *title;
+@property(nonatomic, copy) NSArray *titleEntities;
+@property(nonatomic, assign) uint32_t flags;
+@property(nonatomic, copy) NSData *included;
+@property(nonatomic, copy) NSData *excluded;
+@property(nonatomic, copy) NSData *pinned;
+@property(nonatomic, readonly) BOOL shared;
+/* the emoji the server keeps with the folder; it names the icon of the tab (see NoshiFolderIconName), nil when none is set */
+@property(nonatomic, copy) NSString *emoticon;
+@property(nonatomic, readonly, retain) NSData *original;
++ (NoshiChatFolder *)folderWithValue:(const noshi_tl_value *)value;
+- (noshi_status)buildInArena:(noshi_arena *)arena value:(noshi_tl_value **)value;
+- (NoshiDialog *)dialogWithRow:(const noshi_dialog_row *)row;
+- (BOOL)containsDialog:(NoshiDialog *)dialog;
+- (NSUInteger)pinIndexForDialog:(NoshiDialog *)dialog;
+@end

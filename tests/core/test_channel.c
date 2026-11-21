@@ -1,29 +1,29 @@
 #include "test_util.h"
-#include "exteria_channel.h"
-#include "exteria_tl_ids.h"
+#include "noshi_channel.h"
+#include "noshi_tl_ids.h"
 
-static exteria_arena arena;
+static noshi_arena arena;
 
-static exteria_tl_value *obj(const char *name) {
-    exteria_tl_value *v = exteria_tl_new_obj(&arena, name);
+static noshi_tl_value *obj(const char *name) {
+    noshi_tl_value *v = noshi_tl_new_obj(&arena, name);
     CHECK(v != NULL);
     return v;
 }
-static void set_i32(exteria_tl_value *v, const char *f, int32_t x) { CHECK_EQ_INT(exteria_tl_set_i32(&arena, v, f, x), EXTERIA_OK); }
-static void set_i64(exteria_tl_value *v, const char *f, int64_t x) { CHECK_EQ_INT(exteria_tl_set_i64(&arena, v, f, x), EXTERIA_OK); }
-static void set_str(exteria_tl_value *v, const char *f, const char *x) { CHECK_EQ_INT(exteria_tl_set_str(&arena, v, f, x), EXTERIA_OK); }
-static void set_flag(exteria_tl_value *v, const char *f) { CHECK_EQ_INT(exteria_tl_set_flag(v, f), EXTERIA_OK); }
-static void set(exteria_tl_value *v, const char *f, exteria_tl_value *x) { CHECK_EQ_INT(exteria_tl_set(v, f, x), EXTERIA_OK); }
+static void set_i32(noshi_tl_value *v, const char *f, int32_t x) { CHECK_EQ_INT(noshi_tl_set_i32(&arena, v, f, x), NOSHI_OK); }
+static void set_i64(noshi_tl_value *v, const char *f, int64_t x) { CHECK_EQ_INT(noshi_tl_set_i64(&arena, v, f, x), NOSHI_OK); }
+static void set_str(noshi_tl_value *v, const char *f, const char *x) { CHECK_EQ_INT(noshi_tl_set_str(&arena, v, f, x), NOSHI_OK); }
+static void set_flag(noshi_tl_value *v, const char *f) { CHECK_EQ_INT(noshi_tl_set_flag(v, f), NOSHI_OK); }
+static void set(noshi_tl_value *v, const char *f, noshi_tl_value *x) { CHECK_EQ_INT(noshi_tl_set(v, f, x), NOSHI_OK); }
 
-static exteria_tl_value *vec_of(exteria_tl_value **items, uint32_t n) {
-    exteria_tl_value *v = exteria_tl_new_vec(&arena, n);
+static noshi_tl_value *vec_of(noshi_tl_value **items, uint32_t n) {
+    noshi_tl_value *v = noshi_tl_new_vec(&arena, n);
     uint32_t i;
-    for (i = 0; i < n; ++i) CHECK_EQ_INT(exteria_tl_vec_set(v, i, items[i]), EXTERIA_OK);
+    for (i = 0; i < n; ++i) CHECK_EQ_INT(noshi_tl_vec_set(v, i, items[i]), NOSHI_OK);
     return v;
 }
 
-static exteria_tl_value *channel(int64_t id, const char *title, int megagroup) {
-    exteria_tl_value *c = obj("channel"), *photo = obj("chatPhoto");
+static noshi_tl_value *channel(int64_t id, const char *title, int megagroup) {
+    noshi_tl_value *c = obj("channel"), *photo = obj("chatPhoto");
     set_i64(c, "id", id);
     set_i64(c, "access_hash", id * 7);
     set_str(c, "title", title);
@@ -35,49 +35,49 @@ static exteria_tl_value *channel(int64_t id, const char *title, int megagroup) {
     return c;
 }
 
-static exteria_tl_value *answer_for(exteria_tl_value *full, exteria_tl_value **chats, uint32_t n) {
-    exteria_tl_value *a = obj("messages.chatFull");
+static noshi_tl_value *answer_for(noshi_tl_value *full, noshi_tl_value **chats, uint32_t n) {
+    noshi_tl_value *a = obj("messages.chatFull");
     set(a, "full_chat", full);
     set(a, "chats", vec_of(chats, n));
-    set(a, "users", exteria_tl_new_vec(&arena, 0));
+    set(a, "users", noshi_tl_new_vec(&arena, 0));
     return a;
 }
 
 static void test_discussion(void) {
-    exteria_peer_ref peer = {3, 500, 3500, 0, 0};
-    exteria_dialog_row row;
-    exteria_tl_value *request = NULL, *answer = obj("messages.discussionMessage");
-    exteria_tl_value *group = channel(600, "discussion", 1), *message = obj("message"), *target = obj("peerChannel");
-    exteria_tl_value *messages[1] = {message}, *chats[1] = {group};
+    noshi_peer_ref peer = {3, 500, 3500, 0, 0};
+    noshi_dialog_row row;
+    noshi_tl_value *request = NULL, *answer = obj("messages.discussionMessage");
+    noshi_tl_value *group = channel(600, "discussion", 1), *message = obj("message"), *target = obj("peerChannel");
+    noshi_tl_value *messages[1] = {message}, *chats[1] = {group};
     set_i64(target, "channel_id", 600);
     set(message, "peer_id", target);
     set_i32(message, "id", 47);
     set(answer, "messages", vec_of(messages, 1));
     set(answer, "chats", vec_of(chats, 1));
-    CHECK_EQ_INT(exteria_discussion_request(&arena, &peer, 12, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_getDiscussionMessage);
-    CHECK_EQ_INT(exteria_discussion_request(&arena, &peer, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_discussion_parse(answer, 500, &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_discussion_request(&arena, &peer, 12, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getDiscussionMessage);
+    CHECK_EQ_INT(noshi_discussion_request(&arena, &peer, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_discussion_parse(answer, 500, &row), NOSHI_OK);
     CHECK_EQ_INT(row.peer_id, 600);
     CHECK_EQ_INT(row.topic_id, 47);
     CHECK_EQ_INT(row.peer_hash, 4200);
     {
-        exteria_tl_value *newer = obj("message"), *album[2] = {newer, message};
+        noshi_tl_value *newer = obj("message"), *album[2] = {newer, message};
         set(newer, "peer_id", target);
         set_i32(newer, "id", 49);
         set(answer, "messages", vec_of(album, 2));
-        CHECK_EQ_INT(exteria_discussion_parse(answer, 500, &row), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_discussion_parse(answer, 500, &row), NOSHI_OK);
         CHECK_EQ_INT(row.topic_id, 47);
     }
-    CHECK_EQ_INT(exteria_discussion_parse(answer, 600, &row), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_discussion_parse(answer, 600, &row), NOSHI_E_NOTFOUND);
     CHECK_EQ_INT(row.topic_id, 0);
-    CHECK_EQ_INT(exteria_discussion_parse(obj("boolTrue"), 500, &row), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_discussion_parse(obj("boolTrue"), 500, &row), NOSHI_E_MALFORMED);
 }
 
 static void test_parse(void) {
-    exteria_full_channel full;
-    exteria_tl_value *f = obj("channelFull"), *chats[2], *invite = obj("chatInviteExported"), *notify = obj("peerNotifySettings");
-    exteria_tl_value *main_channel = channel(500, "samrak", 0), *group = channel(600, "Legacy iOS Community", 1);
+    noshi_full_channel full;
+    noshi_tl_value *f = obj("channelFull"), *chats[2], *invite = obj("chatInviteExported"), *notify = obj("peerNotifySettings");
+    noshi_tl_value *main_channel = channel(500, "samrak", 0), *group = channel(600, "Legacy iOS Community", 1);
     set_i64(f, "id", 500);
     set_str(f, "about", "official channel");
     set_i32(f, "participants_count", 93);
@@ -95,9 +95,9 @@ static void test_parse(void) {
     set_str(main_channel, "username", "sqmrakdev");
     chats[0] = group;
     chats[1] = main_channel;
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 2), 500, 1000, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 2), 500, 1000, &full), NOSHI_OK);
     CHECK(!strcmp(full.dialog.title, "samrak"));
-    CHECK_EQ_INT(full.dialog.kind, EXTERIA_DIALOG_CHANNEL);
+    CHECK_EQ_INT(full.dialog.kind, NOSHI_DIALOG_CHANNEL);
     CHECK_EQ_INT(full.membership_known, 1);
     CHECK_EQ_INT(full.dialog.peer_hash, 3500);
     CHECK_EQ_INT(full.dialog.photo.photo_id, 1500);
@@ -115,23 +115,23 @@ static void test_parse(void) {
     CHECK_EQ_INT(full.muted, 1);
     CHECK_EQ_INT(full.has_linked, 1);
     CHECK(!strcmp(full.linked.title, "Legacy iOS Community"));
-    CHECK_EQ_INT(full.linked.kind, EXTERIA_DIALOG_GROUP);
+    CHECK_EQ_INT(full.linked.kind, NOSHI_DIALOG_GROUP);
     CHECK_EQ_INT(full.linked.peer_id, 600);
     set_flag(main_channel, "min");
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 2), 500, 1000, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 2), 500, 1000, &full), NOSHI_OK);
     CHECK_EQ_INT(full.membership_known, 0);
     /* a mute that has run out does not count */
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 2), 500, 6000, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 2), 500, 6000, &full), NOSHI_OK);
     CHECK_EQ_INT(full.muted, 0);
     /* a linked chat the answer does not carry is left out */
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats + 1, 1), 500, 1000, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats + 1, 1), 500, 1000, &full), NOSHI_OK);
     CHECK_EQ_INT(full.has_linked, 0);
 }
 
 static void test_username_list(void) {
-    exteria_full_channel full;
-    exteria_tl_value *f = obj("channelFull"), *c = channel(700, "multi", 0), *names[2], *a = obj("username"), *b = obj("username");
-    exteria_tl_value *chats[1];
+    noshi_full_channel full;
+    noshi_tl_value *f = obj("channelFull"), *c = channel(700, "multi", 0), *names[2], *a = obj("username"), *b = obj("username");
+    noshi_tl_value *chats[1];
     set_i64(f, "id", 700);
     set_str(f, "about", "");
     set_str(a, "username", "dormant");
@@ -141,149 +141,149 @@ static void test_username_list(void) {
     names[1] = b;
     set(c, "usernames", vec_of(names, 2));
     chats[0] = c;
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 700, 0, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 700, 0, &full), NOSHI_OK);
     CHECK(!strcmp(full.username, "live"));
 }
 
 static void test_malformed(void) {
-    exteria_full_channel full;
-    exteria_tl_value *f = obj("channelFull"), *chats[1];
+    noshi_full_channel full;
+    noshi_tl_value *f = obj("channelFull"), *chats[1];
     set_i64(f, "id", 800);
     chats[0] = channel(801, "other", 0);
     /* the channel the answer is about must be among its chats */
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 800, 0, &full), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 800, 0, &full), NOSHI_E_MALFORMED);
     CHECK_EQ_INT(full.participants, 0);
-    CHECK_EQ_INT(exteria_full_channel_parse(obj("boolTrue"), 800, 0, &full), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_channel_parse(obj("boolTrue"), 800, 0, &full), NOSHI_E_MALFORMED);
     /* a basic group's full chat is not a channel's */
     chats[0] = channel(800, "real", 0);
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(obj("chatFull"), chats, 1), 800, 0, &full), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 0, 0, &full), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 800, 0, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(obj("chatFull"), chats, 1), 800, 0, &full), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 0, 0, &full), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 800, 0, NULL), NOSHI_E_ARG);
 }
 
 static void test_requests(void) {
-    exteria_tl_value *request = NULL;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0}, user = {1, 5, 7, 0, 0};
-    CHECK_EQ_INT(exteria_full_channel_request(&arena, &ok, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_getFullChannel);
-    CHECK_EQ_INT(exteria_full_channel_request(&arena, &nohash, &request), EXTERIA_E_ARG);
+    noshi_tl_value *request = NULL;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0}, user = {1, 5, 7, 0, 0};
+    CHECK_EQ_INT(noshi_full_channel_request(&arena, &ok, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_getFullChannel);
+    CHECK_EQ_INT(noshi_full_channel_request(&arena, &nohash, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_full_channel_request(&arena, &user, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_full_channel_request(&arena, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_full_channel_request(&arena, &ok, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_full_channel_request(&arena, &user, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_full_channel_request(&arena, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_full_channel_request(&arena, &ok, NULL), NOSHI_E_ARG);
 }
 
 static void test_join(void) {
-    exteria_tl_value *request = NULL, *answer;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0}, group = {2, 500, 7, 0, 0};
-    exteria_writer wire;
-    const exteria_tl_value *input;
+    noshi_tl_value *request = NULL, *answer;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0}, group = {2, 500, 7, 0, 0};
+    noshi_writer wire;
+    const noshi_tl_value *input;
     int64_t id = 0, hash = 0;
-    CHECK_EQ_INT(exteria_channel_join_request(&arena, &ok, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_joinChannel);
-    input = exteria_tl_get(request, "channel");
-    CHECK(exteria_tl_is(input, EXTERIA_TL_ID_inputChannel));
-    CHECK_EQ_INT(exteria_tl_get_i64(input, "channel_id", &id), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i64(input, "access_hash", &hash), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_join_request(&arena, &ok, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_joinChannel);
+    input = noshi_tl_get(request, "channel");
+    CHECK(noshi_tl_is(input, NOSHI_TL_ID_inputChannel));
+    CHECK_EQ_INT(noshi_tl_get_i64(input, "channel_id", &id), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i64(input, "access_hash", &hash), NOSHI_OK);
     CHECK_EQ_INT(id, 500);
     CHECK_EQ_INT(hash, 7);
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
     /* a channel needs its access hash, and a basic group is not a channel */
-    CHECK_EQ_INT(exteria_channel_join_request(&arena, &nohash, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_join_request(&arena, &nohash, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_join_request(&arena, &group, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_join_request(&arena, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_join_request(&arena, &ok, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_join_request(&arena, &group, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_join_request(&arena, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_join_request(&arena, &ok, NULL), NOSHI_E_ARG);
 
     answer = obj("messages.chatInviteJoinResultOk");
-    CHECK_EQ_INT(exteria_channel_join_parse(answer), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_channel_join_parse(obj("messages.chatInviteJoinResultWebView")), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_channel_join_parse(answer), NOSHI_OK);
+    CHECK_EQ_INT(noshi_channel_join_parse(obj("messages.chatInviteJoinResultWebView")), NOSHI_E_UNSUPPORTED);
     /* the old answer of this call was a bare Updates, and anything else is not an answer to it */
-    CHECK_EQ_INT(exteria_channel_join_parse(obj("updates")), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_join_parse(obj("boolTrue")), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_join_parse(NULL), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_join_parse(obj("updates")), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_join_parse(obj("boolTrue")), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_join_parse(NULL), NOSHI_E_MALFORMED);
 }
 
 static void test_sender_channel(void) {
-    exteria_peer_ref group = {3, INT64_C(4294967300), 77, 0, 0};
-    exteria_tl_value *request = NULL;
-    exteria_writer wire;
-    CHECK_EQ_INT(exteria_channel_from_message_request(&arena, &group, 12, INT64_C(4294967400), &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(request, EXTERIA_TL_ID_channels_getChannels));
-    const exteria_tl_value *list = exteria_tl_get(request, "id");
-    CHECK(list && list->kind == EXTERIA_TL_V_VEC && list->u.vec.count == 1);
-    CHECK(exteria_tl_is(list->u.vec.items[0], EXTERIA_TL_ID_inputChannelFromMessage));
+    noshi_peer_ref group = {3, INT64_C(4294967300), 77, 0, 0};
+    noshi_tl_value *request = NULL;
+    noshi_writer wire;
+    CHECK_EQ_INT(noshi_channel_from_message_request(&arena, &group, 12, INT64_C(4294967400), &request), NOSHI_OK);
+    CHECK(noshi_tl_is(request, NOSHI_TL_ID_channels_getChannels));
+    const noshi_tl_value *list = noshi_tl_get(request, "id");
+    CHECK(list && list->kind == NOSHI_TL_V_VEC && list->u.vec.count == 1);
+    CHECK(noshi_tl_is(list->u.vec.items[0], NOSHI_TL_ID_inputChannelFromMessage));
     int64_t id = 0;
-    CHECK_EQ_INT(exteria_tl_get_i64(list->u.vec.items[0], "channel_id", &id), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_get_i64(list->u.vec.items[0], "channel_id", &id), NOSHI_OK);
     CHECK_EQ_INT(id, INT64_C(4294967400));
-    exteria_writer_init(&wire, 1024);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
-    CHECK_EQ_INT(exteria_channel_from_message_request(&arena, &group, 0, 8, &request), EXTERIA_E_ARG);
+    noshi_writer_init(&wire, 1024);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
+    CHECK_EQ_INT(noshi_channel_from_message_request(&arena, &group, 0, 8, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_from_message_request(&arena, &group, 12, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_from_message_request(&arena, NULL, 12, 8, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_from_message_request(&arena, &group, 12, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_from_message_request(&arena, NULL, 12, 8, &request), NOSHI_E_ARG);
 }
 
 
-static exteria_tl_value *user_obj(int64_t id, const char *name) {
-    exteria_tl_value *u = obj("user");
+static noshi_tl_value *user_obj(int64_t id, const char *name) {
+    noshi_tl_value *u = obj("user");
     set_i64(u, "id", id);
     set_i64(u, "access_hash", id * 3);
     set_str(u, "first_name", name);
     return u;
 }
 
-static exteria_tl_value *rights_obj(const char **names, int n) {
-    exteria_tl_value *r = obj("chatAdminRights");
+static noshi_tl_value *rights_obj(const char **names, int n) {
+    noshi_tl_value *r = obj("chatAdminRights");
     int i;
     for (i = 0; i < n; ++i) set_flag(r, names[i]);
     return r;
 }
 
-static exteria_tl_value *peer_user(int64_t id) {
-    exteria_tl_value *p = obj("peerUser");
+static noshi_tl_value *peer_user(int64_t id) {
+    noshi_tl_value *p = obj("peerUser");
     set_i64(p, "user_id", id);
     return p;
 }
 
 static void test_rights_and_creator(void) {
-    exteria_full_channel full;
+    noshi_full_channel full;
     const char *some[] = {"change_info", "post_messages", "ban_users"};
-    exteria_tl_value *f = obj("channelFull"), *c = channel(900, "mine", 0), *chats[1];
+    noshi_tl_value *f = obj("channelFull"), *c = channel(900, "mine", 0), *chats[1];
     set_i64(f, "id", 900);
     set_str(f, "about", "");
     chats[0] = c;
     /* a plain member holds nothing */
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), NOSHI_OK);
     CHECK_EQ_INT(full.admin_rights, 0);
     CHECK_EQ_INT(full.creator, 0);
     /* an admin holds the rights of its admin_rights object */
     set(c, "admin_rights", rights_obj(some, 3));
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), EXTERIA_OK);
-    CHECK_EQ_INT(full.admin_rights, EXTERIA_ADMIN_CHANGE_INFO | EXTERIA_ADMIN_POST_MESSAGES | EXTERIA_ADMIN_BAN_USERS);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), NOSHI_OK);
+    CHECK_EQ_INT(full.admin_rights, NOSHI_ADMIN_CHANGE_INFO | NOSHI_ADMIN_POST_MESSAGES | NOSHI_ADMIN_BAN_USERS);
     /* the creator holds every right, with or without an object, and signatures are read from the channel */
     set_flag(c, "creator");
     set_flag(c, "signatures");
-    CHECK_EQ_INT(exteria_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 900, 0, &full), NOSHI_OK);
     CHECK_EQ_INT(full.creator, 1);
     CHECK_EQ_INT(full.signatures, 1);
-    CHECK_EQ_INT(full.admin_rights, EXTERIA_ADMIN_ALL);
-    CHECK_EQ_INT(exteria_admin_rights_read(NULL), 0);
-    CHECK_EQ_INT(exteria_admin_rights_read(obj("chatBannedRights")), 0);
+    CHECK_EQ_INT(full.admin_rights, NOSHI_ADMIN_ALL);
+    CHECK_EQ_INT(noshi_admin_rights_read(NULL), 0);
+    CHECK_EQ_INT(noshi_admin_rights_read(obj("chatBannedRights")), 0);
 }
 
 static void test_members_parse(void) {
-    exteria_channel_member rows[8];
+    noshi_channel_member rows[8];
     size_t count = 9;
     int32_t total = -1;
-    exteria_tl_value *a = obj("channels.channelParticipants"), *list[7], *users[5];
+    noshi_tl_value *a = obj("channels.channelParticipants"), *list[7], *users[5];
     const char *some[] = {"post_messages", "add_admins"};
-    exteria_tl_value *creator = obj("channelParticipantCreator"), *admin = obj("channelParticipantAdmin"), *plain = obj("channelParticipant");
-    exteria_tl_value *banned = obj("channelParticipantBanned"), *left = obj("channelParticipantLeft"), *channel_banned = obj("channelParticipantBanned");
-    exteria_tl_value *stranger = obj("channelParticipant");
+    noshi_tl_value *creator = obj("channelParticipantCreator"), *admin = obj("channelParticipantAdmin"), *plain = obj("channelParticipant");
+    noshi_tl_value *banned = obj("channelParticipantBanned"), *left = obj("channelParticipantLeft"), *channel_banned = obj("channelParticipantBanned");
+    noshi_tl_value *stranger = obj("channelParticipant");
     set_i64(creator, "user_id", 1);
     set(creator, "admin_rights", rights_obj(some, 0));
     set_str(creator, "rank", "owner");
@@ -304,237 +304,237 @@ static void test_members_parse(void) {
     set(a, "participants", vec_of(list, 7));
     set(a, "users", vec_of(users, 5));
     set_i32(a, "count", 321);
-    CHECK_EQ_INT(exteria_channel_members_parse(a, rows, 8, &count, &total), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_members_parse(a, rows, 8, &count, &total), NOSHI_OK);
     /* the one that left, the channel and the user the answer does not describe are not rows */
     CHECK_EQ_INT(count, 4);
     CHECK_EQ_INT(total, 321);
-    CHECK_EQ_INT(rows[0].role, EXTERIA_MEMBER_CREATOR);
-    CHECK_EQ_INT(rows[0].rights, EXTERIA_ADMIN_ALL);
+    CHECK_EQ_INT(rows[0].role, NOSHI_MEMBER_CREATOR);
+    CHECK_EQ_INT(rows[0].rights, NOSHI_ADMIN_ALL);
     CHECK(!strcmp(rows[0].rank, "owner"));
     CHECK(!strcmp(rows[0].person.name, "Ann"));
-    CHECK_EQ_INT(rows[1].role, EXTERIA_MEMBER_ADMIN);
+    CHECK_EQ_INT(rows[1].role, NOSHI_MEMBER_ADMIN);
     CHECK_EQ_INT(rows[1].can_edit, 1);
-    CHECK_EQ_INT(rows[1].rights, EXTERIA_ADMIN_POST_MESSAGES | EXTERIA_ADMIN_ADD_ADMINS);
+    CHECK_EQ_INT(rows[1].rights, NOSHI_ADMIN_POST_MESSAGES | NOSHI_ADMIN_ADD_ADMINS);
     CHECK_EQ_INT(rows[1].date, 1700);
     CHECK_EQ_INT(rows[1].person.access_hash, 6);
-    CHECK_EQ_INT(rows[2].role, EXTERIA_MEMBER_PLAIN);
+    CHECK_EQ_INT(rows[2].role, NOSHI_MEMBER_PLAIN);
     CHECK(!strcmp(rows[2].rank, "member tag"));
     CHECK_EQ_INT(rows[2].can_edit, 0);
-    CHECK_EQ_INT(rows[3].role, EXTERIA_MEMBER_BANNED);
+    CHECK_EQ_INT(rows[3].role, NOSHI_MEMBER_BANNED);
     CHECK_EQ_INT(rows[3].person.id, 4);
     CHECK_EQ_INT(rows[3].date, 1900);
     /* more participants than the caller has room for, and an answer of another kind */
-    CHECK_EQ_INT(exteria_channel_members_parse(a, rows, 2, &count, &total), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_channel_members_parse(a, rows, 2, &count, &total), NOSHI_E_LIMIT);
     CHECK_EQ_INT(count, 0);
     CHECK_EQ_INT(total, 0);
-    CHECK_EQ_INT(exteria_channel_members_parse(obj("boolTrue"), rows, 8, &count, &total), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_members_parse(obj("channels.channelParticipantsNotModified"), rows, 8, &count, &total), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_members_parse(obj("boolTrue"), rows, 8, &count, &total), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_members_parse(obj("channels.channelParticipantsNotModified"), rows, 8, &count, &total), NOSHI_OK);
     CHECK_EQ_INT(count, 0);
     /* a participant of an unknown kind makes the whole page malformed */
-    set(a, "participants", vec_of((exteria_tl_value *[]){obj("channelParticipantsRecent")}, 1));
-    CHECK_EQ_INT(exteria_channel_members_parse(a, rows, 8, &count, &total), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_members_parse(NULL, rows, 8, &count, &total), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_members_parse(a, rows, 0, &count, &total), EXTERIA_E_ARG);
+    set(a, "participants", vec_of((noshi_tl_value *[]){obj("channelParticipantsRecent")}, 1));
+    CHECK_EQ_INT(noshi_channel_members_parse(a, rows, 8, &count, &total), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_members_parse(NULL, rows, 8, &count, &total), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_parse(a, rows, 0, &count, &total), NOSHI_E_ARG);
 }
 
 static void test_members_request(void) {
-    exteria_tl_value *request = NULL;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0};
-    const exteria_tl_value *filter;
-    exteria_writer wire;
+    noshi_tl_value *request = NULL;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0};
+    const noshi_tl_value *filter;
+    noshi_writer wire;
     int32_t offset = 0, limit = 0;
-    char long_query[EXTERIA_MEMBERS_QUERY_MAX + 8];
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, NULL, 50, 25, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_getParticipants);
-    filter = exteria_tl_get(request, "filter");
-    CHECK(exteria_tl_is(filter, EXTERIA_TL_ID_channelParticipantsRecent));
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "offset", &offset), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_get_i32(request, "limit", &limit), EXTERIA_OK);
+    char long_query[NOSHI_MEMBERS_QUERY_MAX + 8];
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, NULL, 50, 25, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_getParticipants);
+    filter = noshi_tl_get(request, "filter");
+    CHECK(noshi_tl_is(filter, NOSHI_TL_ID_channelParticipantsRecent));
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "offset", &offset), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_get_i32(request, "limit", &limit), NOSHI_OK);
     CHECK_EQ_INT(offset, 50);
     CHECK_EQ_INT(limit, 25);
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
     /* a query turns the recent list into a search, and empty text does not */
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, "ann", 0, 50, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "filter"), EXTERIA_TL_ID_channelParticipantsSearch));
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, "", 0, 50, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "filter"), EXTERIA_TL_ID_channelParticipantsRecent));
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_ADMINS, "ignored", 0, 50, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "filter"), EXTERIA_TL_ID_channelParticipantsAdmins));
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, "ann", 0, 50, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "filter"), NOSHI_TL_ID_channelParticipantsSearch));
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, "", 0, 50, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "filter"), NOSHI_TL_ID_channelParticipantsRecent));
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_ADMINS, "ignored", 0, 50, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "filter"), NOSHI_TL_ID_channelParticipantsAdmins));
     /* the blacklist always carries a query, empty for the whole list */
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_KICKED, NULL, 0, 50, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "filter"), EXTERIA_TL_ID_channelParticipantsKicked));
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_KICKED, NULL, 0, 50, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "filter"), NOSHI_TL_ID_channelParticipantsKicked));
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
     /* bounds: offset, limit, query length, channel and list */
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, NULL, -1, 50, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, NULL, -1, 50, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, NULL, 0, 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, NULL, 0, EXTERIA_MEMBERS_MAX + 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, NULL, 0, 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, NULL, 0, NOSHI_MEMBERS_MAX + 1, &request), NOSHI_E_ARG);
     memset(long_query, 'a', sizeof(long_query) - 1);
     long_query[sizeof(long_query) - 1] = 0;
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, long_query, 0, 50, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &nohash, EXTERIA_MEMBERS_RECENT, NULL, 0, 50, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, (exteria_member_list)9, NULL, 0, 50, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_members_request(&arena, &ok, EXTERIA_MEMBERS_RECENT, NULL, 0, 50, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, long_query, 0, 50, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &nohash, NOSHI_MEMBERS_RECENT, NULL, 0, 50, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, (noshi_member_list)9, NULL, 0, 50, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_members_request(&arena, &ok, NOSHI_MEMBERS_RECENT, NULL, 0, 50, NULL), NOSHI_E_ARG);
 }
 
 static void test_admin_and_ban(void) {
-    exteria_tl_value *request = NULL;
-    const exteria_tl_value *rights, *participant;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, user = {1, 42, 9, 0, 0}, nohash_user = {1, 42, 0, 0, 0}, channel_peer = {3, 42, 9, 0, 0};
+    noshi_tl_value *request = NULL;
+    const noshi_tl_value *rights, *participant;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, user = {1, 42, 9, 0, 0}, nohash_user = {1, 42, 0, 0, 0}, channel_peer = {3, 42, 9, 0, 0};
     const uint8_t *bytes;
     size_t len = 0;
-    exteria_writer wire;
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, &user, EXTERIA_ADMIN_CHANGE_INFO | EXTERIA_ADMIN_BAN_USERS, "editor", &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_editAdmin);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "user_id"), EXTERIA_TL_ID_inputUser));
-    rights = exteria_tl_get(request, "admin_rights");
-    CHECK(exteria_tl_has(rights, "change_info"));
-    CHECK(exteria_tl_has(rights, "ban_users"));
-    CHECK(!exteria_tl_has(rights, "post_messages"));
-    CHECK_EQ_INT(exteria_tl_get_bytes(request, "rank", &bytes, &len), EXTERIA_OK);
+    noshi_writer wire;
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, &user, NOSHI_ADMIN_CHANGE_INFO | NOSHI_ADMIN_BAN_USERS, "editor", &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_editAdmin);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "user_id"), NOSHI_TL_ID_inputUser));
+    rights = noshi_tl_get(request, "admin_rights");
+    CHECK(noshi_tl_has(rights, "change_info"));
+    CHECK(noshi_tl_has(rights, "ban_users"));
+    CHECK(!noshi_tl_has(rights, "post_messages"));
+    CHECK_EQ_INT(noshi_tl_get_bytes(request, "rank", &bytes, &len), NOSHI_OK);
     CHECK_EQ_INT(len, 6);
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
     /* no rights at all dismisses the admin, and no rank leaves the field out */
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, &user, 0, NULL, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_admin_rights_read(exteria_tl_get(request, "admin_rights")), 0);
-    CHECK(!exteria_tl_has(request, "rank"));
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, &user, 0x8000u, NULL, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, &user, 0, NULL, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_admin_rights_read(noshi_tl_get(request, "admin_rights")), 0);
+    CHECK(!noshi_tl_has(request, "rank"));
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, &user, 0x8000u, NULL, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, &nohash_user, 1, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, &channel_peer, 1, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_admin_request(&arena, &ok, NULL, 1, NULL, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, &nohash_user, 1, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, &channel_peer, 1, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_admin_request(&arena, &ok, NULL, 1, NULL, &request), NOSHI_E_ARG);
 
-    CHECK_EQ_INT(exteria_channel_ban_request(&arena, &ok, &user, 1, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_editBanned);
-    participant = exteria_tl_get(request, "participant");
-    CHECK(exteria_tl_is(participant, EXTERIA_TL_ID_inputPeerUser));
-    rights = exteria_tl_get(request, "banned_rights");
-    CHECK(exteria_tl_has(rights, "view_messages"));
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
-    CHECK_EQ_INT(exteria_channel_ban_request(&arena, &ok, &user, 0, &request), EXTERIA_OK);
-    CHECK(!exteria_tl_has(exteria_tl_get(request, "banned_rights"), "view_messages"));
-    CHECK_EQ_INT(exteria_channel_ban_request(&arena, &ok, &nohash_user, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_ban_request(&arena, &ok, &user, 1, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_editBanned);
+    participant = noshi_tl_get(request, "participant");
+    CHECK(noshi_tl_is(participant, NOSHI_TL_ID_inputPeerUser));
+    rights = noshi_tl_get(request, "banned_rights");
+    CHECK(noshi_tl_has(rights, "view_messages"));
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
+    CHECK_EQ_INT(noshi_channel_ban_request(&arena, &ok, &user, 0, &request), NOSHI_OK);
+    CHECK(!noshi_tl_has(noshi_tl_get(request, "banned_rights"), "view_messages"));
+    CHECK_EQ_INT(noshi_channel_ban_request(&arena, &ok, &nohash_user, 1, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_ban_request(&arena, &ok, &channel_peer, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_ban_request(&arena, &ok, &channel_peer, 1, &request), NOSHI_E_ARG);
 }
 
 static void test_invite(void) {
-    exteria_tl_value *request = NULL, *answer, *missing;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, users[2] = {{1, 11, 21, 0, 0}, {1, 12, 22, 0, 0}}, nohash = {1, 13, 0, 0, 0}, group = {2, 500, 7, 0, 0};
-    exteria_writer wire;
+    noshi_tl_value *request = NULL, *answer, *missing;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, users[2] = {{1, 11, 21, 0, 0}, {1, 12, 22, 0, 0}}, nohash = {1, 13, 0, 0, 0}, group = {2, 500, 7, 0, 0};
+    noshi_writer wire;
     size_t count = 9;
-    CHECK_EQ_INT(exteria_channel_invite_request(&arena, &ok, users, 2, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_inviteToChannel);
-    exteria_writer_init(&wire, 256);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
-    CHECK_EQ_INT(exteria_channel_invite_request(&arena, &ok, users, 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_invite_request(&arena, &ok, users, 2, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_inviteToChannel);
+    noshi_writer_init(&wire, 256);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
+    CHECK_EQ_INT(noshi_channel_invite_request(&arena, &ok, users, 0, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_invite_request(&arena, &ok, users, EXTERIA_INVITE_MAX + 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_invite_request(&arena, &ok, &nohash, 1, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_invite_request(&arena, &group, users, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_invite_request(&arena, &ok, users, NOSHI_INVITE_MAX + 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_invite_request(&arena, &ok, &nohash, 1, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_invite_request(&arena, &group, users, 1, &request), NOSHI_E_ARG);
     answer = obj("messages.invitedUsers");
-    missing = exteria_tl_new_vec(&arena, 1);
+    missing = noshi_tl_new_vec(&arena, 1);
     CHECK(answer && missing);
-    CHECK_EQ_INT(exteria_tl_vec_set(missing, 0, obj("missingInvitee")), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tl_vec_set(missing, 0, obj("missingInvitee")), NOSHI_OK);
     set(answer, "missing_invitees", missing);
-    CHECK_EQ_INT(exteria_channel_invite_missing(answer, &count), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_invite_missing(answer, &count), NOSHI_OK);
     CHECK_EQ_INT((int)count, 1);
-    CHECK_EQ_INT(exteria_channel_invite_missing(obj("inputPeerEmpty"), &count), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_invite_missing(obj("inputPeerEmpty"), &count), NOSHI_E_MALFORMED);
     CHECK_EQ_INT((int)count, 0);
 }
 
 static void test_settings_requests(void) {
-    exteria_tl_value *request = NULL;
-    exteria_peer_ref ok = {3, 500, 7, 0, 0}, group = {2, 500, 7, 0, 0};
-    exteria_writer wire;
-    char huge[EXTERIA_ABOUT_MAX + 4];
-    CHECK_EQ_INT(exteria_channel_title_request(&arena, &ok, "New name", &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_editTitle);
-    CHECK_EQ_INT(exteria_channel_title_request(&arena, &ok, "", &request), EXTERIA_E_ARG);
+    noshi_tl_value *request = NULL;
+    noshi_peer_ref ok = {3, 500, 7, 0, 0}, group = {2, 500, 7, 0, 0};
+    noshi_writer wire;
+    char huge[NOSHI_ABOUT_MAX + 4];
+    CHECK_EQ_INT(noshi_channel_title_request(&arena, &ok, "New name", &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_editTitle);
+    CHECK_EQ_INT(noshi_channel_title_request(&arena, &ok, "", &request), NOSHI_E_ARG);
     CHECK(request == NULL);
-    CHECK_EQ_INT(exteria_channel_title_request(&arena, &ok, NULL, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_about_request(&arena, &ok, "about text", &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_messages_editChatAbout);
-    CHECK(exteria_tl_is(exteria_tl_get(request, "peer"), EXTERIA_TL_ID_inputPeerChannel));
-    exteria_writer_init(&wire, 512);
-    CHECK_EQ_INT(exteria_tl_encode(request, &wire, NULL), EXTERIA_OK);
-    exteria_writer_free(&wire);
+    CHECK_EQ_INT(noshi_channel_title_request(&arena, &ok, NULL, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_about_request(&arena, &ok, "about text", &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_editChatAbout);
+    CHECK(noshi_tl_is(noshi_tl_get(request, "peer"), NOSHI_TL_ID_inputPeerChannel));
+    noshi_writer_init(&wire, 512);
+    CHECK_EQ_INT(noshi_tl_encode(request, &wire, NULL), NOSHI_OK);
+    noshi_writer_free(&wire);
     /* an empty description is how it is cleared */
-    CHECK_EQ_INT(exteria_channel_about_request(&arena, &ok, "", &request), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_about_request(&arena, &ok, "", &request), NOSHI_OK);
     memset(huge, 'x', sizeof(huge) - 1);
     huge[sizeof(huge) - 1] = 0;
-    CHECK_EQ_INT(exteria_channel_about_request(&arena, &ok, huge, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_about_request(&arena, &group, "x", &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_about_request(&arena, &ok, huge, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_about_request(&arena, &group, "x", &request), NOSHI_E_ARG);
 
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "my_channel1", 0, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_updateUsername);
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "my_channel1", 1, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_checkUsername);
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "", 0, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "", 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "my_channel1", 0, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_updateUsername);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "my_channel1", 1, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_checkUsername);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "", 0, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "", 1, &request), NOSHI_E_ARG);
     /* a name with a space, a dot, a slash or a shell character is not sent */
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "my channel", 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "a.b", 0, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_username_request(&arena, &ok, "../x", 0, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "my channel", 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "a.b", 0, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_username_request(&arena, &ok, "../x", 0, &request), NOSHI_E_ARG);
     CHECK(request == NULL);
 
-    CHECK_EQ_INT(exteria_channel_signatures_request(&arena, &ok, 1, &request), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tl_id(request), EXTERIA_TL_ID_channels_toggleSignatures);
-    CHECK(exteria_tl_has(request, "signatures_enabled"));
-    CHECK_EQ_INT(exteria_channel_signatures_request(&arena, &ok, 0, &request), EXTERIA_OK);
-    CHECK(!exteria_tl_has(request, "signatures_enabled"));
-    CHECK_EQ_INT(exteria_channel_signatures_request(&arena, &group, 1, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_signatures_request(&arena, &ok, 1, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_channels_toggleSignatures);
+    CHECK(noshi_tl_has(request, "signatures_enabled"));
+    CHECK_EQ_INT(noshi_channel_signatures_request(&arena, &ok, 0, &request), NOSHI_OK);
+    CHECK(!noshi_tl_has(request, "signatures_enabled"));
+    CHECK_EQ_INT(noshi_channel_signatures_request(&arena, &group, 1, &request), NOSHI_E_ARG);
 
-    CHECK_EQ_INT(exteria_channel_bool_parse(obj("boolTrue")), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_channel_bool_parse(obj("boolFalse")), EXTERIA_E_STATE);
-    CHECK_EQ_INT(exteria_channel_bool_parse(obj("updates")), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_bool_parse(NULL), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_bool_parse(obj("boolTrue")), NOSHI_OK);
+    CHECK_EQ_INT(noshi_channel_bool_parse(obj("boolFalse")), NOSHI_E_STATE);
+    CHECK_EQ_INT(noshi_channel_bool_parse(obj("updates")), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_bool_parse(NULL), NOSHI_E_MALFORMED);
 }
 
 static void test_by_id(void) {
-    exteria_tl_value *request, *answer, *list[1];
-    exteria_dialog_row row;
-    CHECK_EQ_INT(exteria_channel_by_id_request(&arena, 77, 5, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(request, EXTERIA_TL_ID_channels_getChannels));
-    CHECK(exteria_tl_get(request, "id") != NULL);
-    CHECK_EQ_INT(exteria_channel_by_id_request(&arena, 0, 5, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_by_id_request(&arena, 77, 0, &request), EXTERIA_E_ARG);
+    noshi_tl_value *request, *answer, *list[1];
+    noshi_dialog_row row;
+    CHECK_EQ_INT(noshi_channel_by_id_request(&arena, 77, 5, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(request, NOSHI_TL_ID_channels_getChannels));
+    CHECK(noshi_tl_get(request, "id") != NULL);
+    CHECK_EQ_INT(noshi_channel_by_id_request(&arena, 0, 5, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_by_id_request(&arena, 77, 0, &request), NOSHI_E_ARG);
     list[0] = channel(77, "Group", 1);
     answer = obj("messages.chats");
     set(answer, "chats", vec_of(list, 1));
-    CHECK_EQ_INT(exteria_channel_dialog_parse(answer, 77, &row), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_channel_dialog_parse(answer, 77, &row), NOSHI_OK);
     CHECK_EQ_INT(row.peer_kind, 3);
     CHECK(row.peer_id == 77);
-    CHECK_EQ_INT(row.kind, EXTERIA_DIALOG_GROUP);
+    CHECK_EQ_INT(row.kind, NOSHI_DIALOG_GROUP);
     CHECK(strcmp(row.title, "Group") == 0);
-    CHECK_EQ_INT(exteria_channel_dialog_parse(answer, 78, &row), EXTERIA_E_NOTFOUND);
-    CHECK_EQ_INT(exteria_channel_dialog_parse(obj("boolTrue"), 77, &row), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_dialog_parse(NULL, 77, &row), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_dialog_parse(answer, 78, &row), NOSHI_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_channel_dialog_parse(obj("boolTrue"), 77, &row), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_dialog_parse(NULL, 77, &row), NOSHI_E_MALFORMED);
 }
 
 static void test_member(void) {
-    exteria_peer_ref ok = {3, 5, 99, 0, 0}, bad = {3, 5, 0, 0, 0}, group = {2, 5, 99, 0, 0};
-    exteria_tl_value *request, *answer, *kinds[7];
+    noshi_peer_ref ok = {3, 5, 99, 0, 0}, bad = {3, 5, 0, 0, 0}, group = {2, 5, 99, 0, 0};
+    noshi_tl_value *request, *answer, *kinds[7];
     const char *names[] = {"channelParticipant", "channelParticipantSelf", "channelParticipantCreator", "channelParticipantAdmin", "channelParticipantLeft",
                            "channelParticipantBanned", NULL};
     int expect[] = {1, 1, 1, 1, 0, 0, -1};
     int i, member = 5;
-    CHECK_EQ_INT(exteria_channel_member_request(&arena, &ok, &request), EXTERIA_OK);
-    CHECK(exteria_tl_is(request, EXTERIA_TL_ID_channels_getParticipant));
-    CHECK(exteria_tl_get(request, "channel") != NULL);
-    CHECK(exteria_tl_get(request, "participant") != NULL);
-    CHECK_EQ_INT(exteria_channel_member_request(&arena, &bad, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_member_request(&arena, &group, &request), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_channel_member_request(&arena, NULL, &request), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_channel_member_request(&arena, &ok, &request), NOSHI_OK);
+    CHECK(noshi_tl_is(request, NOSHI_TL_ID_channels_getParticipant));
+    CHECK(noshi_tl_get(request, "channel") != NULL);
+    CHECK(noshi_tl_get(request, "participant") != NULL);
+    CHECK_EQ_INT(noshi_channel_member_request(&arena, &bad, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_member_request(&arena, &group, &request), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_channel_member_request(&arena, NULL, &request), NOSHI_E_ARG);
     for (i = 0; i < 7; ++i) {
         answer = obj("channels.channelParticipant");
         /* the last answer has no participant at all */
@@ -542,27 +542,27 @@ static void test_member(void) {
         if (kinds[i]) set(answer, "participant", kinds[i]);
         member = 5;
         if (expect[i] < 0) {
-            CHECK_EQ_INT(exteria_channel_member_parse(answer, &member), EXTERIA_E_MALFORMED);
+            CHECK_EQ_INT(noshi_channel_member_parse(answer, &member), NOSHI_E_MALFORMED);
             CHECK_EQ_INT(member, 0);
         } else {
-            CHECK_EQ_INT(exteria_channel_member_parse(answer, &member), EXTERIA_OK);
+            CHECK_EQ_INT(noshi_channel_member_parse(answer, &member), NOSHI_OK);
             CHECK_EQ_INT(member, expect[i]);
         }
     }
-    CHECK_EQ_INT(exteria_channel_member_parse(obj("boolTrue"), &member), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_channel_member_parse(NULL, &member), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_member_parse(obj("boolTrue"), &member), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_channel_member_parse(NULL, &member), NOSHI_E_MALFORMED);
 }
 
 static void test_wallpaper(void) {
-    exteria_chat_wallpaper w;
-    exteria_tl_value *paper = obj("wallPaperNoFile"), *settings = obj("wallPaperSettings");
+    noshi_chat_wallpaper w;
+    noshi_tl_value *paper = obj("wallPaperNoFile"), *settings = obj("wallPaperSettings");
     set_i32(settings, "background_color", 0x112233);
     set_i32(settings, "second_background_color", 0x445566);
     set_i32(settings, "rotation", 45);
     set_i32(settings, "intensity", -40);
     set_flag(settings, "blur");
     set(paper, "settings", settings);
-    exteria_chat_wallpaper_read(paper, &w);
+    noshi_chat_wallpaper_read(paper, &w);
     CHECK_EQ_INT(w.present, 1);
     CHECK_EQ_INT(w.color_count, 2);
     CHECK_EQ_INT((int)w.colors[0], 0x112233);
@@ -573,20 +573,20 @@ static void test_wallpaper(void) {
     CHECK_EQ_INT(w.blur, 1);
     CHECK_EQ_INT(w.has_file, 0);
     /* nothing to paint is no wallpaper, and a foreign object is none */
-    exteria_chat_wallpaper_read(obj("wallPaperNoFile"), &w);
+    noshi_chat_wallpaper_read(obj("wallPaperNoFile"), &w);
     CHECK_EQ_INT(w.present, 0);
-    exteria_chat_wallpaper_read(obj("boolTrue"), &w);
+    noshi_chat_wallpaper_read(obj("boolTrue"), &w);
     CHECK_EQ_INT(w.present, 0);
-    exteria_chat_wallpaper_read(NULL, &w);
+    noshi_chat_wallpaper_read(NULL, &w);
     CHECK_EQ_INT(w.present, 0);
 }
 
 int main(void) {
-    CHECK(exteria_channel_already_left(3, "USER_NOT_PARTICIPANT"));
-    CHECK(!exteria_channel_already_left(2, "USER_NOT_PARTICIPANT"));
-    CHECK(!exteria_channel_already_left(3, "CHANNEL_PRIVATE"));
-    CHECK(!exteria_channel_already_left(3, NULL));
-    exteria_arena_init(&arena, 4u * 1024u * 1024u);
+    CHECK(noshi_channel_already_left(3, "USER_NOT_PARTICIPANT"));
+    CHECK(!noshi_channel_already_left(2, "USER_NOT_PARTICIPANT"));
+    CHECK(!noshi_channel_already_left(3, "CHANNEL_PRIVATE"));
+    CHECK(!noshi_channel_already_left(3, NULL));
+    noshi_arena_init(&arena, 4u * 1024u * 1024u);
     test_parse();
     test_discussion();
     test_username_list();
@@ -603,6 +603,6 @@ int main(void) {
     test_member();
     test_by_id();
     test_wallpaper();
-    exteria_arena_free(&arena);
+    noshi_arena_free(&arena);
     return test_finish("test_channel");
 }

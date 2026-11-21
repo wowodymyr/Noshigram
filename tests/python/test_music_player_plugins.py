@@ -1,6 +1,6 @@
 """the music player as plugins see it: MediaController with its private fields, the hooks on playMessage, cleanupPlayer and pauseMessage that run before the music
 player of the app acts, the players of VideoPlayer that are taken out and faded, and the rows of a slide view. the stand-in app (fakeapp.Music) follows the rules of
-exteria_plugin_music.m. the real zwyCrossfade runs when EXTERIA_ZWYLIB and EXTERIA_CROSSFADE name the files"""
+noshi_plugin_music.m. the real zwyCrossfade runs when NOSHI_ZWYLIB and NOSHI_CROSSFADE name the files"""
 
 import json
 import os
@@ -18,7 +18,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
 PLUGINS = None
@@ -40,12 +40,12 @@ __icon__ = "msg_edit"
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-music-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-music-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -66,7 +66,7 @@ def pump(until, seconds=6):
         due = [item for item in waiting if item[0] <= now]
         waiting = [item for item in waiting if item[0] > now]
         for _when, token in sorted(due):
-            exteria_host.run_token(token)
+            noshi_host.run_token(token)
         if until():
             return True
         time.sleep(0.002)
@@ -242,43 +242,43 @@ class SlideRows(unittest.TestCase):
         path = os.path.join(PLUGINS, "slides.plugin")
         with open(path, "w") as handle:
             handle.write(SLIDE % {"id": "slides"})
-        self.assertTrue(exteria_host.load(path, "slides")["ok"])
+        self.assertTrue(noshi_host.load(path, "slides")["ok"])
         try:
-            rows = exteria_host.settings("slides")
+            rows = noshi_host.settings("slides")
             self.assertEqual([row["type"] for row in rows], ["selector", "text", "selector"])
             self.assertEqual((rows[0]["text"], rows[0]["items"], rows[0]["value"]), ("Duration", ["off", "1", "2"], 1))
             self.assertTrue(rows[0]["key"].startswith("__slide:"))
             self.assertEqual(rows[2]["text"], "")
-            exteria_host.setting_changed("slides", rows[0]["key"], "2")
+            noshi_host.setting_changed("slides", rows[0]["key"], "2")
             self.assertEqual(json.loads(fake.settings[("slides", "chosen")]), 2)
             self.assertNotIn(("slides", rows[0]["key"]), fake.settings)
             for wrong in ("3", "-1", '"1"', "null"):
                 with self.assertRaises(ValueError):
-                    exteria_host.setting_changed("slides", rows[0]["key"], wrong)
+                    noshi_host.setting_changed("slides", rows[0]["key"], wrong)
         finally:
-            exteria_host.unload("slides")
+            noshi_host.unload("slides")
 
 
-CROSSFADE = os.environ.get("EXTERIA_CROSSFADE")
-ZWYLIB = os.environ.get("EXTERIA_ZWYLIB")
+CROSSFADE = os.environ.get("NOSHI_CROSSFADE")
+ZWYLIB = os.environ.get("NOSHI_ZWYLIB")
 
 
-@unittest.skipUnless(CROSSFADE and ZWYLIB, "set EXTERIA_ZWYLIB and EXTERIA_CROSSFADE to the zwylib .elyx and the zwyCrossfade .plugin")
+@unittest.skipUnless(CROSSFADE and ZWYLIB, "set NOSHI_ZWYLIB and NOSHI_CROSSFADE to the zwylib .elyx and the zwyCrossfade .plugin")
 class Crossfade(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         fake.calls.clear()
         fake.settings.clear()
-        assert exteria_host.load(ZWYLIB, "zwylib")["ok"]
+        assert noshi_host.load(ZWYLIB, "zwylib")["ok"]
         cls.path = os.path.join(PLUGINS, "zwyCrossfade.plugin")
         shutil.copy(CROSSFADE, cls.path)
-        result = exteria_host.load(cls.path, "zwyCrossfade")
+        result = noshi_host.load(cls.path, "zwyCrossfade")
         assert result["ok"], result
 
     @classmethod
     def tearDownClass(cls):
-        exteria_host.unload("zwyCrossfade")
-        exteria_host.unload("zwylib")
+        noshi_host.unload("zwyCrossfade")
+        noshi_host.unload("zwylib")
 
     def setUp(self):
         fake.music.reset(SONGS)
@@ -287,20 +287,20 @@ class Crossfade(unittest.TestCase):
         MediaController.getInstance()._detached = 0
 
     def test_its_settings_are_rows_of_choices_and_a_selector(self):
-        rows = exteria_host.settings("zwyCrossfade")
+        rows = noshi_host.settings("zwyCrossfade")
         slides = [row for row in rows if row.get("key", "").startswith("__slide:")]
         self.assertEqual([row["items"] for row in slides], [["1", "2", "3", "5", "8", "12"], ["Off", "1", "2", "3", "4", "5"]])
         self.assertEqual([row["value"] for row in slides], [3, 1])
         self.assertEqual(len([row for row in rows if row["type"] == "selector"]), 3)
         self.assertFalse([row for row in rows if row["type"] == "custom"])
-        exteria_host.setting_changed("zwyCrossfade", slides[0]["key"], "5")
+        noshi_host.setting_changed("zwyCrossfade", slides[0]["key"], "5")
         self.assertEqual(json.loads(fake.settings[("zwyCrossfade", "auto_duration_sec")]), 12)
-        exteria_host.setting_changed("zwyCrossfade", slides[0]["key"], "3")
+        noshi_host.setting_changed("zwyCrossfade", slides[0]["key"], "3")
         self.assertEqual(json.loads(fake.settings[("zwyCrossfade", "auto_duration_sec")]), 5)
 
     def test_a_tap_on_next_fades_the_old_song_out_while_the_new_one_fades_in(self):
-        slides = [row for row in exteria_host.settings("zwyCrossfade") if row.get("key", "").startswith("__slide:")]
-        exteria_host.setting_changed("zwyCrossfade", slides[1]["key"], "1")
+        slides = [row for row in noshi_host.settings("zwyCrossfade") if row.get("key", "").startswith("__slide:")]
+        noshi_host.setting_changed("zwyCrossfade", slides[1]["key"], "1")
         fake.music.app_starts(0)
         fake.music.position_ms = 10000
         fake.music.app_starts(1)

@@ -1,9 +1,9 @@
-#include "exteria_zalgo.h"
+#include "noshi_zalgo.h"
 #include "test_util.h"
 
 static void filter(const char *in, const char *expected) {
     char out[256];
-    size_t n = exteria_zalgo_filter(in, out, sizeof(out));
+    size_t n = noshi_zalgo_filter(in, out, sizeof(out));
     CHECK_EQ_INT(n, strlen(expected));
     CHECK(strcmp(out, expected) == 0);
 }
@@ -31,13 +31,13 @@ static void test_filter(void) {
 
 static void test_arguments(void) {
     char out[8] = "xxxxxxx";
-    CHECK_EQ_INT(exteria_zalgo_filter(NULL, out, sizeof(out)), (size_t)-1);
-    CHECK_EQ_INT(exteria_zalgo_filter("a", NULL, 4), (size_t)-1);
-    CHECK_EQ_INT(exteria_zalgo_filter("a", out, 0), (size_t)-1);
+    CHECK_EQ_INT(noshi_zalgo_filter(NULL, out, sizeof(out)), (size_t)-1);
+    CHECK_EQ_INT(noshi_zalgo_filter("a", NULL, 4), (size_t)-1);
+    CHECK_EQ_INT(noshi_zalgo_filter("a", out, 0), (size_t)-1);
     /* a buffer that cannot hold the text and its terminator is refused and left empty */
-    CHECK_EQ_INT(exteria_zalgo_filter("abcd", out, 4), (size_t)-1);
+    CHECK_EQ_INT(noshi_zalgo_filter("abcd", out, 4), (size_t)-1);
     CHECK(out[0] == 0);
-    CHECK_EQ_INT(exteria_zalgo_filter("abc", out, 4), 3);
+    CHECK_EQ_INT(noshi_zalgo_filter("abc", out, 4), 3);
 }
 
 int main(void) {

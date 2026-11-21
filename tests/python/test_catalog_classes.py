@@ -16,7 +16,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android import _ui  # noqa: E402
 from android.app import activity  # noqa: E402
 from android.graphics import Bitmap  # noqa: E402
@@ -150,7 +150,7 @@ class Spinner(unittest.TestCase):
 
     def run_next(self):
         token, _delay = fake.timers.pop(0)
-        exteria_host.run_token(token)
+        noshi_host.run_token(token)
         _ui.flush()
 
     def test_it_has_the_size_it_is_given(self):
@@ -206,7 +206,7 @@ class Application(unittest.TestCase):
 
 class Exif(unittest.TestCase):
     def setUp(self):
-        self.folder = tempfile.mkdtemp(prefix="exteria-exif-")
+        self.folder = tempfile.mkdtemp(prefix="noshigram-exif-")
         self.addCleanup(shutil.rmtree, self.folder, True)
         self.Exif = jclass("android.media.ExifInterface")
 

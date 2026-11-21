@@ -1,0 +1,1063 @@
+#import "noshi_name_badge.h"
+#import "noshi_alert_view.h"
+#import "noshi_media_action_view.h"
+#import "noshi_progress_bar.h"
+#import "noshi_slider.h"
+#import "noshi_string_drawing.h"
+#import "noshi_centered_hint_field.h"
+#import "noshi_theme.h"
+#import "noshi_media_viewer.h"
+#import "noshi_video_stage.h"
+#import "noshi_caption_view.h"
+#import "noshi_burn_effect.h"
+
+#import <AVFoundation/AVFoundation.h>
+#import <QuartzCore/QuartzCore.h>
+#import "noshi_audio_session.h"
+#import "noshi_chat_settings.h"
+#import "noshi_emoji_label.h"
+#import "noshi_image_decoder.h"
+#import "noshi_music_player.h"
+#import "noshi_photo_editor.h"
+#import "noshi_animation.h"
+#import "noshi_platform.h"
+#include "noshi_photo_zoom.h"
+#import "noshi_popup_menu.h"
+#import "noshi_time.h"
+#import "noshi_symbol.h"
+#import "noshi_weak_reference.h"
+#include "noshi_media_drag.h"
+
+#define NOSHI_VIEWER_PHOTO_SIDE_MAX 2048.0
+
+static char NoshiMediaPlayerStatusContext;
+
+@interface NoshiMediaVideoView : UIView
+@end
+@implementation NoshiMediaVideoView
++ (Class)layerClass { return [AVPlayerLayer class]; }
+@end
+
+@interface NoshiMediaViewer () <UIScrollViewDelegate, UIGestureRecognizerDelegate, UITextViewDelegate, UIDocumentInteractionControllerDelegate> {
+    NSArray *_messages;
+    NSDictionary *_senderNames;
+    NSString *_chatTitle;
+    NSInteger _index;
+    NoshiMediaCache *_media;
+    NoshiWeakReference *_weak;
+    UIImage *_localImage;
+    NSURL *_localURL;
+    NSString *_loadedPath;
+    NSURL *_playableURL;
+    void (^_sendPhoto)(UIImage *, NSString *);
+    void (^_sendVideo)(NSString *);
+    void (^_cancelHandler)(void);
+    void (^_showInChatHandler)(NoshiMessage *);
+    UIDocumentInteractionController *_document;
+    NSString *_sharePath;
+    BOOL _observingStatus;
+    UIView *_page;
+    UIImageView *_pageTransition;
+    BOOL _paging;
+    BOOL _blackHeld;
+    UIPanGestureRecognizer *_pagePan;
+    UIPanGestureRecognizer *_dismissPan;
+    UIPinchGestureRecognizer *_videoPinch;
+    UIPanGestureRecognizer *_videoPan;
+    double _videoZoom;
+    double _videoX;
+    double _videoY;
+    UIScrollView *_zoom;
+    UIImageView *_image;
+    NoshiMediaVideoView *_video;
+    UIView *_top;
+    UIView *_bottom;
+    NoshiEmojiLabel *_title;
+    UILabel *_date;
+    UILabel *_count;
+    NoshiEmojiLabel *_caption;
+    NoshiCaptionView *_captionInput;
+    UIButton *_play;
+    UIButton *_mute;
+    UIButton *_more;
+    /* owned by the top bar, which holds it as a subview */
+    UIButton *_close;
+    UIButton *_headerEdit;
+    UIButton *_send;
+    UIButton *_forward;
+    UIButton *_retry;
+    UILabel *_time;
+    UISlider *_seek;
+    UIActivityIndicatorView *_spinner;
+    NoshiProgressBar *_progress;
+    NoshiMediaActionView *_playGlyph;
+    AVPlayer *_player;
+    AVPlayerItem *_playerItem;
+    id _timeObserver;
+    NSUInteger _request;
+    NSUInteger _generation;
+    BOOL _closed;
+    BOOL _chromeHidden;
+    BOOL _scrubbing;
+    BOOL _resumeAfterSeek;
+    BOOL _wantsPlay;
+    BOOL _muted;
+    BOOL _statusHidden;
+    BOOL _saving;
+    BOOL _photoReady;
+    /* the one-time mode: set by the initializer, and the burn that runs before the viewer leaves */
+    BOOL _oneTime;
+    BOOL _opened;
+    BOOL _burning;
+    BOOL _previewOnly;
+    void (^_openedHandler)(void);
+    CGFloat _keyboardHeight;
+    CGSize _layoutSize;
+}
+@end
+
+@implementation NoshiMediaViewer
+@synthesize cancelHandler = _cancelHandler;
+@synthesize showInChatHandler = _showInChatHandler;
+
+- (id)init {
+    self = [super init];
+    if (self) {
+        _weak = [[NoshiWeakReference referenceTo:self] retain];
+        self.wantsFullScreenLayout = YES;
+        self.modalPresentationStyle = UIModalPresentationFullScreen;
+        /* the slide up of ios 6 shows the bar over a half drawn picture on the ipad, so the viewer fades in instead */
+        self.modalTransitionStyle = UIModalTransitionStyleCrossDissolve;
+    }
+    return self;
+}
+
+- (id)initWithMessages:(NSArray *)messages selected:(NoshiMessage *)message media:(NoshiMediaCache *)media {
+    return [self initWithMessages:messages selected:message media:media senderNames:nil chatTitle:nil];
+}
+
+- (id)initWithMessages:(NSArray *)messages selected:(NoshiMessage *)message media:(NoshiMediaCache *)media
+           senderNames:(NSDictionary *)senderNames chatTitle:(NSString *)chatTitle {
+    self = [self init];
+    if (self) {
+        _messages = [messages copy];
+        _senderNames = [senderNames copy];
+        _chatTitle = [chatTitle copy];
+        NSUInteger index = [messages indexOfObjectIdenticalTo:message];
+        /* a list that was rebuilt holds fresh copies of the messages, and the one that was tapped is found by its id; without that the viewer opened on the first picture */
+        if (index == NSNotFound && message.messageId > 0) {
+            for (NSUInteger i = 0; i < messages.count; ++i) {
+                if (((NoshiMessage *)[messages objectAtIndex:i]).messageId == message.messageId) { index = i; break; }
+            }
+        }
+        _index = index == NSNotFound ? 0 : (NSInteger)index;
+        _media = [media retain];
+    }
+    return self;
+}
+
+- (id)initWithOneTimeMessage:(NoshiMessage *)message media:(NoshiMediaCache *)media opened:(void (^)(void))opened closed:(void (^)(void))closed {
+    self = [self initWithMessages:[NSArray arrayWithObject:message] selected:message media:media];
+    if (self) {
+        _oneTime = YES;
+        _openedHandler = [opened copy];
+        _cancelHandler = [closed copy];
+    }
+    return self;
+}
+
+- (id)initWithOneTimePreviewOfMessage:(NoshiMessage *)message media:(NoshiMediaCache *)media {
+    self = [self initWithMessages:[NSArray arrayWithObject:message] selected:message media:media];
+    if (self) {
+        _oneTime = YES;
+        _previewOnly = YES;
+    }
+    return self;
+}
+
+- (void)noteOpened {
+    if (!_oneTime || _opened || _previewOnly) return;
+    _opened = YES;
+    if (_openedHandler) _openedHandler();
+}
+
+- (id)initWithImage:(UIImage *)image send:(void (^)(UIImage *, NSString *))send {
+    self = [self init];
+    if (self) { _localImage = [image retain]; _sendPhoto = [send copy]; }
+    return self;
+}
+
+- (id)initWithVideoURL:(NSURL *)url send:(void (^)(NSString *))send {
+    self = [self init];
+    if (self) { _localURL = [url retain]; _sendVideo = [send copy]; }
+    return self;
+}
+
+- (NoshiMessage *)message {
+    return _index >= 0 && _index < (NSInteger)_messages.count ? [_messages objectAtIndex:(NSUInteger)_index] : nil;
+}
+
+- (BOOL)isVideo { return _localURL || self.message.media.kind == NOSHI_PREVIEW_VIDEO || self.message.media.kind == NOSHI_PREVIEW_GIF || (_oneTime && self.message.media.kind == NOSHI_PREVIEW_VIDEO_MESSAGE); }
+- (BOOL)isSending { return _sendPhoto || _sendVideo; }
+
+- (void)dealloc {
+    NoshiStatusBarShow(self, UIStatusBarAnimationNone);
+    if (_blackHeld) { _blackHeld = NO; NoshiWindowBlackRelease(); }
+    [_weak clear];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [_media cancelPathRequest:_request];
+    [self releasePlayer];
+    [_senderNames release]; [_chatTitle release];
+    [_messages release]; [_media release]; [_weak release];
+    [_localImage release]; [_localURL release]; [_loadedPath release];
+    [_sendPhoto release]; [_sendVideo release]; [_cancelHandler release]; [_showInChatHandler release]; [_openedHandler release];
+    _document.delegate = nil; [_document dismissMenuAnimated:NO]; [_document release];
+    if (_sharePath) [[NSFileManager defaultManager] removeItemAtPath:_sharePath error:NULL];
+    [_sharePath release];
+    [_page release]; [_pageTransition release];
+    [_zoom release]; [_image release]; [_video release]; [_top release]; [_bottom release];
+    [_title release]; [_date release]; [_count release]; [_caption release]; [_captionInput release];
+    [_play release]; [_playGlyph release]; [_mute release];
+    [_more release]; [_headerEdit release]; [_send release]; [_forward release];
+    [_time release]; [_seek release]; [_spinner release]; [_progress release]; [_retry release];
+    [super dealloc];
+}
+
+- (UIButton *)button:(NoshiSymbol)symbol action:(SEL)action host:(UIView *)host {
+    UIButton *button = [[UIButton alloc] init];
+    [button setImage:NoshiSymbolImage(symbol, 23, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    [host addSubview:button];
+    return button;
+}
+
+- (void)loadView {
+    self.view = [[[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds] autorelease];
+    self.view.backgroundColor = [UIColor blackColor];
+    self.view.opaque = NO;
+    _page = [[UIView alloc] initWithFrame:self.view.bounds];
+    [self.view addSubview:_page];
+    _zoom = [[UIScrollView alloc] init];
+    _zoom.delegate = self;
+    _zoom.minimumZoomScale = 1; _zoom.maximumZoomScale = 4;
+    _zoom.bounces = NO;
+    NoshiScrollViewOwnsInsets(_zoom);
+    _zoom.showsHorizontalScrollIndicator = NO; _zoom.showsVerticalScrollIndicator = NO;
+    [_page addSubview:_zoom];
+    _image = [[UIImageView alloc] init];
+    _image.contentMode = UIViewContentModeScaleAspectFit;
+    [_zoom addSubview:_image];
+    _video = [[NoshiMediaVideoView alloc] init];
+    ((AVPlayerLayer *)_video.layer).videoGravity = AVLayerVideoGravityResizeAspect;
+    [_page addSubview:_video];
+    _top = [[UIView alloc] init]; _bottom = [[UIView alloc] init];
+    /* the picture runs under both plates, so the top one lets it show through as the bottom one does */
+    _top.backgroundColor = _bottom.backgroundColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsClassic() ? 0.7 : 0.62];
+    if (!NoshiThemeIsClassic()) _bottom.layer.cornerRadius = 12;
+    [self.view addSubview:_top]; [self.view addSubview:_bottom];
+    UIButton *close = [self button:NoshiSymbolBack action:@selector(close) host:_top];
+    close.frame = CGRectMake(0, 4, 48, 48);
+    close.accessibilityLabel = NSLocalizedString(@"attach.cancel", nil);
+    _close = close;
+    [close release];
+    _title = [[NoshiEmojiLabel alloc] init];
+    _title.textColor = [UIColor whiteColor]; _title.textAlignment = NoshiTextAlignmentLeft;
+    _title.font = NoshiFontBold(17); [_top addSubview:_title];
+    _date = [[UILabel alloc] init]; _date.backgroundColor = [UIColor clearColor];
+    NoshiLabelFitToWidth(_date, 9);
+    _date.textColor = [UIColor whiteColor]; _date.font = [UIFont systemFontOfSize:13];
+    [_top addSubview:_date];
+    _count = [[UILabel alloc] init]; _count.backgroundColor = [UIColor clearColor];
+    _count.textColor = [UIColor whiteColor]; _count.font = [UIFont boldSystemFontOfSize:15];
+    _count.textAlignment = UITextAlignmentCenter; [_top addSubview:_count];
+    _headerEdit = [self button:NoshiSymbolHeaderDraw action:@selector(edit) host:_top];
+    _headerEdit.accessibilityLabel = NSLocalizedString(@"media.edit", nil);
+    _forward = [self button:NoshiSymbolShare action:@selector(forward) host:_top];
+    _forward.accessibilityLabel = NSLocalizedString(@"media.share", nil);
+    _more = [self button:NoshiSymbolEllipsisVertical action:@selector(showMenu) host:_top];
+    _more.accessibilityLabel = NSLocalizedString(@"media.actions", nil);
+    _play = [self button:NoshiSymbolPlay action:@selector(togglePlay) host:_bottom];
+    /* the triangle and the bars are the glyph of the media button of the chat, which turns one into the other; the picture of a plain triangle stood to the left of the
+       middle of its disc */
+    [_play setImage:nil forState:UIControlStateNormal];
+    _playGlyph = [[NoshiMediaActionView alloc] init];
+    [_play addSubview:_playGlyph];
+    _mute = [self button:NoshiSymbolSpeaker action:@selector(toggleMute) host:_bottom];
+    _mute.accessibilityLabel = NSLocalizedString(@"media.mute", nil);
+    _time = [[UILabel alloc] init]; _time.backgroundColor = [UIColor clearColor];
+    NoshiLabelFitToWidth(_time, 9);
+    _time.textColor = [UIColor whiteColor]; _time.font = [UIFont systemFontOfSize:12];
+    _time.textAlignment = UITextAlignmentCenter; [_bottom addSubview:_time];
+    _seek = [[NoshiSlider alloc] init];
+    [(NoshiSlider *)_seek setTrackColor:[UIColor whiteColor]];
+    [_seek addTarget:self action:@selector(beginSeek) forControlEvents:UIControlEventTouchDown];
+    [_seek addTarget:self action:@selector(seekChanged) forControlEvents:UIControlEventValueChanged];
+    [_seek addTarget:self action:@selector(endSeek) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    _seek.accessibilityLabel = NSLocalizedString(@"media.seek", nil);
+    [_bottom addSubview:_seek];
+    _caption = [[NoshiEmojiLabel alloc] init];
+    _caption.textColor = [UIColor whiteColor]; _caption.font = NoshiFontRegular(15);
+    _caption.numberOfLines = 3; [_bottom addSubview:_caption];
+    _captionInput = [[NoshiCaptionView alloc] init];
+    _captionInput.textColor = [UIColor whiteColor]; _captionInput.font = [UIFont systemFontOfSize:16];
+    _captionInput.placeholder = NSLocalizedString(@"media.caption", nil);
+    /* the return key makes a new line */
+    _captionInput.delegate = self; _captionInput.returnKeyType = UIReturnKeyDefault;
+    _captionInput.accessibilityLabel = NSLocalizedString(@"media.caption", nil);
+    [_bottom addSubview:_captionInput];
+    _send = [self button:NoshiSymbolSendArrow action:@selector(send) host:_bottom];
+    _send.accessibilityLabel = NSLocalizedString(@"attach.send", nil);
+    _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    _spinner.hidesWhenStopped = YES; [self.view addSubview:_spinner];
+    _progress = [[NoshiProgressBar alloc] init];
+    [self.view addSubview:_progress];
+    _retry = [[UIButton alloc] init]; _retry.titleLabel.font = [UIFont systemFontOfSize:15];
+    _retry.titleLabel.numberOfLines = 3; _retry.titleLabel.textAlignment = UITextAlignmentCenter;
+    [_retry setTitle:NSLocalizedString(@"media.failed", nil) forState:UIControlStateNormal];
+    [_retry addTarget:self action:@selector(retry) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:_retry];
+    UITapGestureRecognizer *doubleTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(doubleTap:)] autorelease];
+    doubleTap.numberOfTapsRequired = 2; doubleTap.delegate = self; [self.view addGestureRecognizer:doubleTap];
+    UITapGestureRecognizer *tap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapped:)] autorelease];
+    tap.delegate = self; [tap requireGestureRecognizerToFail:doubleTap]; [self.view addGestureRecognizer:tap];
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center addObserver:self selector:@selector(backgrounded:) name:UIApplicationWillResignActiveNotification object:nil];
+    /* the value of MPMusicPlayerControllerVolumeDidChangeNotification, spelled out so this file does not need MediaPlayer */
+    [center addObserver:self selector:@selector(volumeChanged:) name:@"MPMusicPlayerControllerVolumeDidChangeNotification" object:nil];
+    [center addObserver:self selector:@selector(keyboard:) name:UIKeyboardWillChangeFrameNotification object:nil];
+    UIPanGestureRecognizer *page = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(paged:)] autorelease];
+    page.delegate = self;
+    page.maximumNumberOfTouches = 1;
+    [self.view addGestureRecognizer:page];
+    _pagePan = page;
+    UIPanGestureRecognizer *dismiss = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragMedia:)] autorelease];
+    dismiss.delegate = self;
+    dismiss.maximumNumberOfTouches = 1;
+    [self.view addGestureRecognizer:dismiss];
+    _dismissPan = dismiss;
+    [page requireGestureRecognizerToFail:dismiss];
+    [_zoom.panGestureRecognizer requireGestureRecognizerToFail:dismiss];
+    /* a video is enlarged by hand: it plays in a layer of its own, outside the scroll view that zooms a picture */
+    _videoZoom = 1;
+    _videoPinch = [[[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(videoPinched:)] autorelease];
+    _videoPinch.delegate = self; [self.view addGestureRecognizer:_videoPinch];
+    _videoPan = [[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(videoPanned:)] autorelease];
+    _videoPan.delegate = self; _videoPan.maximumNumberOfTouches = 2; [self.view addGestureRecognizer:_videoPan];
+    [self loadCurrent];
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    NoshiStatusBarHide(self, UIStatusBarAnimationNone);
+    if (!_blackHeld) { _blackHeld = YES; NoshiWindowBlackHold(); }
+}
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    if (_blackHeld) { _blackHeld = NO; NoshiWindowBlackRelease(); }
+}
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    _wantsPlay = NO; [_player pause]; [self tick];
+    NoshiStatusBarShow(self, UIStatusBarAnimationNone);
+}
+- (BOOL)prefersStatusBarHidden { return YES; }
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)orientation { return YES; }
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 90000
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations
+#else
+- (NSUInteger)supportedInterfaceOrientations
+#endif
+{ return UIInterfaceOrientationMaskAll; }
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    CGRect bounds = self.view.bounds;
+    CGFloat width = bounds.size.width, height = bounds.size.height;
+    /* the picture runs under the notch and the home indicator; the bars and their buttons stand clear of them, in landscape too */
+    UIEdgeInsets insets = NoshiLayoutInsets(self);
+    CGFloat top = insets.top, left = insets.left, right = insets.right, inner = MAX(0, width - left - right);
+    if (!CGSizeEqualToSize(_layoutSize, bounds.size)) {
+        [self cancelPaging];
+        _layoutSize = bounds.size;
+        [_zoom setZoomScale:1 animated:NO];
+        [self resetVideoZoom];
+    }
+    _page.bounds = bounds;
+    _page.center = CGPointMake(CGRectGetMidX(bounds), CGRectGetMidY(bounds));
+    _zoom.frame = bounds;
+    /* the video may be enlarged, and the frame of a scaled view is not where it stands */
+    NoshiPlaceView(_video, bounds);
+    if (_zoom.zoomScale <= 1.001) { _image.frame = _zoom.bounds; _zoom.contentSize = bounds.size; }
+    CGFloat header = top + (self.isSending ? 56 : 96);
+    _top.frame = CGRectMake(0, 0, width, header);
+    _close.frame = CGRectMake(left, top + 4, 48, 48);
+    /* the buttons that are shown stand from the right edge, and the title runs up to the first of them; a hidden button used to keep its place, which left the shown ones
+       floating in from the edge of an ipad */
+    CGFloat edge = width - right;
+    UIView *rightButtons[] = {_more, _forward, _headerEdit};
+    for (NSUInteger i = 0; i < sizeof(rightButtons) / sizeof(rightButtons[0]); ++i) {
+        if (rightButtons[i].hidden) continue;
+        edge -= 44;
+        rightButtons[i].frame = CGRectMake(edge, top + 4, 44, 48);
+    }
+    CGFloat titleWidth = MAX(0, edge - 8 - (left + 56));
+    _title.frame = CGRectMake(left + 56, top + (self.isSending ? 17 : 6), titleWidth, 24);
+    _date.frame = CGRectMake(left + 56, top + 30, titleWidth, 20);
+    _count.frame = CGRectMake(left + 48, top + 56, MAX(0, inner - 96), 40);
+    CGFloat controls = self.isVideo ? 76 : 0;
+    CGFloat caption = self.isSending ? 50 : (_caption.text.length ? 66 : 0);
+    CGFloat bottom = controls + caption;
+    /* the plate runs under the home indicator while its controls stay above it; with the keyboard up the keyboard covers the indicator */
+    CGFloat pad = (bottom > 0 && _keyboardHeight == 0) ? insets.bottom : 0;
+    _bottom.frame = CGRectMake(0, MAX(header, height - bottom - pad - _keyboardHeight), width, bottom + pad);
+    _play.frame = CGRectMake(left + 2, 0, 48, 44); _mute.frame = CGRectMake(width - right - 50, 0, 48, 44);
+    if (!NoshiThemeIsClassic()) {
+        _play.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
+        _play.layer.cornerRadius = 20;
+        _play.frame = CGRectMake(left + 6, 2, 40, 40);
+    }
+    _playGlyph.frame = _play.bounds;
+    _seek.frame = CGRectMake(left + 54, 0, MAX(0, inner - 108), 44);
+    _time.frame = CGRectMake(left + 54, 44, MAX(0, inner - 108), 24);
+    _caption.frame = CGRectMake(left + 16, controls, MAX(0, inner - 32), caption);
+    _captionInput.frame = CGRectMake(left + 16, controls, MAX(0, inner - 76), caption);
+    _send.frame = CGRectMake(width - right - 54, controls, 50, caption);
+    _spinner.center = CGPointMake(width / 2, height / 2);
+    _progress.frame = CGRectMake(width / 2 - 80, height / 2 + 36, 160, 4);
+    _retry.frame = CGRectMake(left + 24, height / 2 - 44, MAX(0, inner - 48), 88);
+}
+
+- (void)keyboard:(NSNotification *)note {
+    CGRect frame = [[note.userInfo objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    frame = [self.view convertRect:frame fromView:nil];
+    _keyboardHeight = MAX(0, CGRectGetMaxY(self.view.bounds) - MAX(0, frame.origin.y));
+    [self.view setNeedsLayout];
+}
+- (BOOL)textView:(UITextView *)field shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)string {
+    return range.location <= field.text.length && range.length <= field.text.length - range.location && field.text.length - range.length + string.length <= 1024;
+}
+- (void)textViewDidChange:(UITextView *)field { (void)field; [_captionInput scrollRangeToVisible:_captionInput.selectedRange]; }
+
+- (void)releasePlayer {
+    if (_timeObserver && _player) [_player removeTimeObserver:_timeObserver];
+    [_timeObserver release]; _timeObserver = nil;
+    if (_observingStatus) { [_playerItem removeObserver:self forKeyPath:@"status"]; _observingStatus = NO; }
+    if (_playerItem) [[NSNotificationCenter defaultCenter] removeObserver:self name:nil object:_playerItem];
+    [_player pause]; ((AVPlayerLayer *)_video.layer).player = nil;
+    [_player release]; _player = nil; [_playerItem release]; _playerItem = nil;
+    if (_playableURL) [[NSFileManager defaultManager] removeItemAtPath:_playableURL.path.stringByDeletingLastPathComponent error:NULL];
+    [_playableURL release]; _playableURL = nil;
+    _wantsPlay = NO; _scrubbing = NO; _muted = NO;
+    [_mute setImage:NoshiSymbolImage(NoshiSymbolSpeaker, 23, [UIColor whiteColor]) forState:UIControlStateNormal];
+}
+
+- (void)loadCurrent {
+    ++_generation;
+    [_media cancelPathRequest:_request]; _request = 0;
+    [self releasePlayer];
+    [_loadedPath release]; _loadedPath = nil;
+    [_zoom setZoomScale:1 animated:NO]; _zoom.maximumZoomScale = self.isVideo ? 1 : 4;
+    [self resetVideoZoom];
+    _photoReady = NO;
+    _image.image = nil; _retry.hidden = YES; _progress.hidden = YES; _progress.progress = 0;
+    _more.enabled = _forward.enabled = _headerEdit.enabled = NO;
+    _video.hidden = !self.isVideo;
+    _play.hidden = _mute.hidden = _time.hidden = _seek.hidden = !self.isVideo;
+    _seek.enabled = NO; _play.enabled = NO; _mute.enabled = NO;
+    _headerEdit.hidden = self.isVideo;
+    _date.hidden = _count.hidden = self.isSending;
+    _caption.hidden = self.isSending;
+    _forward.enabled = NO;
+    _captionInput.hidden = _send.hidden = !self.isSending;
+    _caption.text = self.message.text;
+    NSString *name = [_senderNames objectForKey:[NSNumber numberWithLongLong:self.message.senderKey]];
+    if (!name.length) name = self.message.outgoing ? NSLocalizedString(@"media.you", nil) : _chatTitle;
+    if (self.isSending) {
+        _title.entities = nil;
+        _title.text = NSLocalizedString(@"media.preview", nil);
+    } else {
+        /* the sender's marks stand after the name, as in the chat; a negative key is a channel, which wears none */
+        long long sender = self.message.senderKey;
+        NoshiShowNameWithBadges(_title, name.length ? name : NSLocalizedString(@"chat.someone", nil), sender > 0 ? sender : 0, nil, nil);
+    }
+    _date.text = NoshiMediaTimeText(self.message.date);
+    _count.text = [NSString stringWithFormat:NSLocalizedString(@"media.count", nil), (long)(_index + 1), (long)_messages.count];
+    if (_oneTime) {
+        /* nothing here can keep the picture: no menu, no share, no edit, and the line under the title says it goes */
+        _more.hidden = _forward.hidden = _headerEdit.hidden = _count.hidden = YES;
+        _title.entities = nil;
+        _title.text = NSLocalizedString(_previewOnly ? @"viewonce.preview.title" : (self.isVideo ? @"viewonce.title.video" : @"viewonce.title.photo"), nil);
+        _date.text = NSLocalizedString(_previewOnly ? @"viewonce.preview.hint" : @"viewonce.hint", nil);
+        _date.hidden = NO;
+    }
+    [self.view setNeedsLayout];
+    if (_localImage) { _image.image = _localImage; _more.enabled = _forward.enabled = _headerEdit.enabled = YES; return; }
+    if (_localURL) { [self playURL:_localURL]; return; }
+    /* a one-time file of ours that has not finished going up has no server copy to fetch yet */
+    NoshiOutgoing *pending = self.message.pendingSend;
+    if (_previewOnly && pending && pending->path && !self.message.media.file) {
+        NSURL *local = [NSURL fileURLWithPath:pending->path];
+        if (self.isVideo) { [self playURL:local]; return; }
+        UIImage *picture = NoshiDecodeImageAtURL(local, NOSHI_VIEWER_PHOTO_SIDE_MAX);
+        if (!picture) { [self failed]; return; }
+        _image.image = picture;
+        _photoReady = YES;
+        return;
+    }
+    NoshiMedia *content = self.message.media;
+    if (!content.file) { [self failed]; return; }
+    [_spinner startAnimating];
+    NoshiWeakReference *weak = _weak;
+    NSUInteger generation = _generation;
+    if (!self.isVideo) {
+        _image.image = [_media cachedImageForFile:content.file maxSide:640];
+        [_media loadImageForFile:content.file maxSide:640 completion:^(UIImage *image) {
+            NoshiMediaViewer *viewer = weak.target;
+            if (viewer && !viewer->_closed && viewer->_generation == generation && !viewer->_photoReady && image) viewer->_image.image = image;
+        }];
+        NoshiRemoteFile *file = content.fullPhotoFile ? content.fullPhotoFile : content.file;
+        long long size = content.fullPhotoFile ? content.fullPhotoSize : content.size;
+        _request = [_media loadPathForFile:file size:size progress:^(float fraction) {
+            NoshiMediaViewer *me = weak.target;
+            if (me && me->_generation == generation) me->_progress.progress = fraction;
+        } completion:^(NSString *path) {
+            NoshiMediaViewer *me = weak.target;
+            if (!me || me->_closed || me->_generation != generation) return;
+            me->_request = 0;
+            if (!path) { [me failed]; return; }
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+                UIImage *image = [NoshiDecodeImageAtURL([NSURL fileURLWithPath:path], NOSHI_VIEWER_PHOTO_SIDE_MAX) retain];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    NoshiMediaViewer *viewer = weak.target;
+                    if (viewer && !viewer->_closed && viewer->_generation == generation) {
+                        [viewer->_spinner stopAnimating];
+                        if (image) { viewer->_photoReady = YES; viewer->_image.image = image; viewer->_more.enabled = viewer->_forward.enabled = viewer->_headerEdit.enabled = YES; [viewer noteOpened]; }
+                        else [viewer failed];
+                    }
+                    [image release];
+                });
+                [pool drain];
+            });
+        }];
+    } else {
+        if (content.previewFile) [_media loadImageForFile:content.previewFile maxSide:640 completion:^(UIImage *image) {
+            NoshiMediaViewer *me = weak.target;
+            if (me && !me->_closed && me->_generation == generation && !me->_player) me->_image.image = image;
+        }];
+        _progress.hidden = NO;
+        _request = [_media loadPathForFile:content.file size:content.size progress:^(float fraction) {
+            NoshiMediaViewer *me = weak.target;
+            if (me && me->_generation == generation) me->_progress.progress = fraction;
+        } completion:^(NSString *path) {
+            NoshiMediaViewer *me = weak.target;
+            if (!me || me->_closed || me->_generation != generation) return;
+            me->_request = 0; me->_progress.hidden = YES;
+            if (path) [me playPath:path]; else [me failed];
+        }];
+    }
+}
+
+- (void)retry {
+    NoshiMedia *content = self.message.media;
+    [_media retryFile:content.file]; [_media retryFile:content.fullPhotoFile];
+    [self loadCurrent];
+}
+- (void)failed {
+    [self releasePlayer]; [_spinner stopAnimating]; _progress.hidden = YES; _retry.hidden = NO;
+    _play.enabled = _seek.enabled = _more.enabled = _forward.enabled = _mute.enabled = _headerEdit.enabled = NO;
+}
+
+- (void)playPath:(NSString *)path {
+    [_loadedPath release]; _loadedPath = [path copy];
+    NSString *slot = [NSString stringWithFormat:@"viewer-%p", self];
+    NSUInteger generation = _generation;
+    NoshiWeakReference *weak = _weak;
+    /* a fragmented video is made plain first, which takes a moment for a large one */
+    [_spinner startAnimating];
+    NoshiPlayableLinkAsync(path, @"mp4", slot, ^(NSURL *url) {
+        NoshiMediaViewer *me = weak.target;
+        if (!me || me->_closed || me->_generation != generation) return;
+        [me->_spinner stopAnimating];
+        if (!url) { [me failed]; return; }
+        [me->_playableURL release];
+        me->_playableURL = [url retain];
+        [me playURL:url];
+    });
+}
+
+- (void)playURL:(NSURL *)url {
+    _playerItem = [[AVPlayerItem playerItemWithURL:url] retain];
+    _player = [[AVPlayer playerWithPlayerItem:_playerItem] retain];
+    ((AVPlayerLayer *)_video.layer).player = _player;
+    _observingStatus = YES;
+    [_playerItem addObserver:self forKeyPath:@"status" options:0 context:&NoshiMediaPlayerStatusContext];
+    [[NoshiMusicPlayer sharedPlayer] pauseForMedia];
+    if (!NoshiAudioSessionBeginPlayback()) { [self failed]; return; }
+    _wantsPlay = [UIApplication sharedApplication].applicationState == UIApplicationStateActive && !self.presentedViewController;
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ended:) name:AVPlayerItemDidPlayToEndTimeNotification object:_playerItem];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playbackFailed:) name:AVPlayerItemFailedToPlayToEndTimeNotification object:_playerItem];
+    NoshiWeakReference *weak = _weak;
+    _timeObserver = [[_player addPeriodicTimeObserverForInterval:CMTimeMake(1, 5) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
+        (void)time;
+        [(NoshiMediaViewer *)weak.target tick];
+    }] retain];
+    [_spinner startAnimating];
+    if (_wantsPlay) [_player play];
+    [self tick];
+}
+
+static NSString *NoshiVideoTime(double seconds) {
+    if (!isfinite(seconds) || seconds < 0) seconds = 0;
+    NSInteger total = (NSInteger)MIN(seconds, 2147483647);
+    return [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)];
+}
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    if (context != &NoshiMediaPlayerStatusContext) { [super observeValueForKeyPath:keyPath ofObject:object change:change context:context]; return; }
+    NoshiWeakReference *weak = _weak;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NoshiMediaViewer *me = weak.target;
+        if (me && me->_playerItem == object) [me tick];
+    });
+}
+- (void)tick {
+    if (!_playerItem || _closed) return;
+    if (_playerItem.status == AVPlayerItemStatusFailed) { NSLog(@"noshigram: video playback failed: %@", _playerItem.error); [self failed]; return; }
+    if (_playerItem.status != AVPlayerItemStatusReadyToPlay) return;
+    [_spinner stopAnimating]; _image.hidden = NO;
+    [self noteOpened];
+    _play.enabled = _mute.enabled = YES; _more.enabled = _forward.enabled = _headerEdit.enabled = YES;
+    double duration = CMTimeGetSeconds(_playerItem.duration), position = CMTimeGetSeconds(_player.currentTime);
+    _seek.enabled = isfinite(duration) && duration > 0;
+    if (!isfinite(position) || position < 0) position = 0;
+    if (!_scrubbing && _seek.enabled) _seek.value = (float)MAX(0, MIN(1, position / duration));
+    _time.text = [NSString stringWithFormat:@"%@ / %@", NoshiVideoTime(_scrubbing ? _seek.value * duration : position), NoshiVideoTime(duration)];
+    [_playGlyph setIcon:_wantsPlay ? NoshiMediaIconPause : NoshiMediaIconPlay animated:YES];
+    _play.accessibilityLabel = NSLocalizedString(_wantsPlay ? @"media.pause" : @"media.play", nil);
+}
+- (void)playbackFailed:(NSNotification *)note { NSLog(@"noshigram: video stopped: %@", note.userInfo); [self failed]; }
+- (void)ended:(NSNotification *)note {
+    (void)note;
+    if (self.message.media.kind == NOSHI_PREVIEW_GIF && !_closed && _wantsPlay) {
+        [_player seekToTime:kCMTimeZero]; [_player play];
+    } else { _wantsPlay = NO; [_player pause]; }
+    [self tick];
+}
+- (void)togglePlay {
+    if (!_player) return;
+    [[NoshiMusicPlayer sharedPlayer] pauseForMedia];
+    _wantsPlay = !_wantsPlay;
+    if (_wantsPlay) {
+        if (!NoshiAudioSessionBeginPlayback()) { _wantsPlay = NO; [self failed]; return; }
+        double end = CMTimeGetSeconds(_playerItem.duration), now = CMTimeGetSeconds(_player.currentTime);
+        if (isfinite(end) && now >= end - 0.1) [_player seekToTime:kCMTimeZero];
+        [_player play];
+    } else [_player pause];
+    [self tick];
+}
+- (void)jump:(int)direction {
+    double duration = CMTimeGetSeconds(_playerItem.duration), now = CMTimeGetSeconds(_player.currentTime);
+    if (!isfinite(duration) || duration <= 0 || !isfinite(now)) return;
+    double target = MAX(0, MIN(duration, now + direction * (double)NoshiChatSeekSeconds()));
+    [_player seekToTime:CMTimeMakeWithSeconds(target, 600)];
+    [self tick];
+}
+
+/* a volume button raises the sound of a muted video, as the loudspeaker button of a player would */
+- (void)volumeChanged:(NSNotification *)note {
+    (void)note;
+    if (_muted && self.isVideo && NoshiChatFlagGet(NoshiChatFlagUnmuteWithVolume)) [self toggleMute];
+}
+
+- (void)toggleMute {
+    if (!_playerItem) return;
+    _muted = !_muted;
+    /* AVAudioMix supplies per-item volume on ios 5, before AVPlayer gained muted */
+    NSMutableArray *parameters = [NSMutableArray array];
+    for (AVAssetTrack *track in [_playerItem.asset tracksWithMediaType:AVMediaTypeAudio]) {
+        AVMutableAudioMixInputParameters *input = [AVMutableAudioMixInputParameters audioMixInputParametersWithTrack:track];
+        [input setVolume:_muted ? 0 : 1 atTime:kCMTimeZero]; [parameters addObject:input];
+    }
+    AVMutableAudioMix *mix = [AVMutableAudioMix audioMix]; mix.inputParameters = parameters;
+    _playerItem.audioMix = mix;
+    [_mute setImage:NoshiSymbolImage(_muted ? NoshiSymbolSpeakerSlash : NoshiSymbolSpeaker, 23, [UIColor whiteColor]) forState:UIControlStateNormal];
+}
+- (void)beginSeek { _scrubbing = YES; _resumeAfterSeek = _wantsPlay; [_player pause]; }
+- (void)seekChanged { [self tick]; }
+- (void)endSeek {
+    if (!_playerItem) return;
+    double duration = CMTimeGetSeconds(_playerItem.duration);
+    if (!_scrubbing || !isfinite(duration) || duration <= 0) return;
+    _scrubbing = NO;
+    [_player seekToTime:CMTimeMakeWithSeconds(_seek.value * duration, 600)];
+    if (_resumeAfterSeek) [_player play];
+}
+- (void)backgrounded:(NSNotification *)note { (void)note; _wantsPlay = NO; [_player pause]; [self tick]; }
+
+#pragma mark video zoom
+
+- (BOOL)videoIsZoomed { return _videoZoom > 1.03; }
+- (void)resetVideoZoom {
+    _videoZoom = 1; _videoX = _videoY = 0;
+    [_video.layer removeAnimationForKey:@"noshigram.motion"];
+    _video.transform = CGAffineTransformIdentity;
+}
+/* the picture the player draws, fitted into the view */
+- (CGSize)videoPictureSize {
+    CGSize area = _video.bounds.size, picture = _playerItem.presentationSize;
+    if (picture.width < 1 || picture.height < 1) return area;
+    CGFloat scale = MIN(area.width / picture.width, area.height / picture.height);
+    return CGSizeMake(picture.width * scale, picture.height * scale);
+}
+- (void)clampVideoZoomWithMinimum:(double)minimum {
+    CGSize picture = [self videoPictureSize], area = _video.bounds.size;
+    if (area.width < 1 || picture.width < 1 || noshi_photo_zoom_clamp(picture.width, picture.height, area.width, area.height, minimum, &_videoZoom, &_videoX, &_videoY) != NOSHI_OK) {
+        _videoZoom = 1; _videoX = _videoY = 0;
+    }
+}
+- (void)applyVideoZoomAnimated:(BOOL)animated {
+    CGAffineTransform transform = CGAffineTransformMake((CGFloat)_videoZoom, 0, 0, (CGFloat)_videoZoom, (CGFloat)_videoX, (CGFloat)_videoY);
+    if (animated) NoshiAnimateView(_video, transform, 1, NOSHI_MOTION_SPRING, nil);
+    else { [_video.layer removeAnimationForKey:@"noshigram.motion"]; _video.transform = transform; }
+}
+- (void)videoPinched:(UIPinchGestureRecognizer *)pinch {
+    if (pinch.state == UIGestureRecognizerStateBegan) [_video.layer removeAnimationForKey:@"noshigram.motion"];
+    if (pinch.state == UIGestureRecognizerStateBegan || pinch.state == UIGestureRecognizerStateChanged) {
+        CGPoint point = [pinch locationInView:_video.superview];
+        CGSize area = _video.bounds.size;
+        double next = _videoZoom * pinch.scale, x = _videoX, y = _videoY;
+        if (noshi_photo_zoom_about(_videoZoom, _videoX, _videoY, point.x - area.width / 2, point.y - area.height / 2, next, &x, &y) == NOSHI_OK) {
+            _videoZoom = next; _videoX = x; _videoY = y;
+        }
+        pinch.scale = 1;
+        [self clampVideoZoomWithMinimum:0.75];
+        [self applyVideoZoomAnimated:NO];
+    } else if (pinch.state == UIGestureRecognizerStateEnded || pinch.state == UIGestureRecognizerStateCancelled || pinch.state == UIGestureRecognizerStateFailed) {
+        [self clampVideoZoomWithMinimum:1];
+        [self applyVideoZoomAnimated:YES];
+    }
+}
+- (void)videoPanned:(UIPanGestureRecognizer *)pan {
+    if (pan.state == UIGestureRecognizerStateBegan) [_video.layer removeAnimationForKey:@"noshigram.motion"];
+    if (pan.state == UIGestureRecognizerStateBegan || pan.state == UIGestureRecognizerStateChanged) {
+        CGPoint move = [pan translationInView:self.view];
+        [pan setTranslation:CGPointZero inView:self.view];
+        _videoX += move.x; _videoY += move.y;
+        [self clampVideoZoomWithMinimum:0.75];
+        [self applyVideoZoomAnimated:NO];
+    } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled || pan.state == UIGestureRecognizerStateFailed) {
+        [self clampVideoZoomWithMinimum:1];
+        [self applyVideoZoomAnimated:YES];
+    }
+}
+
+- (UIView *)viewForZoomingInScrollView:(UIScrollView *)scroll { return self.isVideo ? nil : _image; }
+- (void)scrollViewDidZoom:(UIScrollView *)scroll {
+    CGSize size = scroll.bounds.size;
+    _image.center = CGPointMake(MAX(size.width, scroll.contentSize.width) / 2, MAX(size.height, scroll.contentSize.height) / 2);
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
+    for (UIView *view = touch.view; view; view = view.superview) if (view == _top || view == _bottom || view == _retry) return NO;
+    return YES;
+}
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
+    if (gesture == _videoPinch || other == _videoPinch || gesture == _videoPan || other == _videoPan) return (gesture == _videoPinch || gesture == _videoPan) && (other == _videoPinch || other == _videoPan);
+    if (gesture == _dismissPan || other == _dismissPan) return NO;
+    return _zoom.zoomScale <= 1.001 && ([gesture isKindOfClass:[UISwipeGestureRecognizer class]] || [other isKindOfClass:[UISwipeGestureRecognizer class]] || gesture.view == self.view || other.view == self.view);
+}
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
+    if (_paging || _closed || _burning) return NO;
+    if (gesture == _videoPinch) return self.isVideo && _video.window && _playerItem;
+    if (gesture == _videoPan) return [self videoIsZoomed];
+    if (gesture == _pagePan || gesture == _dismissPan) {
+        CGPoint speed = [(UIPanGestureRecognizer *)gesture velocityInView:self.view];
+        if (_zoom.zoomScale > 1.001 || [self videoIsZoomed] || _captionInput.isFirstResponder) return NO;
+        noshi_media_drag_direction direction = noshi_media_drag_direction_for(speed.x, speed.y);
+        if (gesture == _dismissPan) return direction == NOSHI_MEDIA_DRAG_VERTICAL;
+        return _messages.count > 1 && direction == NOSHI_MEDIA_DRAG_HORIZONTAL;
+    }
+    return ![gesture isKindOfClass:[UISwipeGestureRecognizer class]] || (_zoom.zoomScale <= 1.001 && !_captionInput.isFirstResponder);
+}
+/* a double tap on the outer thirds of a video jumps by the number of seconds the setting names, the middle third pauses or plays */
+- (void)doubleTap:(UITapGestureRecognizer *)tap {
+    if (self.isVideo) {
+        CGFloat x = [tap locationInView:self.view].x, third = self.view.bounds.size.width / 3;
+        if (_playerItem && _playerItem.status == AVPlayerItemStatusReadyToPlay && (x < third || x > 2 * third)) [self jump:x < third ? -1 : 1];
+        else [self togglePlay];
+        return;
+    }
+    if (_zoom.zoomScale > 1.001) [_zoom setZoomScale:1 animated:YES];
+    else {
+        CGPoint point = [tap locationInView:_image];
+        CGFloat width = _zoom.bounds.size.width / 2.5, height = _zoom.bounds.size.height / 2.5;
+        [_zoom zoomToRect:CGRectMake(point.x - width / 2, point.y - height / 2, width, height) animated:YES];
+    }
+}
+- (void)toggleChrome { [self.view endEditing:YES]; _chromeHidden = !_chromeHidden; _top.hidden = _bottom.hidden = _chromeHidden; }
+/* with "show next media on tap" a tap near the left or right edge, below the top bar */
+- (void)tapped:(UITapGestureRecognizer *)tap {
+    if (NoshiChatNextMediaTap() && _messages.count > 1 && !_captionInput.isFirstResponder) {
+        CGPoint point = [tap locationInView:self.view];
+        CGFloat width = self.view.bounds.size.width, side = MIN(135.0, width / 8);
+        if (point.y > CGRectGetMaxY(_top.frame) + 40) {
+            if (point.x < side && _index > 0) { [self previous]; return; }
+            if (point.x > width - side && _index + 1 < (NSInteger)_messages.count) { [self next]; return; }
+        }
+    }
+    [self toggleChrome];
+}
+- (void)cancelPaging {
+    if (_paging) self.view.alpha = 1;
+    [_page.layer removeAllAnimations];
+    _page.transform = CGAffineTransformIdentity;
+    [_pageTransition removeFromSuperview];
+    [_pageTransition release];
+    _pageTransition = nil;
+    _paging = NO;
+    self.view.backgroundColor = [UIColor blackColor];
+    _top.alpha = _bottom.alpha = 1;
+}
+
+- (void)dragMedia:(UIPanGestureRecognizer *)pan {
+    if (_closed || _paging || _burning) return;
+    CGFloat distance = [pan translationInView:self.view].y;
+    CGFloat height = self.view.bounds.size.height;
+    if (pan.state == UIGestureRecognizerStateBegan || pan.state == UIGestureRecognizerStateChanged) {
+        CGFloat progress = (CGFloat)noshi_media_drag_progress(distance, height);
+        _page.transform = CGAffineTransformMakeTranslation(0, distance);
+        self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:1 - progress * 0.7];
+        _top.alpha = _bottom.alpha = 1 - progress;
+    } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled || pan.state == UIGestureRecognizerStateFailed) {
+        BOOL close = noshi_media_drag_should_close(distance, height, pan.state == UIGestureRecognizerStateEnded);
+        if (close && _oneTime && _opened) { [self close]; return; }
+        _paging = YES;
+        CGFloat target = close ? (distance < 0 ? -height : height) : 0;
+        [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+            _page.transform = CGAffineTransformMakeTranslation(0, target);
+            self.view.backgroundColor = [UIColor colorWithWhite:0 alpha:close ? 0 : 1];
+            _top.alpha = _bottom.alpha = close ? 0 : 1;
+            if (close) self.view.alpha = 0;
+        } completion:^(BOOL finished) {
+            if (!finished || !_paging || _closed) return;
+            _paging = NO;
+            /* the view is invisible already, and a dissolve over it would flash it once more */
+            if (close) { if (_oneTime && _opened) [self close]; else [self closeAnimated:NO]; }
+        }];
+    }
+}
+
+- (void)pageToIndex:(NSInteger)index {
+    if (_closed || _paging || index < 0 || index >= (NSInteger)_messages.count || index == _index) return;
+    CGFloat direction = index > _index ? 1 : -1;
+    UIImageView *old = [[UIImageView alloc] initWithImage:_image.image];
+    old.contentMode = UIViewContentModeScaleAspectFit;
+    old.frame = self.view.bounds;
+    old.transform = _page.transform;
+    [self.view insertSubview:old belowSubview:_top];
+    _pageTransition = old;
+    _paging = YES;
+    _page.transform = CGAffineTransformIdentity;
+    _index = index;
+    [self loadCurrent];
+    CGFloat width = self.view.bounds.size.width;
+    _page.transform = CGAffineTransformMakeTranslation(direction * width, 0);
+    [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.25 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        old.transform = CGAffineTransformMakeTranslation(-direction * width, 0);
+        _page.transform = CGAffineTransformIdentity;
+    } completion:^(BOOL finished) {
+        (void)finished;
+        [old removeFromSuperview];
+        if (_pageTransition == old) {
+            [_pageTransition release];
+            _pageTransition = nil;
+            _paging = NO;
+        }
+    }];
+}
+
+- (void)paged:(UIPanGestureRecognizer *)pan {
+    if (_closed || _paging) return;
+    CGFloat drag = [pan translationInView:self.view].x;
+    BOOL available = drag < 0 ? _index + 1 < (NSInteger)_messages.count : _index > 0;
+    if (pan.state == UIGestureRecognizerStateChanged) {
+        _page.transform = CGAffineTransformMakeTranslation(available ? drag : drag * 0.25, 0);
+    } else if (pan.state == UIGestureRecognizerStateEnded || pan.state == UIGestureRecognizerStateCancelled) {
+        CGFloat speed = [pan velocityInView:self.view].x;
+        if (pan.state == UIGestureRecognizerStateEnded && available &&
+            (fabs(drag) > self.view.bounds.size.width * 0.2 || (fabs(speed) > 500 && speed * drag > 0))) {
+            [self pageToIndex:_index + (drag < 0 ? 1 : -1)];
+        } else {
+            _paging = YES;
+            [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.2 animations:^{
+                _page.transform = CGAffineTransformIdentity;
+            } completion:^(BOOL finished) { (void)finished; _paging = NO; }];
+        }
+    }
+}
+
+- (void)previous { [self pageToIndex:_index - 1]; }
+- (void)next { [self pageToIndex:_index + 1]; }
+- (void)showMenu {
+    if (!_more.enabled) return;
+    /* sharing has its own button in the bar, so the menu holds what the bar has no button for */
+    BOOL canShow = _showInChatHandler && self.message;
+    NSMutableArray *titles = [NSMutableArray arrayWithObject:NSLocalizedString(@"media.save", nil)];
+    NoshiSymbol symbols[] = {NoshiSymbolGallery, NoshiSymbolMessage};
+    if (canShow) [titles addObject:NSLocalizedString(@"media.showinchat", nil)];
+    NoshiWeakReference *weak = _weak;
+    NoshiPopupMenu *menu = [[[NoshiPopupMenu alloc] initWithTitles:titles
+        symbols:symbols handler:^(NSUInteger index) {
+            NoshiMediaViewer *viewer = weak.target;
+            if (!viewer || viewer->_closed) return;
+            if (index == 0) [viewer save]; else [viewer showInChat];
+        }] autorelease];
+    [menu showInView:self.view anchor:CGPointMake(CGRectGetMaxX(_more.frame) - 8, CGRectGetMaxY(_more.frame))];
+}
+- (void)forward {
+    [self.view endEditing:YES];
+    _wantsPlay = NO; [_player pause]; [self tick];
+    if (self.isVideo && _loadedPath) {
+        if (_sharePath) [[NSFileManager defaultManager] removeItemAtPath:_sharePath error:NULL];
+        [_sharePath release];
+        _sharePath = [[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"noshigram-share-%08x.mp4", arc4random()]] copy];
+        NSUInteger generation = _generation;
+        NoshiWeakReference *weak = _weak;
+        /* what goes to another app is the plain form of a fragmented video, which the apps of an old system can open */
+        NoshiStageVideoAsync(_loadedPath, _sharePath, ^(BOOL staged, NSError *error) {
+            NoshiMediaViewer *me = weak.target;
+            if (!me || me->_closed || me->_generation != generation) return;
+            if (!staged) {
+                NSLog(@"noshigram: cannot stage video for sharing: %@", error); [me notice:NSLocalizedString(@"media.share.failed", nil)]; return;
+            }
+            [me presentShareItems:[NSArray arrayWithObject:[NSURL fileURLWithPath:me->_sharePath]]];
+        });
+        return;
+    }
+    if (_image.image) [self presentShareItems:[NSArray arrayWithObject:_image.image]];
+}
+
+- (void)presentShareItems:(NSArray *)items {
+    Class activityClass = NSClassFromString(@"UIActivityViewController");
+    if (activityClass) {
+        id activity = [[activityClass alloc] initWithActivityItems:items applicationActivities:nil];
+        if ([activity respondsToSelector:NSSelectorFromString(@"popoverPresentationController")]) {
+            id popover = [activity performSelector:NSSelectorFromString(@"popoverPresentationController")];
+            [popover setValue:_top forKey:@"sourceView"];
+            [popover setValue:[NSValue valueWithCGRect:_forward.frame] forKey:@"sourceRect"];
+        }
+        [self presentViewController:activity animated:YES completion:nil]; [activity release];
+    } else {
+        if (!self.isVideo) {
+            if (_sharePath) [[NSFileManager defaultManager] removeItemAtPath:_sharePath error:NULL];
+            [_sharePath release];
+            _sharePath = [[NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"noshigram-share-%08x.jpg", arc4random()]] copy];
+            if (![UIImageJPEGRepresentation(_image.image, 0.9) writeToFile:_sharePath atomically:YES]) { [self notice:NSLocalizedString(@"media.share.failed", nil)]; return; }
+        }
+        _document.delegate = nil; [_document release];
+        _document = [[UIDocumentInteractionController interactionControllerWithURL:[NSURL fileURLWithPath:_sharePath]] retain];
+        _document.delegate = self;
+        if (![_document presentOpenInMenuFromRect:_forward.frame inView:_top animated:YES]) [self notice:NSLocalizedString(@"media.share.unavailable", nil)];
+    }
+}
+/* a one-time file that was seen burns before the viewer goes; one that never loaded just leaves, and the message stays as it was */
+- (void)close {
+    if (!_oneTime || !_opened) { [self closeNow]; return; }
+    if (_burning) return;
+    _burning = YES;
+    [self releasePlayer];
+    NoshiWeakReference *weak = _weak;
+    [NoshiBurnEffect burnRect:self.view.bounds inView:self.view duration:0.9 completion:^{ [(NoshiMediaViewer *)weak.target closeNow]; }];
+    [UIView animateWithDuration:0.8 delay:0.05 options:UIViewAnimationOptionCurveEaseIn animations:^{
+        _page.alpha = 0;
+        _page.transform = CGAffineTransformMakeScale(1.04, 1.04);
+        _top.alpha = 0;
+        _bottom.alpha = 0;
+    } completion:nil];
+}
+
+- (void)closeNow { [self closeAnimated:YES]; }
+- (void)closeAnimated:(BOOL)animated { [self closeAnimated:animated then:nil]; }
+- (void)closeAnimated:(BOOL)animated then:(void (^)(void))after {
+    [self cancelPaging];
+    if (_closed) return;
+    _closed = YES; ++_generation;
+    [_media cancelPathRequest:_request]; _request = 0;
+    [self releasePlayer]; [self.view endEditing:YES];
+    void (^cancel)(void) = [[_cancelHandler copy] autorelease];
+    [self dismissViewControllerAnimated:animated completion:^{ if (cancel) cancel(); if (after) after(); }];
+}
+/* the chat at the message that holds this picture: the viewer goes first, and then the owner of the handler takes the screen */
+- (void)showInChat {
+    NoshiMessage *message = self.message;
+    void (^handler)(NoshiMessage *) = [[_showInChatHandler copy] autorelease];
+    if (!message || !handler) return;
+    [message retain];
+    [self closeAnimated:YES then:^{ handler(message); [message release]; }];
+}
+- (void)edit {
+    if (!_image.image || self.isVideo || (!self.isSending && !_photoReady)) return;
+    NoshiWeakReference *weak = _weak;
+    NoshiPhotoEditor *editor = [[[NoshiPhotoEditor alloc] initWithImage:_image.image completion:^(UIImage *image) {
+        NoshiMediaViewer *me = weak.target;
+        if (!me || me->_closed) return;
+        if (me.isSending) { [me->_localImage release]; me->_localImage = [image retain]; }
+        me->_image.image = image;
+        [me->_zoom setZoomScale:1 animated:NO]; [me.view setNeedsLayout];
+    }] autorelease];
+    [self presentViewController:editor animated:YES completion:nil];
+}
+- (void)send {
+    if (_closed) return;
+    [self.view endEditing:YES];
+    NSString *caption = [[_captionInput.text copy] autorelease];
+    void (^photo)(UIImage *, NSString *) = [[_sendPhoto copy] autorelease];
+    void (^video)(NSString *) = [[_sendVideo copy] autorelease];
+    UIImage *image = [[_localImage retain] autorelease];
+    _closed = YES; ++_generation; [self releasePlayer];
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (photo) photo(image, caption ? caption : @"");
+        else if (video) video(caption ? caption : @"");
+    }];
+}
+
+- (void)notice:(NSString *)text {
+    UIAlertView *alert = [[NoshiAlertClass() alloc] initWithTitle:nil message:text delegate:nil cancelButtonTitle:NSLocalizedString(@"notice.ok", nil) otherButtonTitles:nil];
+    [alert show]; [alert release];
+}
+- (void)save {
+    if (_saving) return;
+    if (self.isVideo && _loadedPath) {
+        /* the library takes the plain form of a fragmented video, and a plain one is pinned by a hard link without a copy */
+        NSString *temporary = [NSTemporaryDirectory() stringByAppendingPathComponent:[NSString stringWithFormat:@"noshigram-save-%08x.mp4", arc4random()]];
+        NSUInteger generation = _generation;
+        NoshiWeakReference *weak = _weak;
+        _saving = YES;
+        NoshiStageVideoAsync(_loadedPath, temporary, ^(BOOL staged, NSError *error) {
+            NoshiMediaViewer *me = weak.target;
+            if (!me) { [[NSFileManager defaultManager] removeItemAtPath:temporary error:NULL]; return; }
+            me->_saving = NO;
+            if (me->_closed || me->_generation != generation) { [[NSFileManager defaultManager] removeItemAtPath:temporary error:NULL]; return; }
+            if (!staged) { NSLog(@"noshigram: cannot stage video: %@", error); [me notice:NSLocalizedString(@"media.save.failed", nil)]; return; }
+            if (!UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(temporary)) {
+                [[NSFileManager defaultManager] removeItemAtPath:temporary error:NULL];
+                [me notice:NSLocalizedString(@"media.save.failed", nil)]; return;
+            }
+            me->_saving = YES; [me retain];
+            UISaveVideoAtPathToSavedPhotosAlbum(temporary, me, @selector(video:didFinishSavingWithError:contextInfo:), NULL);
+        });
+    } else if (_image.image) {
+        _saving = YES; [self retain];
+        UIImageWriteToSavedPhotosAlbum(_image.image, self, @selector(image:didFinishSavingWithError:contextInfo:), NULL);
+    }
+}
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)context {
+    (void)image; (void)context; _saving = NO;
+    if (error) NSLog(@"noshigram: cannot save photo: %@", error);
+    if (!_closed) [self notice:NSLocalizedString(error ? @"media.save.failed" : @"media.saved", nil)];
+    [self release];
+}
+- (void)video:(NSString *)path didFinishSavingWithError:(NSError *)error contextInfo:(void *)context {
+    [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
+    [self image:nil didFinishSavingWithError:error contextInfo:context];
+}
+@end

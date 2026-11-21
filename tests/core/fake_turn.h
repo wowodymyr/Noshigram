@@ -1,11 +1,11 @@
-#ifndef EXTERIA_FAKE_TURN_H
-#define EXTERIA_FAKE_TURN_H
+#ifndef NOSHI_FAKE_TURN_H
+#define NOSHI_FAKE_TURN_H
 
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "exteria_crypto.h"
+#include "noshi_crypto.h"
 #include "test_util.h"
 
 #define SERVER_IP 0x5b6c0d17u /* 91.108.13.23 */
@@ -121,11 +121,11 @@ static inline void wfinish(wbuf *w, const uint8_t *key) {
     wr16(w->b + 2, (uint16_t)(w->len - 20));
     if (key) {
         uint8_t mac[20];
-        exteria_slice part;
+        noshi_slice part;
         wr16(w->b + 2, (uint16_t)(w->len - 20 + 24));
         part.data = w->b;
         part.len = w->len;
-        exteria_hmac_sha1(key, 16, &part, 1, mac);
+        noshi_hmac_sha1(key, 16, &part, 1, mac);
         wattr(w, 0x0008, mac, 20);
     }
     wr16(w->b + 2, (uint16_t)(w->len - 20));
@@ -137,12 +137,12 @@ static inline int integrity_ok(const server *s, const uint8_t *msg, size_t len) 
         uint16_t t = rd16(msg + pos), l = rd16(msg + pos + 2);
         if (t == 0x0008) {
             uint8_t copy[600], mac[20];
-            exteria_slice part;
+            noshi_slice part;
             memcpy(copy, msg, pos);
             wr16(copy + 2, (uint16_t)(pos - 20 + 24));
             part.data = copy;
             part.len = pos;
-            exteria_hmac_sha1(s->key, 16, &part, 1, mac);
+            noshi_hmac_sha1(s->key, 16, &part, 1, mac);
             return memcmp(mac, msg + pos + 4, 20) == 0;
         }
         pos += 4 + (((size_t)l + 3) & ~(size_t)3);
@@ -151,7 +151,7 @@ static inline int integrity_ok(const server *s, const uint8_t *msg, size_t len) 
 }
 
 static inline void server_init(server *s) {
-    exteria_slice part;
+    noshi_slice part;
     char text[200];
     memset(s, 0, sizeof(*s));
     s->relay_ip = RELAY_IP;
@@ -165,7 +165,7 @@ static inline void server_init(server *s) {
     snprintf(text, sizeof(text), "%s:%s:%s", s->user, s->realm, s->pass);
     part.data = (const uint8_t *)text;
     part.len = strlen(text);
-    exteria_md5(&part, 1, s->key);
+    noshi_md5(&part, 1, s->key);
 }
 
 static inline void error_response(const server *s, const uint8_t *req, uint16_t type, unsigned code, int with_challenge, wbuf *w) {

@@ -1,0 +1,1285 @@
+#import "noshi_chat_bots.h"
+
+#import <QuartzCore/QuartzCore.h>
+
+#import "noshi_alert.h"
+#import "noshi_chat_settings.h"
+#import "noshi_bot_keyboard_view.h"
+#import "noshi_dialog_picker_controller.h"
+#import "noshi_location_controller.h"
+#import "noshi_classic_chrome.h"
+#import "noshi_emoji_label.h"
+#import "noshi_remote_file.h"
+#import "noshi_session_channels.h"
+#import "noshi_theme.h"
+#import "noshi_weak_reference.h"
+
+#include "noshi_links.h"
+#include "noshi_mention.h"
+
+#define INLINE_DELAY 0.4
+#define PANEL_MAX_FRACTION 0.7
+#define CARD_WIDTH_MAX 300.0
+#define MENTION_ROWS_MAX 30
+/* the typing pauses this long before the members of a supergroup are searched for the name */
+#define MENTION_SEARCH_DELAY 0.3
+
+typedef enum { NoshiPanelNone, NoshiPanelCommands, NoshiPanelInline, NoshiPanelMention } NoshiPanelMode;
+
+/* a name looked up for inline mode: the bot, or NSNull when the name is no bot that answers queries */
+@interface NoshiInlineBot : NSObject {
+@public
+    NoshiPerson *person;
+    NoshiDialog *dialog;
+}
+@end
+
+@implementation NoshiInlineBot
+- (void)dealloc {
+    [person release];
+    [dialog release];
+    [super dealloc];
+}
+@end
+
+@interface NoshiChatBots () {
+    NoshiPerson *_bot;
+    NoshiBotInfo *_info;
+    BOOL _infoRequested;
+    NSArray *_messages;
+    BOOL _loaded;
+    BOOL _starting;
+    BOOL _autoStarted;
+
+    NoshiMarkup *_keyboard;
+    int32_t _keyboardMessageId;
+    int32_t _seenKeyboardId;
+    BOOL _keyboardOpen;
+    NoshiBotKeyboardView *_keyboardView;
+
+    NoshiSuggestionPanel *_panel;
+    NoshiPanelMode _mode;
+    NSMutableDictionary *_inlineBots;
+    NoshiInlineBot *_inlineBot;
+    NSString *_inlineQuery;
+    NSString *_nextOffset;
+    NSString *_resolvingInlineName;
+    NSUInteger _resolveGeneration;
+    NSUInteger _inlineToken;
+    BOOL _loadingMore;
+    BOOL _sendingInline;
+    NSUInteger _inlinePages;
+    long long _inlineGeoBot;
+    noshi_geo_point _inlineGeo;
+    BOOL _inlineGeoPending;
+    BOOL _inlineGeoDenied;
+    /* the members of a supergroup the server named for the name typed after an @, and which search they answer */
+    NSArray *_mentionRemote;
+    /* the inline bots the account used lately, for the names offered after an @ in a private chat or a channel; nil until the server has answered */
+    NSArray *_recentBots;
+    BOOL _recentBotsLoading;
+    NSUInteger _mentionToken;
+
+    NoshiMarkupButton *_busyButton;
+    NoshiMessageCell *_busyCell;
+    UIView *_card;
+    NSString *_startParam;
+    NSString *_cardKey;
+    BOOL _cardShown;
+    BOOL _keyboardOpenedOnce;
+}
+- (void)askInlineLocation;
+- (void)showInlineLocationNeeded;
+@end
+
+@implementation NoshiChatBots
+
+@synthesize host = _host;
+@synthesize panel = _panel;
+@synthesize card = _card;
+@synthesize startParam = _startParam;
+
+- (id)initWithSession:(NoshiSession *)session dialog:(NoshiDialog *)dialog router:(NoshiLinkRouter *)router media:(NoshiMediaCache *)media
+                 host:(id<NoshiChatBotsHost>)host {
+    self = [super init];
+    if (!self) return nil;
+    _session = [session retain];
+    _dialog = [dialog retain];
+    _router = [router retain];
+    _media = [media retain];
+    _host = host;
+    _weak = [[NoshiWeakReference referenceTo:self] retain];
+    _inlineBots = [[NSMutableDictionary alloc] init];
+    if (dialog.kind == NOSHI_DIALOG_BOT && dialog.peerKind == 1) {
+        noshi_person_row row;
+        memset(&row, 0, sizeof(row));
+        row.id = dialog.peerId;
+        row.access_hash = dialog.peerHash;
+        row.bot = 1;
+        snprintf(row.name, sizeof(row.name), "%s", dialog.title.UTF8String);
+        _bot = [[NoshiPerson alloc] initWithRow:&row];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [self teardown];
+    [_weak clear];
+    [_weak release];
+    [_session release];
+    [_dialog release];
+    [_router release];
+    [_media release];
+    [_bot release];
+    [_info release];
+    [_messages release];
+    [_keyboard release];
+    [_keyboardView release];
+    [_panel release];
+    [_inlineBots release];
+    [_mentionRemote release];
+    [_recentBots release];
+    [_inlineBot release];
+    [_resolvingInlineName release];
+    [_inlineQuery release];
+    [_nextOffset release];
+    [_busyButton release];
+    [_busyCell release];
+    [_card release];
+    [_startParam release];
+    [_cardKey release];
+    [super dealloc];
+}
+
+- (void)teardown {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
+    ++_inlineToken;
+    ++_resolveGeneration;
+    ++_mentionToken;
+}
+
+- (NoshiInputBar *)bar { return [_host botsInputBar]; }
+
+#pragma mark bot info
+
+- (void)start {
+    if (!_bot || _infoRequested) return;
+    _infoRequested = YES;
+    NoshiWeakReference *weak = _weak;
+    [_session loadBotInfoOfPerson:_bot completion:^(NoshiBotInfo *info, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        if (!info) {
+            NSLog(@"noshigram: bot info of %lld did not load: %@", bots->_dialog.peerId, errorName);
+            return;
+        }
+        [bots->_info release];
+        bots->_info = [info retain];
+        [bots infoLoaded];
+    }];
+}
+
+- (void)infoLoaded {
+    NoshiInputBar *bar = [self bar];
+    bar.menuTitle = _info.commands.count ? NSLocalizedString(@"bots.menu", nil) : nil;
+    [self refreshCard];
+    [_host botsRelayout];
+}
+
+#pragma mark state from messages
+
+/* the newest message of the bot that says something about the keyboard decides what the keyboard is; a single use keyboard
+   is gone once the person has answered it, and one the bot hid is gone for good */
+- (void)messagesChanged:(NSArray *)messages loaded:(BOOL)loaded {
+    [_messages release];
+    _messages = [messages retain];
+    _loaded = loaded;
+    [self updateKeyboard];
+    [self updateStart];
+    [self refreshCard];
+    [self autoStartIfNeeded];
+}
+
+- (void)updateKeyboard {
+    NoshiMarkup *found = nil;
+    int32_t foundId = 0;
+    for (NSInteger i = (NSInteger)_messages.count - 1; i >= 0; --i) {
+        NoshiMessage *message = [_messages objectAtIndex:(NSUInteger)i];
+        if (message.outgoing || message.service || !message.markup) continue;
+        noshi_markup_kind kind = message.markup.kind;
+        if (kind == NOSHI_MARKUP_INLINE) continue;
+        found = message.markup;
+        foundId = message.messageId;
+        break;
+    }
+    BOOL answered = NO;
+    if (found && (found.singleUse || found.kind == NOSHI_MARKUP_FORCE_REPLY)) {
+        for (NoshiMessage *message in _messages) if (message.outgoing && (message.messageId > foundId || message.messageId <= 0)) answered = YES;
+    }
+    if (found && (found.kind == NOSHI_MARKUP_HIDE || answered)) found = nil;
+    BOOL changed = (found == nil) != (_keyboard == nil) || foundId != _keyboardMessageId;
+    if (!changed && found && ![found isEqualMarkup:_keyboard]) changed = YES;
+    if (!changed) {
+        /* the page that came from the network settles what the cached one showed */
+        if (_keyboard.kind == NOSHI_MARKUP_KEYBOARD && _loaded && !_keyboardOpenedOnce) {
+            _keyboardOpenedOnce = YES;
+            [self openKeyboard];
+        }
+        return;
+    }
+    BOOL fresh = foundId > _seenKeyboardId;
+    [_keyboard release];
+    _keyboard = [found retain];
+    _keyboardMessageId = foundId;
+    if (found) _seenKeyboardId = MAX(_seenKeyboardId, foundId);
+    NoshiInputBar *bar = [self bar];
+    if (_keyboard.kind == NOSHI_MARKUP_FORCE_REPLY) {
+        bar.botKeyboardState = NoshiBotKeyboardNone;
+        bar.placeholderText = _keyboard.placeholder.length ? _keyboard.placeholder : nil;
+        [self closeKeyboard];
+        if (fresh && _loaded) [bar.textView becomeFirstResponder];
+        return;
+    }
+    bar.placeholderText = _keyboard.placeholder.length ? _keyboard.placeholder : nil;
+    if (!_keyboard) {
+        [self closeKeyboard];
+        bar.botKeyboardState = NoshiBotKeyboardNone;
+        return;
+    }
+    [self fillKeyboard];
+    /* a keyboard that has just arrived opens by itself, as the other clients do, and so does the one a chat has when it is opened; one
+       that was there already stays as the person left it */
+    if (_loaded && (fresh || !_keyboardOpenedOnce)) {
+        _keyboardOpenedOnce = YES;
+        [self openKeyboard];
+    } else {
+        bar.botKeyboardState = _keyboardOpen ? NoshiBotKeyboardOpen : NoshiBotKeyboardOffered;
+    }
+}
+
+- (NoshiBotKeyboardView *)keyboardView {
+    if (!_keyboardView) {
+        _keyboardView = [[NoshiBotKeyboardView alloc] initWithFrame:CGRectMake(0, 0, 320, 216)];
+        NoshiWeakReference *weak = _weak;
+        _keyboardView.pressHandler = ^(NoshiMarkupButton *button) {
+            NoshiChatBots *bots = weak.target;
+            if (bots) [bots pressKey:button];
+        };
+    }
+    return _keyboardView;
+}
+
+- (void)fillKeyboard {
+    NoshiBotKeyboardView *view = [self keyboardView];
+    [view setMarkup:_keyboard];
+    CGFloat width = [UIScreen mainScreen].bounds.size.width;
+    CGFloat height = [view preferredHeightForWidth:width maxHeight:[_host botsKeyboardMaxHeight]];
+    view.frame = CGRectMake(0, 0, width, MAX(height, 1));
+}
+
+- (void)openKeyboard {
+    if (!_keyboard || _keyboard.kind != NOSHI_MARKUP_KEYBOARD) return;
+    _keyboardOpen = YES;
+    [self fillKeyboard];
+    [self bar].botKeyboardState = NoshiBotKeyboardOpen;
+    [_host botsSetInputView:_keyboardView];
+}
+
+- (void)closeKeyboard {
+    if (!_keyboardOpen) return;
+    _keyboardOpen = NO;
+    [_host botsSetInputView:nil];
+}
+
+- (void)emojiPanelWillChange {
+    if (!_keyboardOpen) return;
+    _keyboardOpen = NO;
+    [self bar].botKeyboardState = NoshiBotKeyboardOffered;
+}
+
+- (void)keyboardButtonTapped {
+    if (_keyboardOpen) {
+        _keyboardOpen = NO;
+        [self bar].botKeyboardState = NoshiBotKeyboardOffered;
+        [_host botsSetInputView:nil];
+    } else {
+        [self openKeyboard];
+    }
+}
+
+- (int32_t)replyTargetForText {
+    return _keyboard.kind == NOSHI_MARKUP_FORCE_REPLY ? _keyboardMessageId : 0;
+}
+
+- (void)didSendText {
+    [self hidePanel];
+    /* a keyboard of one use goes away with the answer */
+    if (_keyboard.singleUse && _keyboardOpen) {
+        _keyboardOpen = NO;
+        [self bar].botKeyboardState = NoshiBotKeyboardNone;
+        [_host botsSetInputView:nil];
+    }
+}
+
+#pragma mark start and menu
+
+- (void)updateStart {
+    if (!_bot) return;
+    NoshiInputBar *bar = [self bar];
+    BOOL empty = _loaded && _messages.count == 0 && _bot && !_starting;
+    bar.actionTitle = empty ? NSLocalizedString(@"bots.start", nil) : nil;
+}
+
+/* a link that carried a parameter into a chat that already has a conversation starts the bot with it at once */
+- (void)autoStartIfNeeded {
+    if (!_bot || !_loaded || _autoStarted || !_startParam.length || _messages.count == 0) return;
+    _autoStarted = YES;
+    [self startWithParam:_startParam];
+}
+
+- (void)startWithParam:(NSString *)param {
+    if (!_bot || _starting) return;
+    /* messages.startBot refuses an empty parameter (START_PARAM_EMPTY), so a start with none is the "/start" message itself, which the official clients send too */
+    if (!param.length) {
+        [self bar].actionTitle = nil;
+        [_host botsSendText:@"/start" replyTo:0];
+        [_host botsRelayout];
+        return;
+    }
+    _starting = YES;
+    [self bar].actionTitle = nil;
+    NoshiWeakReference *weak = _weak;
+    [_session startBot:_bot inDialog:_dialog param:param randomId:[_host botsRandomId] completion:^(int32_t messageId, NSString *errorName) {
+        (void)messageId;
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        bots->_starting = NO;
+        if (errorName) {
+            [bots->_router showNote:[NoshiLinkRouter textForError:errorName]];
+            [bots updateStart];
+            [bots->_host botsRelayout];
+        }
+    }];
+    [_host botsRelayout];
+}
+
+- (void)actionTapped {
+    NSString *param = [[_startParam retain] autorelease];
+    [_startParam release];
+    _startParam = nil;
+    _autoStarted = YES;
+    [self startWithParam:param];
+}
+
+- (void)menuTapped {
+    if (_mode == NoshiPanelCommands) {
+        [self hidePanel];
+        return;
+    }
+    [self showCommandsMatching:@""];
+}
+
+#pragma mark description card
+
+/* the empty chat of a bot says what the bot does, in the words and with the picture the bot gave */
+- (void)refreshCard {
+    BOOL show = _bot && _loaded && _messages.count == 0 && (_info.botDescription.length || _info.picture);
+    if (!show) {
+        _card.hidden = YES;
+        _cardShown = NO;
+        return;
+    }
+    NSString *key = [NSString stringWithFormat:@"%@|%d", _info.botDescription, _info.picture != nil];
+    if (!_card || ![key isEqualToString:_cardKey]) {
+        [_card removeFromSuperview];
+        [_card release];
+        _card = [[UIView alloc] init];
+        _card.backgroundColor = NoshiColorBubbleIn();
+        _card.layer.cornerRadius = 14;
+        [_cardKey release];
+        _cardKey = [key copy];
+        UILabel *title = [[[UILabel alloc] init] autorelease];
+        title.tag = 1;
+        title.backgroundColor = [UIColor clearColor];
+        title.font = NoshiFontSemibold(16);
+        title.textColor = NoshiColorTitle();
+        title.textAlignment = NoshiTextAlignmentCenter;
+        title.text = NSLocalizedString(@"bots.card.title", nil);
+        [_card addSubview:title];
+        /* a bot's description is written by its author, with emoji the system font may lack */
+        NoshiEmojiLabel *body = [[[NoshiEmojiLabel alloc] init] autorelease];
+        body.tag = 2;
+        body.font = NoshiFontRegular(15);
+        body.textColor = NoshiColorTitle();
+        body.numberOfLines = 0;
+        body.text = _info.botDescription;
+        [_card addSubview:body];
+        UIImageView *picture = [[[UIImageView alloc] init] autorelease];
+        picture.tag = 3;
+        picture.contentMode = UIViewContentModeScaleAspectFill;
+        picture.clipsToBounds = YES;
+        picture.layer.cornerRadius = 8;
+        picture.hidden = _info.picture == nil;
+        [_card addSubview:picture];
+        NoshiRemoteFile *file = _info.picture.previewFile ? _info.picture.previewFile : _info.picture.file;
+        if (file) {
+            NoshiWeakReference *weak = _weak;
+            [_media loadImageForFile:file maxSide:600 completion:^(UIImage *image) {
+                NoshiChatBots *bots = weak.target;
+                UIImageView *view = (UIImageView *)[bots->_card viewWithTag:3];
+                if (image && view) view.image = image;
+            }];
+        }
+        [[_host botsContainerView] addSubview:_card];
+    }
+    _card.hidden = NO;
+    if (!_cardShown) {
+        _cardShown = YES;
+        [_host botsRelayout];
+    }
+}
+
+- (void)layoutCardInRect:(CGRect)rect {
+    if (!_card || _card.hidden) return;
+    CGFloat width = MIN(CARD_WIDTH_MAX, rect.size.width - 40);
+    UILabel *title = (UILabel *)[_card viewWithTag:1];
+    NoshiEmojiLabel *body = (NoshiEmojiLabel *)[_card viewWithTag:2];
+    UIImageView *picture = (UIImageView *)[_card viewWithTag:3];
+    CGFloat y = 14;
+    title.frame = CGRectMake(14, y, width - 28, 22);
+    y += 30;
+    if (!picture.hidden) {
+        CGFloat side = width - 28;
+        picture.frame = CGRectMake(14, y, side, MIN(side * 0.6, 170));
+        y += picture.frame.size.height + 10;
+    }
+    CGSize fit = [body sizeThatFits:CGSizeMake(width - 28, 1000)];
+    body.frame = CGRectMake(14, y, width - 28, MIN(fit.height, MAX(40, rect.size.height - y - 30)));
+    y += body.frame.size.height + 14;
+    _card.frame = CGRectMake(CGRectGetMidX(rect) - width / 2, CGRectGetMidY(rect) - y / 2, width, y);
+}
+
+#pragma mark panel
+
+- (NoshiSuggestionPanel *)ensurePanel {
+    if (_panel) return _panel;
+    _panel = [[NoshiSuggestionPanel alloc] initWithSession:_session media:_media];
+    NoshiWeakReference *weak = _weak;
+    _panel.pickHandler = ^(NoshiSuggestion *suggestion) {
+        NoshiChatBots *bots = weak.target;
+        if (bots) [bots pickSuggestion:suggestion];
+    };
+    _panel.moreHandler = ^{
+        NoshiChatBots *bots = weak.target;
+        if (bots) [bots loadMoreInline];
+    };
+    [[_host botsContainerView] addSubview:_panel];
+    return _panel;
+}
+
+- (void)hidePanel {
+    ++_inlineToken;
+    ++_mentionToken;
+    _mode = NoshiPanelNone;
+    [_panel removeFromSuperview];
+    [_panel release];
+    _panel = nil;
+    [_host botsRelayout];
+}
+
+- (CGFloat)panelHeightForWidth:(CGFloat)width maxHeight:(CGFloat)maxHeight {
+    if (!_panel) return 0;
+    return [_panel preferredHeightForWidth:width maxHeight:maxHeight * PANEL_MAX_FRACTION];
+}
+
+#pragma mark commands
+
+- (void)showCommandsMatching:(NSString *)prefix {
+    if (!_info.commands.count) {
+        if (_mode == NoshiPanelCommands) [self hidePanel];
+        return;
+    }
+    NSMutableArray *rows = [NSMutableArray array];
+    NSString *needle = prefix.lowercaseString;
+    for (NoshiBotCommand *command in _info.commands) {
+        if (needle.length && ![command.name.lowercaseString hasPrefix:needle]) continue;
+        [rows addObject:[[[NoshiSuggestion alloc] initWithTitle:[@"/" stringByAppendingString:command.name] subtitle:command.text media:nil webFile:nil
+                                                         payload:command] autorelease]];
+    }
+    if (!rows.count) {
+        if (_mode == NoshiPanelCommands) [self hidePanel];
+        return;
+    }
+    ++_inlineToken;
+    _mode = NoshiPanelCommands;
+    NoshiSuggestionPanel *panel = [self ensurePanel];
+    [panel setHeaderTitle:nil handler:nil];
+    [panel setLoading:NO];
+    [panel setSuggestions:rows gallery:NO];
+    [_host botsRelayout];
+}
+
+- (void)pickSuggestion:(NoshiSuggestion *)suggestion {
+    if (_mode == NoshiPanelMention) {
+        [self insertMention:suggestion.payload];
+        return;
+    }
+    if (_mode == NoshiPanelCommands) {
+        NoshiBotCommand *command = suggestion.payload;
+        NoshiInputBar *bar = [self bar];
+        [bar clear];
+        [self hidePanel];
+        [_host botsSendText:[@"/" stringByAppendingString:command.name] replyTo:0];
+        return;
+    }
+    if (_mode == NoshiPanelInline) [self sendInlineResult:suggestion.payload];
+}
+
+#pragma mark mentions
+
+/* the "@query" the caret stands at the end of in the field, with the UTF-16 range it takes there */
+- (BOOL)mentionTokenInField:(noshi_mention_token *)token range:(NSRange *)range {
+    UITextView *view = [self bar].textView;
+    NSRange selection = view.selectedRange;
+    NSString *text = view.text;
+    if (selection.length || selection.location == 0 || selection.location > text.length) return NO;
+    const char *bytes = text.UTF8String;
+    size_t caret = [[text substringToIndex:selection.location] lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    if (!bytes || !noshi_mention_scan(bytes, caret, token)) return NO;
+    NSString *before = [[[NSString alloc] initWithBytes:bytes length:token->start encoding:NSUTF8StringEncoding] autorelease];
+    if (!before || before.length >= selection.location) return NO;
+    *range = NSMakeRange(before.length, selection.location - before.length);
+    return YES;
+}
+
+/* the rows for a query: whoever has a public name (a mention is only that name in the text) and a name or public
+   name that starts with the query, public names first */
+- (NSArray *)mentionRowsMatching:(NSString *)query {
+    NSString *needle = query.lowercaseString;
+    NSMutableArray *named = [NSMutableArray array], *byName = [NSMutableArray array];
+    NSMutableSet *seen = [NSMutableSet set];
+    /* a group offers the people in it; a private chat or a channel has nobody to mention, and offers the inline bots that can be used there */
+    NSMutableArray *pool = [NSMutableArray array];
+    if (_dialog.kind == NOSHI_DIALOG_GROUP) {
+        [pool addObjectsFromArray:[_host botsMentionCandidates]];
+        [pool addObjectsFromArray:_mentionRemote];
+    } else {
+        [pool addObjectsFromArray:_recentBots];
+    }
+    for (NoshiPerson *person in pool) {
+        NSNumber *key = [NSNumber numberWithLongLong:person.userId];
+        if (!person.username.length || [seen containsObject:key]) continue;
+        [seen addObject:key];
+        if (!needle.length) {
+            [named addObject:person];
+            continue;
+        }
+        if ([person.username.lowercaseString hasPrefix:needle]) {
+            [named addObject:person];
+            continue;
+        }
+        for (NSString *word in [person.name.lowercaseString componentsSeparatedByString:@" "]) {
+            if ([word hasPrefix:needle]) {
+                [byName addObject:person];
+                break;
+            }
+        }
+    }
+    [named addObjectsFromArray:byName];
+    NSMutableArray *rows = [NSMutableArray array];
+    for (NoshiPerson *person in named) {
+        if (rows.count >= MENTION_ROWS_MAX) break;
+        [rows addObject:[[[NoshiSuggestion alloc] initWithTitle:person.name subtitle:[@"@" stringByAppendingString:person.username] media:nil webFile:nil
+                                                          payload:person] autorelease]];
+    }
+    return rows;
+}
+
+- (void)showMentionRowsMatching:(NSString *)query {
+    NSArray *rows = [self mentionRowsMatching:query];
+    if (!rows.count) {
+        if (_mode == NoshiPanelMention) [self hidePanel];
+        return;
+    }
+    ++_inlineToken;
+    _mode = NoshiPanelMention;
+    NoshiSuggestionPanel *panel = [self ensurePanel];
+    [panel setHeaderTitle:nil handler:nil];
+    [panel setLoading:NO];
+    [panel setSuggestions:rows gallery:NO];
+    [_host botsRelayout];
+}
+
+/* the bots a private chat or a channel offers after an @: asked from the server once and kept, since the list is the same for the whole life of the screen */
+- (void)loadRecentBots {
+    if (_recentBots || _recentBotsLoading) return;
+    _recentBotsLoading = YES;
+    NoshiWeakReference *weak = _weak;
+    [_session loadRecentInlineBots:^(NSArray *bots, NSString *errorName) {
+        NoshiChatBots *chatBots = weak.target;
+        if (!chatBots) return;
+        chatBots->_recentBotsLoading = NO;
+        if (!bots) {
+            NSLog(@"noshigram: the recent inline bots did not load: %@", errorName);
+            return;
+        }
+        chatBots->_recentBots = [bots retain];
+        /* the field may have moved on while the server thought */
+        noshi_mention_token current;
+        NSRange range;
+        if (![chatBots mentionTokenInField:&current range:&range]) return;
+        [chatBots showMentionRowsMatching:[NSString stringWithUTF8String:current.query]];
+    }];
+}
+
+/* YES while the caret ends a name typed after an @ in a chat that offers names, whether or not anyone matched: the people of a group, the recent inline bots of a private chat
+   or a channel */
+- (BOOL)updateMentions {
+    BOOL group = _dialog.kind == NOSHI_DIALOG_GROUP;
+    if (!group && _dialog.kind != NOSHI_DIALOG_USER && _dialog.kind != NOSHI_DIALOG_BOT && _dialog.kind != NOSHI_DIALOG_CHANNEL) return NO;
+    noshi_mention_token token;
+    NSRange range;
+    if (![self mentionTokenInField:&token range:&range]) {
+        if (_mode == NoshiPanelMention) [self hidePanel];
+        [_mentionRemote release];
+        _mentionRemote = nil;
+        return NO;
+    }
+    NSString *query = [NSString stringWithUTF8String:token.query];
+    [self showMentionRowsMatching:query];
+    if (!group) {
+        [self loadRecentBots];
+        return YES;
+    }
+    /* a supergroup knows more people than the history shows, and the server searches them */
+    if (_dialog.peerKind == 3) {
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(searchMentionMembers:) object:nil];
+        [self performSelector:@selector(searchMentionMembers:) withObject:query afterDelay:MENTION_SEARCH_DELAY];
+    }
+    return YES;
+}
+
+- (void)searchMentionMembers:(NSString *)query {
+    NSUInteger token = ++_mentionToken;
+    NoshiWeakReference *weak = _weak;
+    [_session loadMembersOfDialog:_dialog list:NoshiChannelListSubscribers query:query.length ? query : nil offset:0
+                       completion:^(NSArray *members, NSInteger total, NSString *errorName) {
+        (void)total;
+        NoshiChatBots *bots = weak.target;
+        if (!bots || token != bots->_mentionToken) return;
+        if (!members) {
+            NSLog(@"noshigram: the members to mention did not load: %@", errorName);
+            return;
+        }
+        NSMutableArray *people = [NSMutableArray arrayWithCapacity:members.count];
+        for (NoshiChannelMember *member in members) if (!member.isSelf) [people addObject:member.person];
+        [bots->_mentionRemote release];
+        bots->_mentionRemote = [people retain];
+        /* the field may have moved on while the server thought */
+        noshi_mention_token current;
+        NSRange range;
+        if (![bots mentionTokenInField:&current range:&range]) return;
+        [bots showMentionRowsMatching:[NSString stringWithUTF8String:current.query]];
+    }];
+}
+
+/* the typed "@query" becomes "@name ", with a space already after it used instead of a second one */
+- (void)insertMention:(NoshiPerson *)person {
+    noshi_mention_token token;
+    NSRange range;
+    if (!person.username.length || ![self mentionTokenInField:&token range:&range]) {
+        [self hidePanel];
+        return;
+    }
+    NSString *text = [self bar].textView.text;
+    if (NSMaxRange(range) < text.length && [text characterAtIndex:NSMaxRange(range)] == ' ') ++range.length;
+    [self hidePanel];
+    /* at the start of a message the name addresses the one who reads it, which a comma after it says; a bot's name there starts an inline query, and a comma would break it */
+    BOOL comma = range.location == 0 && !person.bot && NoshiChatFlagGet(NoshiChatFlagCommaAfterMention);
+    [[self bar] replaceRange:range withText:[NSString stringWithFormat:comma ? @"@%@, " : @"@%@ ", person.username]];
+}
+
+#pragma mark inline mode
+
+/* "@name " with the query after it; the name must have the shape of a public name */
+static BOOL NoshiInlineParse(NSString *text, NSString **name, NSString **query) {
+    char buffer[NOSHI_LINK_NAME_MAX];
+    const char *body = NULL;
+    if (!noshi_inline_address_parse(text.UTF8String, buffer, sizeof(buffer), &body)) return NO;
+    *name = [NSString stringWithUTF8String:buffer];
+    *query = [NSString stringWithUTF8String:body];
+    if (!*name || !*query) return NO;
+    return YES;
+}
+
+- (void)inputTextChanged {
+    /* a name being typed after an @ in a group lists the people who can be mentioned */
+    if ([self updateMentions]) return;
+    NSString *text = [self bar].textView.text;
+    if (_mode == NoshiPanelInline && ![text hasPrefix:@"@"]) {
+        [self hidePanel];
+    }
+    /* a slash at the start of the field in a chat with a bot lists its commands */
+    if (_bot && [text hasPrefix:@"/"] && [text rangeOfString:@" "].location == NSNotFound && [text rangeOfCharacterFromSet:[NSCharacterSet newlineCharacterSet]].location == NSNotFound) {
+        [self showCommandsMatching:[text substringFromIndex:1]];
+        return;
+    }
+    if (_mode == NoshiPanelCommands) [self hidePanel];
+    NSString *name = nil, *query = nil;
+    if (!NoshiInlineParse(text, &name, &query)) {
+        if (_mode == NoshiPanelInline) [self hidePanel];
+        return;
+    }
+    [self lookupInlineBot:name query:query];
+}
+
+- (void)lookupInlineBot:(NSString *)name query:(NSString *)query {
+    NSString *key = name.lowercaseString;
+    id known = [_inlineBots objectForKey:key];
+    if ([known isKindOfClass:[NSNull class]]) {
+        if (_mode == NoshiPanelInline) [self hidePanel];
+        return;
+    }
+    if (known) {
+        [self scheduleInline:known query:query];
+        return;
+    }
+    if ([_resolvingInlineName isEqualToString:key]) return;
+    [_resolvingInlineName release];
+    _resolvingInlineName = [key copy];
+    ++_inlineToken;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(runInline) object:nil];
+    [_inlineBot release];
+    _inlineBot = nil;
+    _mode = NoshiPanelInline;
+    NoshiSuggestionPanel *loading = [self ensurePanel];
+    [loading setHeaderTitle:nil handler:nil];
+    [loading setEmptyText:nil];
+    [loading setSuggestions:[NSArray array] gallery:NO];
+    [loading setLoading:YES];
+    [_host botsRelayout];
+    NSUInteger generation = ++_resolveGeneration;
+    NoshiWeakReference *weak = _weak;
+    [_session resolveUsername:name completion:^(NoshiDialog *dialog, NoshiPerson *person, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots || generation != bots->_resolveGeneration) return;
+        [bots->_resolvingInlineName release];
+        bots->_resolvingInlineName = nil;
+        NSString *current = nil, *currentQuery = nil;
+        BOOL matches = NoshiInlineParse([bots bar].textView.text, &current, &currentQuery) && [current.lowercaseString isEqualToString:key];
+        if (errorName) {
+            if (matches) {
+                bots->_mode = NoshiPanelInline;
+                NoshiSuggestionPanel *panel = [bots ensurePanel];
+                [panel setLoading:NO];
+                [panel setSuggestions:[NSArray array] gallery:NO];
+                [panel setHeaderTitle:nil handler:nil];
+                [panel setEmptyText:[NoshiLinkRouter textForError:errorName]];
+                [bots->_host botsRelayout];
+            }
+            return;
+        }
+        if (!person.botInline) {
+            [bots->_inlineBots setObject:[NSNull null] forKey:key];
+            if (matches && bots->_mode == NoshiPanelInline) [bots hidePanel];
+            return;
+        }
+        NoshiInlineBot *bot = [[[NoshiInlineBot alloc] init] autorelease];
+        bot->person = [person retain];
+        bot->dialog = [dialog retain];
+        [bots->_inlineBots setObject:bot forKey:key];
+        if (matches)
+            [bots scheduleInline:bot query:currentQuery];
+    }];
+}
+
+- (void)scheduleInline:(NoshiInlineBot *)bot query:(NSString *)query {
+    BOOL sameBot = bot == _inlineBot;
+    if (_inlineGeoBot != bot->person.userId) {
+        _inlineGeoBot = bot->person.userId;
+        memset(&_inlineGeo, 0, sizeof(_inlineGeo));
+        _inlineGeoPending = NO;
+        _inlineGeoDenied = NO;
+    }
+    [_inlineBot release];
+    _inlineBot = [bot retain];
+    if (sameBot && [query isEqualToString:_inlineQuery] && _mode == NoshiPanelInline) return;
+    [_inlineQuery release];
+    _inlineQuery = [query copy];
+    ++_inlineToken;
+    _mode = NoshiPanelInline;
+    NoshiSuggestionPanel *panel = [self ensurePanel];
+    [panel setLoading:YES];
+    [panel setEmptyText:nil];
+    [panel setHeaderTitle:nil handler:nil];
+    [panel setSuggestions:[NSArray array] gallery:NO];
+    [_host botsRelayout];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(runInline) object:nil];
+    [self performSelector:@selector(runInline) withObject:nil afterDelay:INLINE_DELAY];
+}
+
+- (void)runInline {
+    if (_mode != NoshiPanelInline || !_inlineBot) return;
+    if (_inlineBot->person.botInlineGeo && !_inlineGeo.valid) {
+        [self askInlineLocation];
+        return;
+    }
+    NSUInteger token = _inlineToken;
+    NoshiWeakReference *weak = _weak;
+    [_nextOffset release];
+    _nextOffset = nil;
+    _loadingMore = NO;
+    _inlinePages = 0;
+    [_session searchInline:_inlineQuery bot:_inlineBot->person inDialog:_dialog offset:@"" location:_inlineGeo completion:^(NoshiInlinePage *page, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots || token != bots->_inlineToken || bots->_mode != NoshiPanelInline) return;
+        NoshiSuggestionPanel *panel = bots->_panel;
+        [panel setLoading:NO];
+        if (!page) {
+            [panel setEmptyText:[NoshiLinkRouter textForError:errorName]];
+            [bots->_host botsRelayout];
+            return;
+        }
+        bots->_inlinePages = 1;
+        bots->_nextOffset = page.nextOffset.length ? [page.nextOffset copy] : nil;
+        [panel setSuggestions:[bots suggestionsOfPage:page] gallery:page.gallery];
+        [panel setEmptyText:page.results.count ? nil : NSLocalizedString(@"bots.inline.empty", nil)];
+        [bots configureInlineHeader:page];
+        [bots->_host botsRelayout];
+    }];
+}
+
+- (void)showInlineLocationNeeded {
+    [_panel setLoading:NO];
+    [_panel setEmptyText:NSLocalizedString(@"bots.inline.location.needed", nil)];
+    NoshiWeakReference *weak = _weak;
+    [_panel setHeaderTitle:NSLocalizedString(@"bots.inline.location.choose", nil) handler:^{
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        bots->_inlineGeoDenied = NO;
+        [bots askInlineLocation];
+    }];
+    [_host botsRelayout];
+}
+
+- (void)askInlineLocation {
+    if (_inlineGeoPending || !_inlineBot || !_inlineBot->person.botInlineGeo) return;
+    if (_inlineGeoDenied) { [self showInlineLocationNeeded]; return; }
+    _inlineGeoPending = YES;
+    long long botId = _inlineGeoBot;
+    NSString *prompt = [NSString stringWithFormat:NSLocalizedString(@"bots.inline.location.ask", nil), _inlineBot->person.name];
+    NoshiWeakReference *weak = _weak;
+    NoshiShowAlert(nil, prompt, [NSArray arrayWithObjects:NSLocalizedString(@"picker.cancel", nil), NSLocalizedString(@"bots.inline.location.choose", nil), nil], 0, NO, ^(NSInteger index, NSString *text) {
+        (void)text;
+        NoshiChatBots *bots = weak.target;
+        if (!bots || bots->_inlineGeoBot != botId) return;
+        if (bots->_mode != NoshiPanelInline) { bots->_inlineGeoPending = NO; return; }
+        if (index != 1) {
+            bots->_inlineGeoPending = NO;
+            bots->_inlineGeoDenied = YES;
+            [bots showInlineLocationNeeded];
+            return;
+        }
+        UIViewController *anchor = bots->_router.anchor;
+        if (!anchor || !anchor.view.window || anchor.presentedViewController) {
+            bots->_inlineGeoPending = NO;
+            bots->_inlineGeoDenied = YES;
+            [bots showInlineLocationNeeded];
+            return;
+        }
+        noshi_geo_point empty;
+        memset(&empty, 0, sizeof(empty));
+        NoshiLocationController *picker = [[[NoshiLocationController alloc] initWithSession:bots->_session dialog:bots->_dialog location:empty selection:^(noshi_geo_point point) {
+            NoshiChatBots *again = weak.target;
+            if (!again || again->_inlineGeoBot != botId) return;
+            again->_inlineGeoPending = NO;
+            again->_inlineGeo = point;
+            [again->_router.anchor dismissViewControllerAnimated:YES completion:^{
+                NoshiChatBots *ready = weak.target;
+                if (ready && ready->_inlineGeoBot == botId && ready->_mode == NoshiPanelInline) [ready runInline];
+            }];
+        }] autorelease];
+        picker.locationOnly = YES;
+        picker.title = NSLocalizedString(@"bots.inline.location.choose", nil);
+        picker.closeHandler = ^{
+            NoshiChatBots *again = weak.target;
+            if (!again || again->_inlineGeoBot != botId) return;
+            again->_inlineGeoPending = NO;
+            again->_inlineGeoDenied = YES;
+            if (again->_mode == NoshiPanelInline) [again showInlineLocationNeeded];
+        };
+        UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:picker] autorelease];
+        if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+        [anchor presentViewController:navigation animated:YES completion:nil];
+    });
+}
+
+- (NSArray *)suggestionsOfPage:(NoshiInlinePage *)page {
+    NSMutableArray *rows = [NSMutableArray arrayWithCapacity:page.results.count];
+    for (NoshiInlineResult *result in page.results) {
+        NSString *title = result.title.length ? result.title : nil;
+        if (!title) {
+            switch (result.kind) {
+            case NOSHI_INLINE_PHOTO: title = NSLocalizedString(@"bots.inline.photo", nil); break;
+            case NOSHI_INLINE_GIF: title = NSLocalizedString(@"bots.inline.gif", nil); break;
+            case NOSHI_INLINE_STICKER: title = NSLocalizedString(@"bots.inline.sticker", nil); break;
+            default: title = result.subtitle.length ? result.subtitle : @"-"; break;
+            }
+        }
+        NSString *subtitle = result.title.length ? result.subtitle : nil;
+        [rows addObject:[[[NoshiSuggestion alloc] initWithTitle:title subtitle:subtitle media:result.media webFile:result.thumb payload:result] autorelease]];
+    }
+    return rows;
+}
+
+/* the bot's own button above the results: connect */
+- (void)configureInlineHeader:(NoshiInlinePage *)page {
+    NoshiWeakReference *weak = _weak;
+    NoshiPerson *person = _inlineBot->person;
+    NoshiDialog *dialog = _inlineBot->dialog;
+    if (page.switchText.length) {
+        NSString *param = page.switchParam;
+        [_panel setHeaderTitle:page.switchText handler:^{
+            NoshiChatBots *bots = weak.target;
+            if (!bots) return;
+            [bots hidePanel];
+            [[bots bar] clear];
+            [bots->_router openDialog:dialog person:person draft:nil startParam:param.length ? param : @""];
+        }];
+    } else if (page.webText.length) {
+        [_panel setHeaderTitle:page.webText handler:^{
+            NoshiChatBots *bots = weak.target;
+            if (bots) [bots->_router showNote:NSLocalizedString(@"bots.inline.webapp.unsupported", nil)];
+        }];
+    } else {
+        [_panel setHeaderTitle:nil handler:nil];
+    }
+}
+
+- (void)loadMoreInline {
+    if (_mode != NoshiPanelInline || _loadingMore || !_nextOffset.length || !_inlineBot || _inlinePages >= 20) return;
+    _loadingMore = YES;
+    NSUInteger token = _inlineToken;
+    NSString *requestedOffset = [[_nextOffset copy] autorelease];
+    NoshiWeakReference *weak = _weak;
+    [_session searchInline:_inlineQuery bot:_inlineBot->person inDialog:_dialog offset:_nextOffset location:_inlineGeo completion:^(NoshiInlinePage *page, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots || token != bots->_inlineToken) return;
+        bots->_loadingMore = NO;
+        if (!page) {
+            NSLog(@"noshigram: next inline page not loaded: %@", errorName);
+            [bots->_nextOffset release];
+            bots->_nextOffset = nil;
+            return;
+        }
+        [bots->_nextOffset release];
+        bots->_nextOffset = page.results.count && page.nextOffset.length && ![page.nextOffset isEqualToString:requestedOffset] ? [page.nextOffset copy] : nil;
+        ++bots->_inlinePages;
+        [bots->_panel appendSuggestions:[bots suggestionsOfPage:page]];
+        [bots->_host botsRelayout];
+    }];
+}
+
+- (void)sendInlineResult:(NoshiInlineResult *)result {
+    if (_sendingInline || !result.resultId.length) return;
+    if (![_host botsCanSendInline]) {
+        [_router showNote:NSLocalizedString(@"bots.inline.cannot_send", nil)];
+        return;
+    }
+    long long queryId = result.queryId;
+    int32_t replyId = [_host botsInlineReplyId];
+    NSUInteger token = _inlineToken;
+    NSString *draft = [[self bar].textView.text copy];
+    _sendingInline = YES;
+    [_panel setLoading:YES];
+    NoshiWeakReference *weak = _weak;
+    [_session sendInlineResult:result queryId:queryId toDialog:_dialog randomId:[_host botsRandomId] replyTo:replyId completion:^(int32_t messageId, NSString *errorName) {
+        (void)messageId;
+        NoshiChatBots *bots = weak.target;
+        if (bots) {
+            bots->_sendingInline = NO;
+            if (token == bots->_inlineToken) [bots->_panel setLoading:NO];
+            if (errorName) [bots->_router showNote:[NoshiLinkRouter textForError:errorName]];
+            else if ([[bots bar].textView.text isEqualToString:draft]) {
+                [[bots bar] clear];
+                [bots hidePanel];
+                [bots->_host botsInlineDidSendReply:replyId];
+            }
+        }
+        [draft release];
+    }];
+}
+
+#pragma mark keys of the bot's keyboard
+
+- (NoshiPerson *)senderBotOfMessage:(NoshiMessage *)message {
+    if (_bot) return _bot;
+    NoshiPerson *person = [_host botsPersonForUserId:message.viaBotId ? message.viaBotId : message.fromId];
+    return person.bot ? person : nil;
+}
+
+- (void)pressKey:(NoshiMarkupButton *)button {
+    NoshiWeakReference *weak = _weak;
+    switch (button.kind) {
+    case NOSHI_BUTTON_TEXT:
+        [_host botsSendText:button.text replyTo:_keyboard.selective ? _keyboardMessageId : 0];
+        break;
+    case NOSHI_BUTTON_REQUEST_PHONE:
+        NoshiConfirm(nil, NSLocalizedString(@"bots.phone.ask", nil), NSLocalizedString(@"bots.share", nil), ^{
+            NoshiChatBots *bots = weak.target;
+            if (bots) [bots sharePhone];
+        });
+        return;
+    case NOSHI_BUTTON_REQUEST_GEO:
+        NoshiConfirm(nil, NSLocalizedString(@"bots.location.ask", nil), NSLocalizedString(@"bots.share", nil), ^{
+            NoshiChatBots *bots = weak.target;
+            if (bots) [bots->_host botsRequestLocation];
+        });
+        return;
+    case NOSHI_BUTTON_REQUEST_POLL:
+        [_router showNote:NSLocalizedString(@"bots.poll.unsupported", nil)];
+        return;
+    case NOSHI_BUTTON_REQUEST_PEER:
+        [self pickPeerForButton:button];
+        return;
+    default:
+        return;
+    }
+    if (_keyboard.singleUse) [self didSendText];
+}
+
+- (void)sharePhone {
+    NoshiWeakReference *weak = _weak;
+    [_session loadSelf:^(NSArray *items, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        NoshiPerson *me = (items.count ? [items objectAtIndex:0] : nil);
+        if (!me || !me.phone.length) {
+            [bots->_router showNote:[NoshiLinkRouter textForError:errorName ? errorName : @"INTERNAL"]];
+            return;
+        }
+        NSString *phone = [me.phone hasPrefix:@"+"] ? me.phone : [@"+" stringByAppendingString:me.phone];
+        [bots->_session sendContactPhone:phone name:me.name toDialog:bots->_dialog randomId:[bots->_host botsRandomId] completion:^(int32_t messageId, NSString *sendError) {
+            (void)messageId;
+            NoshiChatBots *again = weak.target;
+            if (again && sendError) [again->_router showNote:[NoshiLinkRouter textForError:sendError]];
+        }];
+    }];
+}
+
+- (void)pickPeerForButton:(NoshiMarkupButton *)button {
+    noshi_markup_button row = button.row;
+    if (row.choice == NOSHI_CHOICE_CREATE_BOT) {
+        [_router showNote:NSLocalizedString(@"bots.peer.unsupported", nil)];
+        return;
+    }
+    NoshiWeakReference *weak = _weak;
+    int32_t messageId = _keyboardMessageId;
+    [_router pickDialogsWithFilter:^BOOL(NoshiDialog *dialog) {
+        switch (row.choice) {
+        case NOSHI_CHOICE_USER:
+            if (dialog.kind != NOSHI_DIALOG_USER && dialog.kind != NOSHI_DIALOG_BOT) return NO;
+            if (dialog.saved) return NO;
+            if (row.want_bot == NOSHI_WANT_YES && dialog.kind != NOSHI_DIALOG_BOT) return NO;
+            if (row.want_bot == NOSHI_WANT_NO && dialog.kind == NOSHI_DIALOG_BOT) return NO;
+            return YES;
+        case NOSHI_CHOICE_GROUP: return dialog.kind == NOSHI_DIALOG_GROUP;
+        case NOSHI_CHOICE_CHANNEL: return dialog.kind == NOSHI_DIALOG_CHANNEL;
+        default: return NO;
+        }
+    } limit:row.max_quantity completion:^(NSArray *dialogs) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots || !dialogs.count) return;
+        [bots->_session sendRequestedDialogs:dialogs buttonId:row.button_id ofMessage:messageId inDialog:bots->_dialog completion:^(NSString *errorName) {
+            NoshiChatBots *again = weak.target;
+            if (again && errorName) [again->_router showNote:[NoshiLinkRouter textForError:errorName]];
+        }];
+    } cancelled:nil];
+}
+
+#pragma mark buttons under messages
+
+- (void)setBusy:(NoshiMarkupButton *)button cell:(NoshiMessageCell *)cell {
+    [self clearBusy];
+    _busyButton = [button retain];
+    _busyCell = [cell retain];
+    [cell setBusyMarkupButton:button];
+}
+
+- (void)clearBusy {
+    [_busyCell setBusyMarkupButton:nil];
+    [_busyButton release];
+    _busyButton = nil;
+    [_busyCell release];
+    _busyCell = nil;
+}
+
+- (void)pressButton:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message cell:(NoshiMessageCell *)cell {
+    NoshiWeakReference *weak = _weak;
+    switch (button.kind) {
+    case NOSHI_BUTTON_CALLBACK:
+    case NOSHI_BUTTON_GAME:
+        [self sendCallback:button ofMessage:message cell:cell password:nil];
+        break;
+    case NOSHI_BUTTON_URL:
+        [_router openLink:button.argument];
+        break;
+    case NOSHI_BUTTON_URL_AUTH:
+        [self signInWithButton:button ofMessage:message cell:cell];
+        break;
+    case NOSHI_BUTTON_SWITCH_INLINE:
+        [self switchInlineWithButton:button ofMessage:message];
+        break;
+    case NOSHI_BUTTON_COPY:
+        [UIPasteboard generalPasteboard].string = button.argument;
+        [_router showNote:NSLocalizedString(@"bots.copied", nil)];
+        break;
+    case NOSHI_BUTTON_BUY:
+        [_router payInvoiceOfMessage:message.messageId inDialog:_dialog completion:nil];
+        break;
+    case NOSHI_BUTTON_USER_PROFILE:
+        [_router openProfileOfUser:button.row.user_id inMessage:message.messageId dialog:_dialog];
+        break;
+    default:
+        (void)weak;
+        break;
+    }
+}
+
+- (void)sendCallback:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message cell:(NoshiMessageCell *)cell password:(NSString *)password {
+    if (_busyButton) return;
+    [self setBusy:button cell:cell];
+    NoshiWeakReference *weak = _weak;
+    [_session pressButton:button ofMessage:message.messageId inDialog:_dialog password:password completion:^(NoshiCallbackAnswer *answer, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        [bots clearBusy];
+        if ([errorName isEqualToString:@"PASSWORD_REQUIRED"] || [errorName isEqualToString:@"PASSWORD_HASH_INVALID"]) {
+            if ([errorName isEqualToString:@"PASSWORD_HASH_INVALID"]) [bots->_router showNote:[NoshiLinkRouter textForError:errorName]];
+            [bots askPasswordForButton:button ofMessage:message cell:cell];
+            return;
+        }
+        if (!answer) {
+            /* a bot that does not answer a press in time is common and not worth an alert */
+            [bots->_router showNote:[NoshiLinkRouter textForError:errorName]];
+            return;
+        }
+        [bots showAnswer:answer forButton:button];
+    }];
+}
+
+- (void)askPasswordForButton:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message cell:(NoshiMessageCell *)cell {
+    NoshiWeakReference *weak = _weak;
+    NoshiShowAlert(NSLocalizedString(@"bots.password.title", nil), NSLocalizedString(@"bots.password.message", nil),
+                     [NSArray arrayWithObjects:NSLocalizedString(@"picker.cancel", nil), NSLocalizedString(@"notice.ok", nil), nil], 0, YES,
+                     ^(NSInteger index, NSString *text) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots || index != 1 || !text.length) return;
+        [bots sendCallback:button ofMessage:message cell:cell password:text];
+    });
+}
+
+- (void)showAnswer:(NoshiCallbackAnswer *)answer forButton:(NoshiMarkupButton *)button {
+    if (answer.url.length) {
+        /* a game is a page of the bot's, which the system browser shows */
+        [_router openLink:answer.url];
+        return;
+    }
+    if (!answer.message.length) return;
+    if (answer.alert) NoshiShowNotice(nil, answer.message);
+    else [_router showNote:answer.message];
+}
+
+- (void)signInWithButton:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message cell:(NoshiMessageCell *)cell {
+    if (_busyButton) return;
+    [self setBusy:button cell:cell];
+    NoshiWeakReference *weak = _weak;
+    [_session requestUrlAuthForButton:button ofMessage:message.messageId inDialog:_dialog completion:^(NoshiUrlAuth *auth, NSString *errorName) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        [bots clearBusy];
+        if (!auth) {
+            [bots->_router showNote:[NoshiLinkRouter textForError:errorName]];
+            return;
+        }
+        switch (auth.kind) {
+        case NOSHI_URL_AUTH_OPEN:
+            [bots->_router openLink:button.argument];
+            break;
+        case NOSHI_URL_AUTH_DONE:
+            [bots->_router openLink:auth.url.length ? auth.url : button.argument];
+            break;
+        case NOSHI_URL_AUTH_ASK:
+            [bots confirmSignIn:auth button:button ofMessage:message];
+            break;
+        }
+    }];
+}
+
+- (void)confirmSignIn:(NoshiUrlAuth *)auth button:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message {
+    NoshiWeakReference *weak = _weak;
+    NSString *question = [NSString stringWithFormat:NSLocalizedString(@"bots.auth.ask", nil), auth.domain, auth.botName.length ? auth.botName : @"?"];
+    void (^accept)(BOOL, NSString *) = ^(BOOL write, NSString *code) {
+        NoshiChatBots *bots = weak.target;
+        if (!bots) return;
+        [bots->_session acceptUrlAuth:auth button:button ofMessage:message.messageId inDialog:bots->_dialog writeAllowed:write code:code
+                           completion:^(NoshiUrlAuth *result, NSString *errorName) {
+            NoshiChatBots *again = weak.target;
+            if (!again) return;
+            if (!result) {
+                [again->_router showNote:[NoshiLinkRouter textForError:errorName]];
+                return;
+            }
+            [again->_router openLink:result.url.length ? result.url : button.argument];
+        }];
+    };
+    void (^accepted)(BOOL) = [^(BOOL write) {
+        if (!auth.codes.count) {
+            accept(write, nil);
+            return;
+        }
+        /* the site shows one of these codes and the person says which, which proves they are looking at both */
+        NoshiChoose(NSLocalizedString(@"bots.auth.code", nil), auth.codes, -1, ^(NSInteger index) { accept(write, [auth.codes objectAtIndex:(NSUInteger)index]); });
+    } copy];
+    NSMutableArray *buttons = [NSMutableArray arrayWithObjects:NSLocalizedString(@"picker.cancel", nil), NSLocalizedString(@"bots.auth.login", nil), nil];
+    if (auth.requestWrite) [buttons addObject:NSLocalizedString(@"bots.auth.login.write", nil)];
+    NoshiShowAlert(nil, question, buttons, 0, NO, ^(NSInteger index, NSString *text) {
+        (void)text;
+        if (index == 1) accepted(NO);
+        else if (index == 2) accepted(YES);
+        [accepted release];
+    });
+}
+
+- (void)switchInlineWithButton:(NoshiMarkupButton *)button ofMessage:(NoshiMessage *)message {
+    NoshiPerson *bot = [self senderBotOfMessage:message];
+    if (!bot.username.length) {
+        [_router showNote:NSLocalizedString(@"bots.error.app", nil)];
+        return;
+    }
+    NSString *draft = [NSString stringWithFormat:@"@%@ %@", bot.username, button.argument];
+    if (button.row.same_peer) {
+        [_host botsSetDraft:draft];
+        return;
+    }
+    NoshiLinkRouter *router = _router;
+    [router pickDialogWithTypes:0 completion:^(NoshiDialog *dialog) {
+        if (dialog) [router openDialog:dialog person:nil draft:draft startParam:nil];
+    }];
+}
+
+#pragma mark links in text
+
+- (BOOL)openLink:(NSString *)url {
+    static NSString *const commandPrefix = @"noshigram-command:";
+    if ([url hasPrefix:commandPrefix]) {
+        NSString *command = [url substringFromIndex:commandPrefix.length];
+        char name[40], bot[NOSHI_LINK_NAME_MAX];
+        if (noshi_bot_command_split(command.UTF8String, name, sizeof(name), bot, sizeof(bot)) == NOSHI_OK) [_host botsSendText:command replyTo:0];
+        return YES;
+    }
+    [_router openLink:url];
+    return YES;
+}
+
+@end

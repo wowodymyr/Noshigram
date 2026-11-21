@@ -1,6 +1,6 @@
 """the widgets a plugin that shows progress and embeds a cover uses: ColorStateList, RippleDrawable, TextUtils and the line limit of a TextView, and a
 cover picture cut square, shrunk and written as a jpeg with BitmapFactory, Bitmap and FileOutputStream. the real playlist_to_profile helper runs when
-EXTERIA_PLAYLIST_PLUGIN names its file"""
+NOSHI_PLAYLIST_PLUGIN names its file"""
 
 import os
 import shutil
@@ -16,7 +16,7 @@ import fakeapp  # noqa: E402
 fake = fakeapp.fake
 sys.path[:0] = [os.path.join(ROOT, "python", "shim"), os.path.join(ROOT, "third_party", "exteraless")]
 
-import exteria_host  # noqa: E402
+import noshi_host  # noqa: E402
 from android import _ui  # noqa: E402
 from extera_utils import plugin_loader  # noqa: E402
 
@@ -26,12 +26,12 @@ _saved = {}
 
 def setUpModule():
     global PLUGINS
-    PLUGINS = tempfile.mkdtemp(prefix="exteria-cover-")
+    PLUGINS = tempfile.mkdtemp(prefix="noshigram-cover-")
     _saved["dir"] = fake.plugins_dir
     _saved["cached"] = plugin_loader._plugins_dir_cached
     fake.plugins_dir = PLUGINS
     plugin_loader._plugins_dir_cached = None
-    exteria_host._elyx_libraries()
+    noshi_host._elyx_libraries()
 
 
 def tearDownModule():
@@ -113,7 +113,7 @@ class Covers(unittest.TestCase):
         fake.pictures.clear()
         fake.encoded.clear()
         fake.settings.clear()
-        self.cache = tempfile.mkdtemp(prefix="exteria-cover-files-")
+        self.cache = tempfile.mkdtemp(prefix="noshigram-cover-files-")
         self.source = os.path.join(self.cache, "cover.webp")
         self.target = os.path.join(self.cache, "cover.jpg")
         with open(self.source, "wb") as handle:
@@ -163,19 +163,19 @@ class Covers(unittest.TestCase):
             BitmapFactory.decodeFile(self.source, object())
 
 
-@unittest.skipUnless(os.environ.get("EXTERIA_PLAYLIST_PLUGIN"), "set EXTERIA_PLAYLIST_PLUGIN to the file of the plugin")
+@unittest.skipUnless(os.environ.get("NOSHI_PLAYLIST_PLUGIN"), "set NOSHI_PLAYLIST_PLUGIN to the file of the plugin")
 class RealPlugin(unittest.TestCase):
     def setUp(self):
         self.path = os.path.join(PLUGINS, "playlist_to_profile.plugin")
-        shutil.copy(os.environ["EXTERIA_PLAYLIST_PLUGIN"], self.path)
-        lib = os.environ.get("EXTERIA_PYTHON_LIB")
+        shutil.copy(os.environ["NOSHI_PLAYLIST_PLUGIN"], self.path)
+        lib = os.environ.get("NOSHI_PYTHON_LIB")
         if lib:
             sys.path.insert(0, lib)
-        self.assertTrue(exteria_host.load(self.path, "playlist_to_profile")["ok"])
-        self.cache = tempfile.mkdtemp(prefix="exteria-cover-files-")
+        self.assertTrue(noshi_host.load(self.path, "playlist_to_profile")["ok"])
+        self.cache = tempfile.mkdtemp(prefix="noshigram-cover-files-")
 
     def tearDown(self):
-        exteria_host.unload("playlist_to_profile")
+        noshi_host.unload("playlist_to_profile")
         shutil.rmtree(self.cache, ignore_errors=True)
 
     def module(self):

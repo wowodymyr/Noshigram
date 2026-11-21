@@ -1,4 +1,4 @@
-#include "exteria_tgc_call.h"
+#include "noshi_tgc_call.h"
 #include "test_util.h"
 
 #include <unistd.h>
@@ -15,7 +15,7 @@ typedef struct item {
     unsigned reflector;
     uint64_t due;
     size_t len;
-    uint8_t data[EXTERIA_TGC_SIGNAL_MAX + 64];
+    uint8_t data[NOSHI_TGC_SIGNAL_MAX + 64];
 } item;
 
 typedef struct client {
@@ -47,7 +47,7 @@ typedef struct video_rx {
 } video_rx;
 
 typedef struct world {
-    exteria_tgc_call *call[2];
+    noshi_tgc_call *call[2];
     server servers[4];
     unsigned server_count;
     item *queue;
@@ -118,7 +118,7 @@ static void on_datagram(void *c, unsigned index, const uint8_t *data, size_t len
     push(w, 0, x->agent, index, data, len, w->latency);
 }
 
-static void on_state(void *c, exteria_tgc_call_state state) {
+static void on_state(void *c, noshi_tgc_call_state state) {
     ctx *x = (ctx *)c;
     world *w = x->w;
     w->states[x->agent] = (int)state;
@@ -238,24 +238,24 @@ static void step(world *w, uint64_t ms) {
                 /* the server of the sender's reflector; the reflector index is the server index here */
                 for (s = 0; s < w->server_count; ++s) if (s == it.reflector) server_receive(w, &w->servers[s], &it);
             } else if (it.kind == 1) {
-                exteria_tgc_call_datagram(w->call[it.agent], it.reflector, it.data, it.len, w->now);
+                noshi_tgc_call_datagram(w->call[it.agent], it.reflector, it.data, it.len, w->now);
             } else {
-                exteria_tgc_call_signaling(w->call[it.agent], it.data, it.len, w->now);
+                noshi_tgc_call_signaling(w->call[it.agent], it.data, it.len, w->now);
             }
             i = 0;
         }
-        for (a = 0; a < 2; ++a) exteria_tgc_call_tick(w->call[a], w->now);
+        for (a = 0; a < 2; ++a) noshi_tgc_call_tick(w->call[a], w->now);
     }
 }
 
 static world *make_world(unsigned servers, int caller_video, unsigned dead_mask) {
     world *w = (world *)calloc(1, sizeof(*w));
-    exteria_tgc_call_config cfg[2];
-    exteria_tgc_call_events ev;
-    uint8_t key[EXTERIA_TGC_KEY_LEN];
+    noshi_tgc_call_config cfg[2];
+    noshi_tgc_call_events ev;
+    uint8_t key[NOSHI_TGC_KEY_LEN];
     unsigned s;
     int a, i;
-    for (i = 0; i < EXTERIA_TGC_KEY_LEN; ++i) key[i] = (uint8_t)(i * 13 + 5);
+    for (i = 0; i < NOSHI_TGC_KEY_LEN; ++i) key[i] = (uint8_t)(i * 13 + 5);
     w->queue = (item *)calloc(QUEUE, sizeof(item));
     w->rng = 4242;
     w->latency = 15;
@@ -274,7 +274,7 @@ static world *make_world(unsigned servers, int caller_video, unsigned dead_mask)
         w->servers[s].dead = (dead_mask >> s) & 1;
         for (i = 0; i < 12; ++i) w->servers[s].prefix[i] = (uint8_t)(0x30 + s * 20 + i);
         for (a = 0; a < 2; ++a) {
-            exteria_tgc_ice_reflector_config *r = &cfg[a].reflectors[s];
+            noshi_tgc_ice_reflector_config *r = &cfg[a].reflectors[s];
             r->server_id = (uint8_t)(s + 1);
             memcpy(r->peer_tag, w->servers[s].prefix, 12);
             r->port = 599;
@@ -297,16 +297,16 @@ static world *make_world(unsigned servers, int caller_video, unsigned dead_mask)
         ev.video = on_video;
         ev.key_frame_requested = on_key_request;
         ev.trace = on_trace;
-        CHECK_EQ_INT(exteria_tgc_call_new(&w->call[a], &cfg[a], &ev), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_new(&w->call[a], &cfg[a], &ev), NOSHI_OK);
     }
-    CHECK_EQ_INT(exteria_tgc_call_start(w->call[0], 0), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_call_start(w->call[1], 0), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_call_start(w->call[0], 0), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_call_start(w->call[1], 0), NOSHI_OK);
     return w;
 }
 
 static void free_world(world *w) {
-    exteria_tgc_call_free(w->call[0]);
-    exteria_tgc_call_free(w->call[1]);
+    noshi_tgc_call_free(w->call[0]);
+    noshi_tgc_call_free(w->call[1]);
     free(w->queue);
     free(w);
 }
@@ -331,13 +331,13 @@ static void make_frame(uint8_t *frame, size_t len, int key, uint8_t seed) {
 
 static void audio_both_ways(void) {
     world *w = make_world(1, 0, 0);
-    exteria_tgc_stream out[2], in[2];
+    noshi_tgc_stream out[2], in[2];
     uint8_t frame[80];
     int i;
     unsigned k;
     step(w, 5000);
-    CHECK_EQ_INT(w->states[0], EXTERIA_TGC_CALL_CONNECTED);
-    CHECK_EQ_INT(w->states[1], EXTERIA_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[0], NOSHI_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[1], NOSHI_TGC_CALL_CONNECTED);
     CHECK_EQ_INT(w->state_count[0], 1);
     CHECK_EQ_INT(w->state_count[1], 1);
     /* the trace tells the story of the call in order, in short lines, and says nothing a log may not */
@@ -356,18 +356,18 @@ static void audio_both_ways(void) {
     CHECK(strstr(w->trace[0], "call state 0 -> 1") != NULL);
     CHECK(strstr(w->trace[0], "pwd") == NULL && strstr(w->trace[0], "password") == NULL);
     CHECK_EQ_INT(w->long_lines, 0);
-    exteria_tgc_call_streams(w->call[0], out, in);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_AUDIO].active, 1);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_AUDIO].payload_type, EXTERIA_TGC_OPUS_PAYLOAD);
-    CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_AUDIO].payload_type, EXTERIA_TGC_OPUS_PAYLOAD + EXTERIA_TGC_CALLEE_PAYLOAD_SHIFT);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].active, 0);
-    CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 0);
+    noshi_tgc_call_streams(w->call[0], out, in);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_AUDIO].active, 1);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_AUDIO].payload_type, NOSHI_TGC_OPUS_PAYLOAD);
+    CHECK_EQ_INT(in[NOSHI_TGC_STREAM_AUDIO].payload_type, NOSHI_TGC_OPUS_PAYLOAD + NOSHI_TGC_CALLEE_PAYLOAD_SHIFT);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].active, 0);
+    CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 0);
     /* a call of 100 frames each way, 20 ms apart */
     for (i = 0; i < 100; ++i) {
         make_audio(frame, 40 + (size_t)(i % 30), (uint8_t)i);
-        CHECK_EQ_INT(exteria_tgc_call_send_audio(w->call[0], frame, 40 + (size_t)(i % 30), 960, w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_send_audio(w->call[0], frame, 40 + (size_t)(i % 30), 960, w->now), NOSHI_OK);
         make_audio(frame, 50 + (size_t)(i % 20), (uint8_t)(200 + i % 50));
-        CHECK_EQ_INT(exteria_tgc_call_send_audio(w->call[1], frame, 50 + (size_t)(i % 20), 960, w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_send_audio(w->call[1], frame, 50 + (size_t)(i % 20), 960, w->now), NOSHI_OK);
         step(w, 20);
     }
     step(w, 200);
@@ -384,19 +384,19 @@ static void audio_both_ways(void) {
     for (k = 0; k < w->audio_count[0]; ++k) CHECK_EQ_INT(w->audio[0][k].id, 200 + k % 50);
     /* the data channel is open: the mute of one side shows at the other */
     CHECK_EQ_INT(w->remote_media_events[0] > 0 && w->remote_media_events[1] > 0, 1);
-    exteria_tgc_call_set_muted(w->call[0], 1, w->now);
+    noshi_tgc_call_set_muted(w->call[0], 1, w->now);
     step(w, 300);
     CHECK_EQ_INT(w->remote_muted[1], 1);
-    exteria_tgc_call_set_muted(w->call[0], 0, w->now);
+    noshi_tgc_call_set_muted(w->call[0], 0, w->now);
     step(w, 300);
     CHECK_EQ_INT(w->remote_muted[1], 0);
     {
         int ice, dtls, sctp;
         unsigned in_n, out_n;
-        exteria_tgc_call_diagnostics(w->call[0], &ice, &dtls, &sctp, &in_n, &out_n);
-        CHECK_EQ_INT(ice, EXTERIA_TGC_ICE_CONNECTED);
-        CHECK_EQ_INT(dtls, EXTERIA_DTLS_CONNECTED);
-        CHECK_EQ_INT(sctp, EXTERIA_TGC_SCTP_ESTABLISHED);
+        noshi_tgc_call_diagnostics(w->call[0], &ice, &dtls, &sctp, &in_n, &out_n);
+        CHECK_EQ_INT(ice, NOSHI_TGC_ICE_CONNECTED);
+        CHECK_EQ_INT(dtls, NOSHI_DTLS_CONNECTED);
+        CHECK_EQ_INT(sctp, NOSHI_TGC_SCTP_ESTABLISHED);
         CHECK(in_n >= 4 && out_n >= 4);
     }
     free_world(w);
@@ -404,21 +404,21 @@ static void audio_both_ways(void) {
 
 static void video_call_with_loss_and_key_request(void) {
     world *w = make_world(1, 1, 0);
-    exteria_tgc_stream out[2], in[2];
+    noshi_tgc_stream out[2], in[2];
     uint8_t frame[70000];
     static const size_t sizes[] = {800, 3500, 14000, 60000};
     unsigned i, got = 0;
     step(w, 5000);
-    CHECK_EQ_INT(w->states[0], EXTERIA_TGC_CALL_CONNECTED);
-    exteria_tgc_call_streams(w->call[0], out, in);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].payload_type, EXTERIA_TGC_VP8_PAYLOAD);
-    exteria_tgc_call_streams(w->call[1], out, in);
-    CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 1);
+    CHECK_EQ_INT(w->states[0], NOSHI_TGC_CALL_CONNECTED);
+    noshi_tgc_call_streams(w->call[0], out, in);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].active, 1);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].payload_type, NOSHI_TGC_VP8_PAYLOAD);
+    noshi_tgc_call_streams(w->call[1], out, in);
+    CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 1);
     /* frames of several packets arrive whole, with their kind and clock, and the same bytes */
     for (i = 0; i < 4; ++i) {
         make_frame(frame, sizes[i], i == 0, (uint8_t)i);
-        CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[0], frame, sizes[i], 9000u * (i + 1), w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[0], frame, sizes[i], 9000u * (i + 1), w->now), NOSHI_OK);
         step(w, 66);
         CHECK_EQ_INT(w->video_count[1], i + 1);
         CHECK_EQ_INT(w->video[1][i].len, sizes[i]);
@@ -430,22 +430,22 @@ static void video_call_with_loss_and_key_request(void) {
     /* one packet of the next inter frame is lost: that frame is not delivered, the receiver asks for a key frame, and the sender is told */
     w->drop_big_from = 0;
     make_frame(frame, 9000, 0, 77);
-    CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[0], frame, 9000, 45000, w->now), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[0], frame, 9000, 45000, w->now), NOSHI_OK);
     step(w, 100);
     CHECK_EQ_INT(w->video_count[1], 4);
     CHECK(w->key_requests[0] >= 1);
     /* an inter frame meanwhile is held back; the key frame the sender makes on request restores the stream */
     make_frame(frame, 700, 0, 78);
-    exteria_tgc_call_send_video(w->call[0], frame, 700, 54000, w->now);
+    noshi_tgc_call_send_video(w->call[0], frame, 700, 54000, w->now);
     step(w, 100);
     CHECK_EQ_INT(w->video_count[1], 4);
     make_frame(frame, 4000, 1, 79);
-    exteria_tgc_call_send_video(w->call[0], frame, 4000, 63000, w->now);
+    noshi_tgc_call_send_video(w->call[0], frame, 4000, 63000, w->now);
     step(w, 100);
     CHECK_EQ_INT(w->video_count[1], 5);
     CHECK_EQ_INT(w->video[1][4].key, 1);
     make_frame(frame, 900, 0, 80);
-    exteria_tgc_call_send_video(w->call[0], frame, 900, 72000, w->now);
+    noshi_tgc_call_send_video(w->call[0], frame, 900, 72000, w->now);
     step(w, 100);
     CHECK_EQ_INT(w->video_count[1], 6);
     /* the decoder of the receiver can also ask for one: the sender is told, once in a while and not more often */
@@ -454,45 +454,45 @@ static void video_call_with_loss_and_key_request(void) {
         /* the loss above asked a moment ago, so the limit is first let run out */
         step(w, 500);
         before = w->key_requests[0];
-        CHECK_EQ_INT(exteria_tgc_call_request_key_frame(w->call[1], w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_request_key_frame(w->call[1], w->now), NOSHI_OK);
         step(w, 100);
         CHECK_EQ_INT(w->key_requests[0], before + 1);
-        CHECK_EQ_INT(exteria_tgc_call_request_key_frame(w->call[1], w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_request_key_frame(w->call[1], w->now), NOSHI_OK);
         step(w, 100);
         CHECK_EQ_INT(w->key_requests[0], before + 1);
         step(w, 400);
-        CHECK_EQ_INT(exteria_tgc_call_request_key_frame(w->call[1], w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_request_key_frame(w->call[1], w->now), NOSHI_OK);
         step(w, 100);
         CHECK_EQ_INT(w->key_requests[0], before + 2);
-        CHECK_EQ_INT(exteria_tgc_call_request_key_frame(w->call[0], w->now), EXTERIA_E_STATE);
-        CHECK_EQ_INT(exteria_tgc_call_request_key_frame(NULL, w->now), EXTERIA_E_ARG);
+        CHECK_EQ_INT(noshi_tgc_call_request_key_frame(w->call[0], w->now), NOSHI_E_STATE);
+        CHECK_EQ_INT(noshi_tgc_call_request_key_frame(NULL, w->now), NOSHI_E_ARG);
     }
     (void)got;
     /* the camera off: the channel goes at both ends and nothing can be sent */
-    exteria_tgc_call_set_video(w->call[0], 0, 0, w->now);
+    noshi_tgc_call_set_video(w->call[0], 0, 0, w->now);
     step(w, 500);
-    exteria_tgc_call_streams(w->call[1], out, in);
-    CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 0);
-    CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[0], frame, 900, 81000, w->now), EXTERIA_E_STATE);
+    noshi_tgc_call_streams(w->call[1], out, in);
+    CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 0);
+    CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[0], frame, 900, 81000, w->now), NOSHI_E_STATE);
     free_world(w);
 }
 
 static void video_both_sides_at_once(void) {
     world *w = make_world(1, 0, 0);
-    exteria_tgc_stream out[2], in[2];
+    noshi_tgc_stream out[2], in[2];
     uint8_t frame[1800];
     int side;
     step(w, 5000);
-    exteria_tgc_call_set_video(w->call[0], 1, 0, w->now);
-    exteria_tgc_call_set_video(w->call[1], 1, 0, w->now);
+    noshi_tgc_call_set_video(w->call[0], 1, 0, w->now);
+    noshi_tgc_call_set_video(w->call[1], 1, 0, w->now);
     step(w, 1000);
     for (side = 0; side < 2; ++side) {
-        exteria_tgc_call_streams(w->call[side], out, in);
-        CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-        CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-        CHECK_EQ_INT(w->remote_video[side], EXTERIA_TGC_VIDEO_ACTIVE);
+        noshi_tgc_call_streams(w->call[side], out, in);
+        CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].active, 1);
+        CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 1);
+        CHECK_EQ_INT(w->remote_video[side], NOSHI_TGC_VIDEO_ACTIVE);
         make_frame(frame, sizeof(frame), 1, (uint8_t)side);
-        CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[side], frame, sizeof(frame), 3000, w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[side], frame, sizeof(frame), 3000, w->now), NOSHI_OK);
     }
     step(w, 100);
     CHECK_EQ_INT(w->video_count[0], 1);
@@ -502,17 +502,17 @@ static void video_both_sides_at_once(void) {
 
 static void video_from_call_start(void) {
     world *w = make_world(1, 3, 0);
-    exteria_tgc_stream out[2], in[2];
+    noshi_tgc_stream out[2], in[2];
     uint8_t frame[1800];
     int side;
     step(w, 5000);
     for (side = 0; side < 2; ++side) {
-        exteria_tgc_call_streams(w->call[side], out, in);
-        CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-        CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-        CHECK_EQ_INT(w->remote_video[side], EXTERIA_TGC_VIDEO_ACTIVE);
+        noshi_tgc_call_streams(w->call[side], out, in);
+        CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].active, 1);
+        CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 1);
+        CHECK_EQ_INT(w->remote_video[side], NOSHI_TGC_VIDEO_ACTIVE);
         make_frame(frame, sizeof(frame), 1, (uint8_t)side);
-        CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[side], frame, sizeof(frame), 3000, w->now), EXTERIA_OK);
+        CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[side], frame, sizeof(frame), 3000, w->now), NOSHI_OK);
     }
     step(w, 100);
     CHECK_EQ_INT(w->video_count[0], 1);
@@ -522,31 +522,31 @@ static void video_from_call_start(void) {
 
 static void video_added_midcall(void) {
     world *w = make_world(1, 0, 0);
-    exteria_tgc_stream out[2], in[2];
+    noshi_tgc_stream out[2], in[2];
     uint8_t frame[2000];
     unsigned before;
     step(w, 5000);
-    CHECK_EQ_INT(w->states[0], EXTERIA_TGC_CALL_CONNECTED);
-    CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[1], frame, 500, 1, w->now), EXTERIA_E_STATE);
+    CHECK_EQ_INT(w->states[0], NOSHI_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[1], frame, 500, 1, w->now), NOSHI_E_STATE);
     before = w->streams_events[0];
     /* the called side turns its camera on: a new offer, an answer, and frames flow from it to the caller */
-    exteria_tgc_call_set_video(w->call[1], 1, 0, w->now);
+    noshi_tgc_call_set_video(w->call[1], 1, 0, w->now);
     step(w, 1000);
     CHECK(w->streams_events[0] > before);
-    exteria_tgc_call_streams(w->call[1], out, in);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-    CHECK_EQ_INT(out[EXTERIA_TGC_STREAM_VIDEO].payload_type, EXTERIA_TGC_VP8_PAYLOAD + EXTERIA_TGC_CALLEE_PAYLOAD_SHIFT);
-    exteria_tgc_call_streams(w->call[0], out, in);
-    CHECK_EQ_INT(in[EXTERIA_TGC_STREAM_VIDEO].active, 1);
-    CHECK_EQ_INT(w->remote_video[0], EXTERIA_TGC_VIDEO_ACTIVE);
+    noshi_tgc_call_streams(w->call[1], out, in);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].active, 1);
+    CHECK_EQ_INT(out[NOSHI_TGC_STREAM_VIDEO].payload_type, NOSHI_TGC_VP8_PAYLOAD + NOSHI_TGC_CALLEE_PAYLOAD_SHIFT);
+    noshi_tgc_call_streams(w->call[0], out, in);
+    CHECK_EQ_INT(in[NOSHI_TGC_STREAM_VIDEO].active, 1);
+    CHECK_EQ_INT(w->remote_video[0], NOSHI_TGC_VIDEO_ACTIVE);
     make_frame(frame, 1800, 1, 3);
-    CHECK_EQ_INT(exteria_tgc_call_send_video(w->call[1], frame, 1800, 3000, w->now), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_tgc_call_send_video(w->call[1], frame, 1800, 3000, w->now), NOSHI_OK);
     step(w, 100);
     CHECK_EQ_INT(w->video_count[0], 1);
     CHECK_EQ_INT(w->video[0][0].len, 1800);
     CHECK(w->video[0][0].sum == checksum(frame, 1800));
     /* the audio went on all the while */
-    CHECK_EQ_INT(w->states[0], EXTERIA_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[0], NOSHI_TGC_CALL_CONNECTED);
     free_world(w);
 }
 
@@ -559,13 +559,13 @@ static void dead_reflector_and_loss(void) {
     w->loss = 8;
     w->realtime = 1;
     step(w, 14000);
-    CHECK_EQ_INT(w->states[0], EXTERIA_TGC_CALL_CONNECTED);
-    CHECK_EQ_INT(w->states[1], EXTERIA_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[0], NOSHI_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[1], NOSHI_TGC_CALL_CONNECTED);
     w->loss = 0;
     w->realtime = 0;
     for (i = 0; i < 20; ++i) {
         make_audio(frame, 50, (uint8_t)i);
-        exteria_tgc_call_send_audio(w->call[0], frame, 50, 960, w->now);
+        noshi_tgc_call_send_audio(w->call[0], frame, 50, 960, w->now);
         step(w, 20);
     }
     step(w, 200);
@@ -576,74 +576,74 @@ static void dead_reflector_and_loss(void) {
 static void signaling_is_authenticated(void) {
     world *w = make_world(1, 0, 0);
     uint8_t junk[200];
-    uint8_t other_key[EXTERIA_TGC_KEY_LEN];
-    exteria_tgc_cipher stranger;
-    uint8_t sealed[EXTERIA_TGC_PACKET_MAX];
+    uint8_t other_key[NOSHI_TGC_KEY_LEN];
+    noshi_tgc_cipher stranger;
+    uint8_t sealed[NOSHI_TGC_PACKET_MAX];
     size_t n = 0;
     unsigned before_states;
     int i;
     step(w, 5000);
     before_states = w->state_count[1];
     memset(junk, 0x5A, sizeof(junk));
-    CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], junk, sizeof(junk), w->now), EXTERIA_E_SECURITY);
-    CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], junk, 10, w->now), EXTERIA_E_MALFORMED);
-    CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], NULL, 10, w->now), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], junk, sizeof(junk), w->now), NOSHI_E_SECURITY);
+    CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], junk, 10, w->now), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], NULL, 10, w->now), NOSHI_E_ARG);
     /* a message sealed with another key, even a well formed one, is refused */
-    for (i = 0; i < EXTERIA_TGC_KEY_LEN; ++i) other_key[i] = (uint8_t)(i * 3 + 1);
-    exteria_tgc_cipher_init(&stranger, other_key, 1);
-    exteria_tgc_cipher_seal(&stranger, (const uint8_t *)"{\"@type\":\"MediaState\",\"muted\":true}", 35, sealed, sizeof(sealed), &n);
-    CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], sealed, n, w->now), EXTERIA_E_SECURITY);
+    for (i = 0; i < NOSHI_TGC_KEY_LEN; ++i) other_key[i] = (uint8_t)(i * 3 + 1);
+    noshi_tgc_cipher_init(&stranger, other_key, 1);
+    noshi_tgc_cipher_seal(&stranger, (const uint8_t *)"{\"@type\":\"MediaState\",\"muted\":true}", 35, sealed, sizeof(sealed), &n);
+    CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], sealed, n, w->now), NOSHI_E_SECURITY);
     CHECK_EQ_INT(w->remote_muted[1], 0);
     CHECK_EQ_INT(w->state_count[1], before_states);
     /* a message the call itself sealed, and then replayed, is taken once */
     {
-        exteria_tgc_cipher same;
-        uint8_t key[EXTERIA_TGC_KEY_LEN];
-        for (i = 0; i < EXTERIA_TGC_KEY_LEN; ++i) key[i] = (uint8_t)(i * 13 + 5);
-        exteria_tgc_cipher_init(&same, key, 1);
+        noshi_tgc_cipher same;
+        uint8_t key[NOSHI_TGC_KEY_LEN];
+        for (i = 0; i < NOSHI_TGC_KEY_LEN; ++i) key[i] = (uint8_t)(i * 13 + 5);
+        noshi_tgc_cipher_init(&same, key, 1);
         same.sent = 5000;
-        exteria_tgc_cipher_seal(&same, (const uint8_t *)"{\"@type\":\"MediaState\",\"muted\":true}", 35, sealed, sizeof(sealed), &n);
-        CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], sealed, n, w->now), EXTERIA_OK);
+        noshi_tgc_cipher_seal(&same, (const uint8_t *)"{\"@type\":\"MediaState\",\"muted\":true}", 35, sealed, sizeof(sealed), &n);
+        CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], sealed, n, w->now), NOSHI_OK);
         CHECK_EQ_INT(w->remote_muted[1], 1);
-        CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], sealed, n, w->now), EXTERIA_E_RETRY);
+        CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], sealed, n, w->now), NOSHI_E_RETRY);
         /* well sealed but not JSON of a message, and a message of an unknown type */
-        exteria_tgc_cipher_seal(&same, (const uint8_t *)"not json at all", 15, sealed, sizeof(sealed), &n);
-        CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], sealed, n, w->now), EXTERIA_E_MALFORMED);
-        exteria_tgc_cipher_seal(&same, (const uint8_t *)"{\"@type\":\"Nope\"}", 16, sealed, sizeof(sealed), &n);
-        CHECK_EQ_INT(exteria_tgc_call_signaling(w->call[1], sealed, n, w->now), EXTERIA_E_UNSUPPORTED);
+        noshi_tgc_cipher_seal(&same, (const uint8_t *)"not json at all", 15, sealed, sizeof(sealed), &n);
+        CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], sealed, n, w->now), NOSHI_E_MALFORMED);
+        noshi_tgc_cipher_seal(&same, (const uint8_t *)"{\"@type\":\"Nope\"}", 16, sealed, sizeof(sealed), &n);
+        CHECK_EQ_INT(noshi_tgc_call_signaling(w->call[1], sealed, n, w->now), NOSHI_E_UNSUPPORTED);
     }
-    CHECK_EQ_INT(w->states[1], EXTERIA_TGC_CALL_CONNECTED);
+    CHECK_EQ_INT(w->states[1], NOSHI_TGC_CALL_CONNECTED);
     free_world(w);
 }
 
 static void arguments(void) {
-    exteria_tgc_call *c = NULL;
-    exteria_tgc_call_config cfg;
-    exteria_tgc_call_events ev;
+    noshi_tgc_call *c = NULL;
+    noshi_tgc_call_config cfg;
+    noshi_tgc_call_events ev;
     memset(&cfg, 0, sizeof(cfg));
     memset(&ev, 0, sizeof(ev));
-    CHECK_EQ_INT(exteria_tgc_call_new(&c, &cfg, &ev), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_new(&c, &cfg, &ev), NOSHI_E_ARG);
     CHECK(c == NULL);
     cfg.reflector_count = 1;
     cfg.reflectors[0].server_id = 1;
     cfg.reflectors[0].port = 599;
-    CHECK_EQ_INT(exteria_tgc_call_new(NULL, &cfg, &ev), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_call_new(&c, NULL, &ev), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_call_new(&c, &cfg, NULL), EXTERIA_E_ARG);
-    cfg.reflector_count = EXTERIA_TGC_ICE_MAX_REFLECTORS + 1;
-    CHECK_EQ_INT(exteria_tgc_call_new(&c, &cfg, &ev), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_new(NULL, &cfg, &ev), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_new(&c, NULL, &ev), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_new(&c, &cfg, NULL), NOSHI_E_ARG);
+    cfg.reflector_count = NOSHI_TGC_ICE_MAX_REFLECTORS + 1;
+    CHECK_EQ_INT(noshi_tgc_call_new(&c, &cfg, &ev), NOSHI_E_ARG);
     cfg.reflector_count = 1;
-    CHECK_EQ_INT(exteria_tgc_call_new(&c, &cfg, &ev), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_call_get_state(c), EXTERIA_TGC_CALL_CONNECTING);
-    CHECK_EQ_INT(exteria_tgc_call_send_audio(c, (const uint8_t *)"x", 1, 960, 0), EXTERIA_E_STATE);
-    CHECK_EQ_INT(exteria_tgc_call_start(c, 0), EXTERIA_OK);
-    CHECK_EQ_INT(exteria_tgc_call_start(c, 0), EXTERIA_E_STATE);
-    CHECK_EQ_INT(exteria_tgc_call_start(NULL, 0), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_tgc_call_datagram(c, 0, NULL, 0, 0), EXTERIA_E_ARG);
-    exteria_tgc_call_tick(NULL, 0);
-    exteria_tgc_call_free(c);
-    exteria_tgc_call_free(NULL);
-    CHECK_EQ_INT(exteria_tgc_call_get_state(NULL), EXTERIA_TGC_CALL_FAILED);
+    CHECK_EQ_INT(noshi_tgc_call_new(&c, &cfg, &ev), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_call_get_state(c), NOSHI_TGC_CALL_CONNECTING);
+    CHECK_EQ_INT(noshi_tgc_call_send_audio(c, (const uint8_t *)"x", 1, 960, 0), NOSHI_E_STATE);
+    CHECK_EQ_INT(noshi_tgc_call_start(c, 0), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tgc_call_start(c, 0), NOSHI_E_STATE);
+    CHECK_EQ_INT(noshi_tgc_call_start(NULL, 0), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_tgc_call_datagram(c, 0, NULL, 0, 0), NOSHI_E_ARG);
+    noshi_tgc_call_tick(NULL, 0);
+    noshi_tgc_call_free(c);
+    noshi_tgc_call_free(NULL);
+    CHECK_EQ_INT(noshi_tgc_call_get_state(NULL), NOSHI_TGC_CALL_FAILED);
 }
 
 int main(void) {

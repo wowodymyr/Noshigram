@@ -216,9 +216,9 @@ class WithMachine(unittest.TestCase):
 
 class Header(unittest.TestCase):
     def test_the_opcodes_of_the_python_side_are_the_ones_of_the_header(self):
-        with open(os.path.join(ROOT, "core", "dexnative", "exteria_dexnative.h"), encoding="utf-8") as handle:
+        with open(os.path.join(ROOT, "core", "dexnative", "noshi_dexnative.h"), encoding="utf-8") as handle:
             text = handle.read()
-        block = text[text.index("typedef enum exteria_dexnative_op {"):text.index("} exteria_dexnative_op;")]
+        block = text[text.index("typedef enum noshi_dexnative_op {"):text.index("} noshi_dexnative_op;")]
         names = re.findall(r"\bDN_([A-Z0-9_]+)\b", re.sub(r"/\*.*?\*/", "", block, flags=re.S))
         names = [name for name in names if name != "OP_COUNT"]
         self.assertEqual(native.OPS, names)

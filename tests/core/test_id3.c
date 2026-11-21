@@ -1,6 +1,6 @@
 #include <string.h>
 
-#include "exteria_id3.h"
+#include "noshi_id3.h"
 #include "test_util.h"
 
 static const uint8_t JPEG[] = {0xFF, 0xD8, 0xFF, 0xE0, 'j', 'f', 'i', 'f', 1, 2, 3};
@@ -82,7 +82,7 @@ static size_t apic(uint8_t *out, uint8_t encoding, const char *mime, uint8_t typ
 
 static void expect_cover(const tag_builder *t, size_t len) {
     size_t offset = 0, size = 0;
-    CHECK_EQ_INT(exteria_id3_cover(t->bytes, len, &offset, &size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_cover(t->bytes, len, &offset, &size), NOSHI_OK);
     CHECK_EQ_INT(size, sizeof(JPEG));
     CHECK(memcmp(t->bytes + offset, JPEG, sizeof(JPEG)) == 0);
 }
@@ -100,7 +100,7 @@ static void versions(void) {
     n = apic(body, 0, "image/jpeg", 3, latin, sizeof(latin));
     frame(&t, "APIC", 0, body, n);
     finish(&t, 20);
-    CHECK_EQ_INT(exteria_id3_tag_size(t.bytes, t.len, &tag_size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_tag_size(t.bytes, t.len, &tag_size), NOSHI_OK);
     CHECK_EQ_INT(tag_size, t.len);
     expect_cover(&t, t.len);
 
@@ -161,7 +161,7 @@ static void frame_flags(void) {
     finish(&t, 0);
     {
         size_t offset = 1, size = 1;
-        CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_E_NOTFOUND);
+        CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_E_NOTFOUND);
         CHECK_EQ_INT(offset, 0);
         CHECK_EQ_INT(size, 0);
     }
@@ -202,7 +202,7 @@ static void picture_choice(void) {
     n = apic(body, 0, "image/jpeg", 3, latin, sizeof(latin));
     frame(&t, "APIC", 0, body, n);
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_OK);
     CHECK_EQ_INT(t.bytes[offset], 0xFF);
 
     /* with no front cover the first picture is taken */
@@ -213,7 +213,7 @@ static void picture_choice(void) {
     n = apic(body, 0, "image/jpeg", 0, latin, sizeof(latin));
     frame(&t, "APIC", 0, body, n);
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_OK);
     CHECK_EQ_INT(t.bytes[offset], 0xAA);
 
     /* a link is not a picture */
@@ -221,7 +221,7 @@ static void picture_choice(void) {
     n = apic(body, 0, "-->", 3, latin, sizeof(latin));
     frame(&t, "APIC", 0, body, n);
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_E_NOTFOUND);
 }
 
 static void cut_and_broken(void) {
@@ -236,16 +236,16 @@ static void cut_and_broken(void) {
     n = apic(body, 0, "image/jpeg", 3, latin, sizeof(latin));
     frame(&t, "APIC", 0, body, n);
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_tag_size(t.bytes, 10, &tag_size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_tag_size(t.bytes, 10, &tag_size), NOSHI_OK);
     CHECK_EQ_INT(tag_size, t.len);
     /* every cut of the tag asks for more bytes, and the whole tag answers */
     for (n = 10; n < t.len; ++n) {
-        CHECK_EQ_INT(exteria_id3_cover(t.bytes, n, &offset, &size), EXTERIA_E_TRUNCATED);
+        CHECK_EQ_INT(noshi_id3_cover(t.bytes, n, &offset, &size), NOSHI_E_TRUNCATED);
         CHECK_EQ_INT(offset, 0);
         CHECK_EQ_INT(size, 0);
     }
     expect_cover(&t, t.len);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, 9, &offset, &size), EXTERIA_E_TRUNCATED);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, 9, &offset, &size), NOSHI_E_TRUNCATED);
 
     /* a frame that claims more than the tag holds */
     start(&t, 3, 0);
@@ -253,15 +253,15 @@ static void cut_and_broken(void) {
     frame(&t, "APIC", 0, body, n);
     t.bytes[14] = 0x7F;
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_E_MALFORMED);
 
     /* a tag that is all padding, and one with no frames at all */
     start(&t, 3, 0);
     finish(&t, 5);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_E_NOTFOUND);
     start(&t, 3, 0);
     finish(&t, 0);
-    CHECK_EQ_INT(exteria_id3_cover(t.bytes, t.len, &offset, &size), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_id3_cover(t.bytes, t.len, &offset, &size), NOSHI_E_NOTFOUND);
 }
 
 static void headers(void) {
@@ -269,24 +269,24 @@ static void headers(void) {
     size_t tag_size = 5, offset, size;
     uint8_t plain[10] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 0, 0};
 
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_OK);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_OK);
     CHECK_EQ_INT(tag_size, 10 + 128);
-    CHECK_EQ_INT(exteria_id3_tag_size(plain, 10, &tag_size), EXTERIA_E_NOTFOUND);
+    CHECK_EQ_INT(noshi_id3_tag_size(plain, 10, &tag_size), NOSHI_E_NOTFOUND);
     CHECK_EQ_INT(tag_size, 0);
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 9, &tag_size), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_id3_tag_size(NULL, 10, &tag_size), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, NULL), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 9, &tag_size), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_id3_tag_size(NULL, 10, &tag_size), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, NULL), NOSHI_E_ARG);
     head[8] = 0x80;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_E_MALFORMED);
     head[8] = 1;
     head[3] = 5;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_E_MALFORMED);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_E_MALFORMED);
     head[3] = 3;
     head[5] = 0x80;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_E_UNSUPPORTED);
     head[3] = 2;
     head[5] = 0x40;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_E_UNSUPPORTED);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_E_UNSUPPORTED);
     head[3] = 3;
     head[5] = 0;
     /* one mebibyte of tag and the ten bytes of its header is over the bound; the bound itself is allowed */
@@ -294,14 +294,14 @@ static void headers(void) {
     head[7] = 0x40;
     head[8] = 0;
     head[9] = 0;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_E_LIMIT);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_E_LIMIT);
     head[7] = 0x3F;
     head[8] = 0x7F;
     head[9] = 0x76;
-    CHECK_EQ_INT(exteria_id3_tag_size(head, 10, &tag_size), EXTERIA_OK);
-    CHECK_EQ_INT(tag_size, EXTERIA_ID3_TAG_MAX);
-    CHECK_EQ_INT(exteria_id3_cover(NULL, 10, &offset, &size), EXTERIA_E_ARG);
-    CHECK_EQ_INT(exteria_id3_cover(head, 10, NULL, &size), EXTERIA_E_ARG);
+    CHECK_EQ_INT(noshi_id3_tag_size(head, 10, &tag_size), NOSHI_OK);
+    CHECK_EQ_INT(tag_size, NOSHI_ID3_TAG_MAX);
+    CHECK_EQ_INT(noshi_id3_cover(NULL, 10, &offset, &size), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_id3_cover(head, 10, NULL, &size), NOSHI_E_ARG);
 }
 
 int main(void) {

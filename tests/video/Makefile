@@ -19,7 +19,7 @@ test: test-vp8 test-flac
 	ffmpeg -nostdin -v error -f lavfi -i 'color=c=red@0.5:s=64x32:r=30:d=1,format=yuva420p' -c:v libvpx-vp9 -auto-alt-ref 0 -y $(BUILD)/alpha.webm
 	ffmpeg -nostdin -v error -f lavfi -i 'color=c=blue:s=64x32:r=30:d=1' -c:v libvpx -auto-alt-ref 0 -y $(BUILD)/vp8.webm
 	ffmpeg -nostdin -v error -f lavfi -i 'color=c=blue:s=514x32:r=30:d=0.1' -c:v libvpx-vp9 -y $(BUILD)/oversize.webm
-	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(FFMPEG_FLAGS) -I../../core/video test_video_sticker.c ../../core/video/exteria_video_sticker.c $(FFMPEG_LIBS) -lm -o $(BUILD)/test_video
+	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(FFMPEG_FLAGS) -I../../core/video test_video_sticker.c ../../core/video/noshi_video_sticker.c $(FFMPEG_LIBS) -lm -o $(BUILD)/test_video
 	$(BUILD)/test_video $(BUILD)/alpha.webm $(BUILD)/vp8.webm $(BUILD)/oversize.webm
 
 test-flac:
@@ -32,7 +32,7 @@ test-flac:
 	printf 'fLaCbroken' > $(BUILD)/bad.flac
 	head -c $$(($$(wc -c < $(BUILD)/audio.flac) / 2)) $(BUILD)/audio.flac > $(BUILD)/truncated.flac
 	python3 -c 'from pathlib import Path; p=Path("$(BUILD)/audio.flac"); b=bytearray(p.read_bytes()); b[21]=(b[21]&240)|15; b[22:26]=bytes([255]*4); Path("$(BUILD)/oversize.flac").write_bytes(b)'
-	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(FFMPEG_FLAGS) $(CORE_INC) test_flac.c ../../core/video/exteria_flac.c $(FLAC_LIBS) -lm -o $(BUILD)/test_flac
+	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(FFMPEG_FLAGS) $(CORE_INC) test_flac.c ../../core/video/noshi_flac.c $(FLAC_LIBS) -lm -o $(BUILD)/test_flac
 	$(BUILD)/test_flac "$(abspath $(BUILD)/audio.flac)" "$(abspath $(BUILD)/bad.flac)" "$(abspath $(BUILD)/audio.wav)" 2 48000 "$(abspath $(BUILD)/oversize.flac)"
 	$(BUILD)/test_flac "$(abspath $(BUILD)/audio.flac)" "$(abspath $(BUILD)/truncated.flac)" "$(abspath $(BUILD)/audio.wav)" 2 48000 "$(abspath $(BUILD)/oversize.flac)"
 	$(BUILD)/test_flac "$(abspath $(BUILD)/mono.flac)" "$(abspath $(BUILD)/bad.flac)" "$(abspath $(BUILD)/audio.wav)" 1 44100 "$(abspath $(BUILD)/oversize.flac)"
@@ -43,5 +43,5 @@ test-flac:
 test-vp8:
 	@$(PKG_CONFIG) --exists vpx || { echo 'libvpx development files with VP8 are required' >&2; exit 1; }
 	@mkdir -p $(BUILD)
-	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(VPX_FLAGS) $(CORE_INC) test_vp8.c ../../core/video/exteria_vp8.c ../../core/calls/exteria_vp8_rtp.c ../../core/base/exteria_status.c $(VPX_LIBS) -lm -o $(BUILD)/test_vp8
+	$(CC) -std=c99 -Wall -Wextra -Werror -Wconversion -Wno-sign-conversion $(CFLAGS) $(VPX_FLAGS) $(CORE_INC) test_vp8.c ../../core/video/noshi_vp8.c ../../core/calls/noshi_vp8_rtp.c ../../core/base/noshi_status.c $(VPX_LIBS) -lm -o $(BUILD)/test_vp8
 	$(BUILD)/test_vp8

@@ -1054,9 +1054,9 @@ class Real(unittest.TestCase):
     """files this repository does not hold; the tests run where the paths are given"""
 
     def test_every_method_of_a_real_application_translates(self):
-        path = os.environ.get("EXTERIA_DEXVM_APK")
+        path = os.environ.get("NOSHI_DEXVM_APK")
         if not path or not os.path.exists(path):
-            self.skipTest("EXTERIA_DEXVM_APK is not set")
+            self.skipTest("NOSHI_DEXVM_APK is not set")
         with open(path, "rb") as handle:
             files = container.load_container(handle.read())
         problems = []

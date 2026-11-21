@@ -18,9 +18,9 @@
 #include "../../logging.h"
 #include "../../VoIPController.h"
 #include "../../Buffers.h"
-// local patch for exteria: the sockets go through the VPN of the app when it is wanted, see exteria_shiro_network.h
-#include "exteria_shiro_network.h"
-#include "exteria_udp.h"
+// local patch for noshigram: the sockets go through the VPN of the app when it is wanted, see noshi_shiro_network.h
+#include "noshi_shiro_network.h"
+#include "noshi_udp.h"
 
 #ifdef __ANDROID__
 #include <jni.h>
@@ -83,13 +83,13 @@ void NetworkSocketPosix::Send(NetworkPacket *packet){
 	if(protocol==PROTO_UDP && tunneled){
 		// the tunnel is IPv4 only and has no NAT64, so a v6 peer cannot be reached through it
 		IPv4Address *tunnelAddr=dynamic_cast<IPv4Address *>(packet->address);
-		unsigned char frame[EXTERIA_UDP_FRAME_HEADER+EXTERIA_UDP_MAX_PAYLOAD];
+		unsigned char frame[NOSHI_UDP_FRAME_HEADER+NOSHI_UDP_MAX_PAYLOAD];
 		size_t frameLen=0;
 		if(!tunnelAddr){
 			LOGW("dropping a packet for an IPv6 peer: the VPN carries IPv4 only");
 			return;
 		}
-		if(exteria_udp_frame_encode(ntohl(tunnelAddr->GetAddress()), packet->port, packet->data, packet->length, frame, sizeof(frame), &frameLen)!=EXTERIA_OK){
+		if(noshi_udp_frame_encode(ntohl(tunnelAddr->GetAddress()), packet->port, packet->data, packet->length, frame, sizeof(frame), &frameLen)!=NOSHI_OK){
 			LOGW("dropping a packet the VPN cannot carry, %u bytes", (unsigned int)packet->length);
 			return;
 		}
@@ -169,14 +169,14 @@ void NetworkSocketPosix::Send(NetworkPacket *packet){
 
 void NetworkSocketPosix::Receive(NetworkPacket *packet){
 	if(protocol==PROTO_UDP && tunneled){
-		unsigned char frame[EXTERIA_UDP_FRAME_HEADER+EXTERIA_UDP_MAX_PAYLOAD+1];
+		unsigned char frame[NOSHI_UDP_FRAME_HEADER+NOSHI_UDP_MAX_PAYLOAD+1];
 		const unsigned char *payload=NULL;
 		size_t payloadLen=0;
 		uint32_t peerIp=0;
 		uint16_t peerPort=0;
 		ssize_t got=recv(fd, frame, sizeof(frame), 0);
 		// an empty datagram is the tunnel checking that the socket is open
-		if(got<=0 || exteria_udp_frame_decode(frame, (size_t)got, &peerIp, &peerPort, &payload, &payloadLen)!=EXTERIA_OK || payloadLen>packet->length){
+		if(got<=0 || noshi_udp_frame_decode(frame, (size_t)got, &peerIp, &peerPort, &payload, &payloadLen)!=NOSHI_OK || payloadLen>packet->length){
 			packet->length=0;
 			return;
 		}
@@ -233,7 +233,7 @@ void NetworkSocketPosix::Open(){
 	if(protocol!=PROTO_UDP)
 		return;
 	// a VPN that is wanted and not up carries nothing, and the call does not fall back to the direct path
-	int route=ExteriaShiroNetworkRoute();
+	int route=NoshiShiroNetworkRoute();
 	if(route==2){
 		LOGE("the VPN is on and not up, not opening a UDP socket");
 		failed=true;
@@ -241,7 +241,7 @@ void NetworkSocketPosix::Open(){
 	}
 	if(route==1){
 		int tunnelFd=-1;
-		if(ExteriaShiroNetworkOpenDatagram(&tunnelFd)!=0){
+		if(NoshiShiroNetworkOpenDatagram(&tunnelFd)!=0){
 			LOGE("the VPN did not give a UDP socket");
 			failed=true;
 			return;
@@ -339,7 +339,7 @@ void NetworkSocketPosix::Connect(NetworkAddress *address, uint16_t port){
 		failed=true;
 		return;
 	}
-	int route=ExteriaShiroNetworkRoute();
+	int route=NoshiShiroNetworkRoute();
 	if(route==2 || (route==1 && !v4addr)){
 		LOGE("the VPN cannot carry this TCP connection");
 		failed=true;
@@ -349,7 +349,7 @@ void NetworkSocketPosix::Connect(NetworkAddress *address, uint16_t port){
 	if(route==1){
 		// the stream of the tunnel is a local socket that the rest of this class reads and writes with blocking calls
 		int tunnelFd=-1;
-		res=ExteriaShiroNetworkOpenStream(ntohl(v4addr->GetAddress()), port, 5000, &tunnelFd);
+		res=NoshiShiroNetworkOpenStream(ntohl(v4addr->GetAddress()), port, 5000, &tunnelFd);
 		if(res==0){
 			fd=tunnelFd;
 			tunneled=true;

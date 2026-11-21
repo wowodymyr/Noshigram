@@ -1,0 +1,150 @@
+#import <Foundation/Foundation.h>
+
+#import "noshi_media_cache.h"
+#import "noshi_message.h"
+
+/* what to call a song: its title tag, else its file name without the extension, else the word for audio; and its performer tag, empty
+   when there is none */
+NSString *NoshiTrackTitle(NoshiMedia *track);
+NSString *NoshiTrackPerformer(NoshiMedia *track);
+/* "1x", "1.5x" and "2x" */
+NSString *NoshiSpeedText(float speed);
+/* "performer - Title", or the title alone */
+NSString *NoshiTrackLine(NoshiMedia *track);
+
+/* a link named for the format inside the temporary directory that points at the cached file, which the cache names
+   by key only */
+NSURL *NoshiPlayableLink(NSString *path, NSString *extension, NSString *slot);
+
+/* the same for a video that can be large: the plain form of a fragmented file is made off the main thread, and completion gets the address (nil on failure) on the main one */
+void NoshiPlayableLinkAsync(NSString *path, NSString *extension, NSString *slot, void (^completion)(NSURL *url));
+
+/* the same, named as the file was sent: a document that goes to another app or to the files of the person keeps its own name and extension, and two documents
+   do not become file.pdf and file(1).pdf there */
+NSURL *NoshiNamedLink(NSString *path, NSString *name, NSString *slot);
+
+/* posted on the main thread when the song, the state or the load progress changes, and each half second while a song plays */
+extern NSString *const NoshiMusicPlayerDidChangeNotification;
+extern NSString *const NoshiMusicPlayerDidTickNotification;
+
+typedef enum {
+    NoshiMusicStateIdle,
+    NoshiMusicStateLoading,
+    NoshiMusicStatePlaying,
+    NoshiMusicStatePaused,
+    NoshiMusicStateFailed     /* the file did not arrive or this system cannot play its format */
+} NoshiMusicState;
+
+/* why a song is in the failed state, for the line the person reads */
+typedef enum {
+    NoshiMusicFailureNone,
+    NoshiMusicFailureDownload,    /* the file did not arrive, or the message has none */
+    NoshiMusicFailureOpen,        /* the file could not be given to the player */
+    NoshiMusicFailureAudio,       /* the system kept the sound for another app or a call */
+    NoshiMusicFailureFormat,      /* this system has no decoder for the format, or the player never got ready with it */
+    NoshiMusicFailureDamaged      /* the app's own decoder rejected the data */
+} NoshiMusicFailure;
+
+/* the player of a song that was taken out of the music player (detachPlayback) and plays on by itself until it is finished or its file ends. a plugin that
+   mixes one song into the next holds these, see noshi_plugin_music.h */
+@interface NoshiMusicGhost : NSObject
+/* the playback the player belonged to */
+@property (nonatomic, readonly) NSUInteger playbackId;
+@property (nonatomic, readonly) BOOL playing;
+@property (nonatomic, readonly) NSTimeInterval position;
+@property (nonatomic, readonly) NSTimeInterval duration;
+/* 0 to 1 */
+- (void)setVolume:(float)volume;
+/* stops the sound and lets the player and its files go; harmless a second time */
+- (void)finish;
+@end
+
+/* the one song that plays on the device; there is a single audio output, so the profile's list, its mini player
+   and the audio messages of a chat all drive this one object */
+@interface NoshiMusicPlayer : NSObject
+
++ (NoshiMusicPlayer *)sharedPlayer;
+
+@property (nonatomic, readonly) NoshiMedia *track;
+@property (nonatomic, readonly) NoshiMusicState state;
+/* the reason of the failed state, and its words in the language of the app */
+@property (nonatomic, readonly) NoshiMusicFailure failure;
+- (NSString *)failureText;
+/* the share of the file that has arrived while loading, 0 when the size is not known */
+@property (nonatomic, readonly) float loadProgress;
+/* seconds into the song, and its length (the tags' when the file does not say yet) */
+@property (nonatomic, readonly) NSTimeInterval position;
+@property (nonatomic, readonly) NSTimeInterval duration;
+/* the songs next and previous go through; the current one is among them */
+@property (nonatomic, readonly) NSArray *queue;
+@property (nonatomic, readonly) NoshiMediaCache *media;
+/* the cover of the song once it has arrived, nil before and for songs without one */
+@property (nonatomic, readonly) UIImage *cover;
+/* 1, 1.5 or 2; it applies to songs and voice notes alike and is kept between runs */
+@property (nonatomic, readonly) float speed;
+/* the next of the three speeds after the current one */
+- (void)cycleSpeed;
+
+/* the order the songs of a queue go in and what happens at the end of one, as the player of exteraless has them; they apply to songs, a queue of voice notes always goes
+   one after the other. both are kept between runs */
+typedef enum {
+    NoshiMusicRepeatOff,      /* the queue ends after its last song */
+    NoshiMusicRepeatList,     /* after the last song the first one comes again */
+    NoshiMusicRepeatSong      /* the song that ends plays again */
+} NoshiMusicRepeat;
+@property (nonatomic, readonly) BOOL shuffle;
+@property (nonatomic, readonly) NoshiMusicRepeat repeatMode;
+- (void)toggleShuffle;
+/* off, the list, the song, and off again */
+- (void)cycleRepeat;
+
+/* starts track, and queue (which should contain it) is what next and previous walk through; a queue without the
+   track plays it alone */
+- (void)playTrack:(NoshiMedia *)track queue:(NSArray *)queue media:(NoshiMediaCache *)media;
+- (BOOL)isCurrentTrack:(NoshiMedia *)track;
+/* asked when a voice note ends, with that note: YES means the chat started something else after it (a video message), so the player stops and does not walk its
+   own queue; NO leaves the next voice note to the player. set by the chat that started the note, nil for other owners of the player */
+@property (nonatomic, copy) BOOL (^voiceEndHandler)(NoshiMedia *track);
+/* pauses a song that plays and does nothing for any other state, for a video that takes the speaker */
+- (void)pause;
+/* the pauses of the chat settings: a video or a video message that starts pauses the song when "pause music on
+   media" is on */
+- (void)pauseForMedia;
+- (void)pauseForRecording;
+- (void)resumeAfterRecording;
+/* pauses a playing song and resumes a paused one; a failed one is tried again */
+- (void)togglePause;
+- (void)next;
+- (void)previous;
+- (void)playQueueTrackAtIndex:(NSUInteger)index;
+/* the song and the queue are forgotten and the audio session is let go */
+- (void)stop;
+/* fraction of the song, 0 to 1 */
+- (void)seekToFraction:(float)fraction;
+
+/* what a plugin that mixes songs needs. every song that starts is a playback with its own number, from the moment it starts, before its file has arrived; 0 while
+   nothing plays */
+@property (nonatomic, readonly) NSUInteger playbackId;
+/* 0 to 1 for the playback that is current. a song starts at 1, and a pause that ends sets it back to 1; while a start is being routed through a plugin the song is
+   silent until the plugin has set its volume, so a fade in never begins with a blip at full volume */
+@property (nonatomic, assign) float volume;
+/* the index in queue of the song that is current, and the order the songs are walked in (the queue order, or the shuffled one): the position of the current song in
+   that walk, the queue index at a position, and the queue index next would start (NSNotFound at an end that repeat does not carry over) */
+@property (nonatomic, readonly) NSUInteger queueIndex;
+- (NSUInteger)playPositionOfCurrent;
+- (NSUInteger)queueIndexAtPlayPosition:(NSUInteger)position;
+- (NSUInteger)nextQueueIndex;
+/* takes the player of the current song out, so it plays on without the music player knowing; nil when the song has no player yet. the music player has no
+   player until the next song starts */
+- (NoshiMusicGhost *)detachPlayback;
+/* lets the player of the current song go, as starting another song does first */
+- (void)releaseCurrentPlayer;
+/* starts and pauses without asking the routes below, for the plugin that was asked */
+- (void)startQueueIndex:(NSUInteger)index;
+- (void)pauseWithoutRoute;
+/* asked before a song starts (the queue index) and before a playing song is paused; YES means the plugin did it, and the music player leaves it. set by
+   noshi_plugin_music.m, nil otherwise */
+@property (nonatomic, copy) BOOL (^startRoute)(NSUInteger index);
+@property (nonatomic, copy) BOOL (^pauseRoute)(void);
+
+@end

@@ -1,0 +1,39 @@
+#import "noshi_emoji_title_button.h"
+
+#import "noshi_theme.h"
+
+@implementation NoshiEmojiTitleButton
+
+- (id)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+    _face = [[NoshiEmojiLabel alloc] init];
+    _face.textAlignment = NoshiTextAlignmentCenter;
+    [self addSubview:_face];
+    return self;
+}
+
+- (void)dealloc {
+    [_face release];
+    [super dealloc];
+}
+
+- (void)setFaceText:(NSString *)text font:(UIFont *)font color:(UIColor *)color {
+    _face.text = text;
+    _face.font = font;
+    _face.textColor = color;
+    self.accessibilityLabel = text;
+    [self setNeedsLayout];
+}
+
+- (void)setFaceHidden:(BOOL)hidden {
+    _face.hidden = hidden;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    _face.frame = UIEdgeInsetsInsetRect(self.bounds, self.contentEdgeInsets);
+    [self bringSubviewToFront:_face];
+}
+
+@end
