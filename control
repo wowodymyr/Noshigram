@@ -1,6 +1,6 @@
 Package: com.noshigram.app
 Name: Noshigram
-Version: 1.0.0
+Version: 1.0.0-pizdecbeta
 Architecture: iphoneos-arm
 Description: no shit telegram: a native client for jailbroken iOS 5+ (armv7 + arm64), forked from exteria
 Maintainer: wowodymyr

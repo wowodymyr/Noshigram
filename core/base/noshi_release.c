@@ -26,8 +26,8 @@ static noshi_status parse_version(const char *text, release_version *out) {
     } while (1);
     if (count < 2) return NOSHI_E_MALFORMED;
     if (!*p || strcmp(p, "-stable") == 0) out->stable = 1;
-    /* the builds that come before a stable one carry -canary or -nightly, and rank the same: below the stable build of the same number */
-    else if (strcmp(p, "-canary") != 0 && strcmp(p, "-nightly") != 0) return NOSHI_E_UNSUPPORTED;
+    /* the builds that come before a stable one carry -canary, -nightly or -pizdecbeta, and rank the same: below the stable build of the same number */
+    else if (strcmp(p, "-canary") != 0 && strcmp(p, "-nightly") != 0 && strcmp(p, "-pizdecbeta") != 0) return NOSHI_E_UNSUPPORTED;
     return NOSHI_OK;
 }
 
