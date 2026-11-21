@@ -1,6 +1,6 @@
 # Noshigram
 
-Telegram client for jailbroken iPhones and iPads on iOS 5 and newer (armv7 and arm64 in one binary), with the look of Telegram for iOS 6 and 7.
+Telegram client for jailbroken iPhones and iPads on iOS 7 and newer (armv7 and arm64 in one binary), in the spirit of Telegram for iOS of the 2014 to 2018 years.
 
 Noshigram is a fork of [exteria](https://github.com/sqmrak/exteria) by sqmrak. Removed from it:
 
@@ -15,7 +15,7 @@ Noshigram is a fork of [exteria](https://github.com/sqmrak/exteria) by sqmrak. R
 
 ## Build
 
-Needs [Theos](https://theos.dev) with the iPhoneOS14.5 and iPhoneOS9.3 SDKs in `$THEOS/sdks`.
+Needs [Theos](https://theos.dev) with the iPhoneOS14.5 SDK in `$THEOS/sdks` and a current clang (`clang-21` or `clang`) on the host for OpenSSL, which the clang 11 of the Theos toolchain miscompiles for armv7.
 
 ```bash
 export THEOS=~/theos

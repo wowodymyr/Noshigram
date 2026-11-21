@@ -1,5 +1,5 @@
 /* the atomic library calls that clang emits for 64 bit and odd sized atomics on armv7 and that compiler-rt would give; openssl 3 needs
-   them, the ios 5 runtime does not have them, and the theos toolchain links no compiler-rt. one lock serves them all, as the locked
+   them, the armv7 runtime of ios 7 does not have them, and the theos toolchain links no compiler-rt. one lock serves them all, as the locked
    implementation of compiler-rt does; arm64 and the host builds have the real ones */
 
 #if defined(__arm__) && defined(__APPLE__)

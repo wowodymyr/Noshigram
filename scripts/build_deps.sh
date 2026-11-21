@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fetches and builds the static libraries the app links: openssl, libvpx and ffmpeg, for armv7 (ios 5) and arm64 (ios 7)
+# fetches and builds the static libraries the app links: openssl, libvpx and ffmpeg, for armv7 and arm64, both from ios 7
 # output: deps/<slice>/{include,lib}, which the theos makefile reads
 set -euo pipefail
 
@@ -29,7 +29,7 @@ fetch "https://github.com/webmproject/libvpx/archive/refs/tags/v$VPX_VER.tar.gz"
 fetch "https://ffmpeg.org/releases/ffmpeg-$FFMPEG_VER.tar.gz" "ffmpeg-$FFMPEG_VER"
 
 for slice in ${NOSHI_SLICES:-armv7 arm64}; do
-    if [[ "$slice" == armv7 ]]; then minimum=5.0; arch=arm; cpu=armv7; ossl=ios-cross;
+    if [[ "$slice" == armv7 ]]; then minimum=7.0; arch=arm; cpu=armv7; ossl=ios-cross;
     else minimum=7.0; arch=aarch64; cpu=generic; ossl=ios64-cross; fi
     prefix="$OUT/$slice"
     flags="-target $slice-apple-ios$minimum -isysroot $SDK -O2 -fPIC -B$TC"

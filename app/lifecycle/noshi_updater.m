@@ -9,7 +9,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#import "noshi_system_notifications.h"
 #include "noshi_crypto.h"
 #include "noshi_https.h"
 #include "noshi_release.h"
@@ -355,11 +354,7 @@ static void refresh_home_screen(void) {
         [self setInstallFraction:DOWNLOAD_SHARE];
         status = noshi_update_apply(path, [[NSBundle mainBundle] bundlePath].fileSystemRepresentation, APP_FOLDER, plistExecutable.UTF8String, install_progress, self);
         if (status != NOSHI_OK) NSLog(@"noshigram: update installation failed: %s", noshi_status_name(status));
-        if (status == NOSHI_OK) {
-            /* the new Info.plist comes from the ipa and has no internal tag, so ios 5 and 6 would stop giving the app banners; the tag goes back before the cache is rebuilt */
-            if (NoshiSystemNotificationsRun("on") != 0) NSLog(@"noshigram: the notification setup for /Applications failed after the update, banners will not show on ios 5 and 6");
-            refresh_home_screen();
-        }
+        if (status == NOSHI_OK) refresh_home_screen();
     }
     unlink(path);
     return status;

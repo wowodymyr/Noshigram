@@ -147,7 +147,7 @@ ANIMATIONS = {
 
 # stem, scales, portrait size in points, first os that reads the plist entry, orientations
 LAUNCH_IMAGES = [
-    ("Default", (1, 2), 320, 480, "5.0", ("Portrait",)),
+    ("Default", (1, 2), 320, 480, "7.0", ("Portrait",)),
     ("Default-568h", (2,), 320, 568, "7.0", ("Portrait",)),
     ("Default-667h", (2,), 375, 667, "8.0", ("Portrait",)),
     ("Default-736h", (3,), 414, 736, "8.0", ("Portrait",)),
@@ -160,8 +160,8 @@ LAUNCH_IMAGES = [
     ("Default-926h", (3,), 428, 926, "11.0", ("Portrait",)),
     ("Default-932h", (3,), 430, 932, "11.0", ("Portrait",)),
     ("Default-956h", (3,), 440, 956, "11.0", ("Portrait",)),
-    ("Default-Portrait", (1, 2), 768, 1024, "5.0", ("Portrait",)),
-    ("Default-Landscape", (1, 2), 768, 1024, "5.0", ("Landscape",)),
+    ("Default-Portrait", (1, 2), 768, 1024, "7.0", ("Portrait",)),
+    ("Default-Landscape", (1, 2), 768, 1024, "7.0", ("Landscape",)),
 ]
 for _stem, _w, _h in (("1080h", 810, 1080), ("1112h", 834, 1112), ("1133h", 744, 1133),
                       ("1180h", 820, 1180), ("1194h", 834, 1194), ("1210h", 834, 1210), ("1366h", 1024, 1366),

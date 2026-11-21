@@ -5,7 +5,8 @@
 # scripts/build_deps.sh in deps/<slice>, and NOSHI_API_ID / NOSHI_API_HASH in the environment
 # (or in local/credentials.env)
 
-TARGET := iphone:clang:14.5:5.0
+# ios 7 and later, on armv7 (iphone 4s, 5, 5c, ipad 2 to 4, ipad mini) and arm64 devices alike
+TARGET := iphone:clang:14.5:7.0
 # release flags by default: a theos debug build defines DEBUG, which turns on the self checks of rlottie
 DEBUG ?= 0
 ARCHS ?= armv7 arm64
@@ -14,8 +15,6 @@ INSTALL_TARGET_PROCESSES = Noshigram
 -include local/credentials.env
 
 DEPS ?= $(CURDIR)/deps
-# the 14.5 sdk dropped the ios 5 start file, the 9.3 sdk of theos/sdks still has it
-CRT_V7 ?= $(THEOS)/sdks/iPhoneOS9.3.sdk/usr/lib/crt1.3.1.o
 
 include $(THEOS)/makefiles/common.mk
 
@@ -122,13 +121,6 @@ Noshigram_LDFLAGS = $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libssl.a $(DEPS)/$(THEOS_C
     $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libvpx.a -Wl,-dead_strip
 Noshigram_RESOURCE_DIRS = build/bundle
 Noshigram_CODESIGN_FLAGS = -Spackaging/entitlements.plist
-
-# arm64 starts at ios 7; the slice flags come before the deployment flags of theos, the instance flags after them
-Noshigram_CFLAGS += $(if $(filter arm64,$(THEOS_CURRENT_ARCH)),-target arm64-apple-ios7.0)
-Noshigram_LDFLAGS += $(if $(filter arm64,$(THEOS_CURRENT_ARCH)),-target arm64-apple-ios7.0)
-
-# ios 5 needs the crt1.3.1.o start file, which ld64 picks by name only with the default start files
-armv7_LDFLAGS = -nostartfiles $(CRT_V7)
 
 include $(THEOS_MAKE_PATH)/application.mk
 

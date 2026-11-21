@@ -17,12 +17,6 @@ KILLALL=${JBROOT}/usr/bin/killall
 chown -R mobile:wheel "$APP" 2>/dev/null || true
 chmod 755 "$APP" "$APP/Noshigram" 2>/dev/null || true
 
-# ios 5 and 6 give notification settings only to the apps of the user, so an app in /Applications gets no banner, no entry in the notification center and no
-# row in the settings; the executable tags the bundle as internal and sets the switch that keeps the icon, which the removal of the package takes back
-if [ -z "$JBROOT" ]; then
-  "$APP/Noshigram" --system-notifications on || echo "noshigram: the notification setup for /Applications failed, banners will not show" >&2
-fi
-
 # the old binary keeps running from memory after an upgrade
 "$KILLALL" -9 Noshigram >/dev/null 2>&1 || true
 
