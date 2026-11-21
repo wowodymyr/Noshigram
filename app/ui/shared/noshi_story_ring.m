@@ -131,8 +131,8 @@ static CGFloat NoshiRingLength(CGRect box, CGFloat radius) {
     _gradient.frame = frame;
     _unseenStroke.frame = frame;
     _seenStroke.frame = frame;
-    /* the avatar of a list row is cut to the percent the person chose, in avatar sizes; 100 is a circle */
-    NoshiShape shape = NoshiShapeRounded;
+    /* the avatar of a list row takes the shape the person chose, a rounded square cut to the percent of its corner (100 is a circle) or an outline */
+    NoshiShape shape = _followsAvatarShape ? (NoshiShape)NoshiAvatarShapeStored() : NoshiShapeCircle;
     BOOL outline = NoshiShapeIsOutline(shape);
     CGFloat radius = _followsAvatarShape ? box.size.width * (shape == NoshiShapeCircle ? 100 : MIN(100, NoshiAvatarCornerPercent())) / 200.0f : box.size.width / 2;
     /* an outline shape of the avatar is followed by the ring along the same outline */
