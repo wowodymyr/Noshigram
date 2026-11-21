@@ -3,7 +3,6 @@
 #import "noshi_alert.h"
 #import "noshi_chat_settings.h"
 #import "noshi_gift_screen.h"
-#import "noshi_problem_report.h"
 #import "noshi_proxy_settings.h"
 #import "noshi_session_data.h"
 #import "noshi_settings_reset.h"
@@ -114,11 +113,6 @@ static NSString *NoshiDeleteErrorText(NSString *errorName) {
 - (void)rebuild {
     NoshiWeakReference *weak = _weak;
     NSMutableArray *sections = [NSMutableArray array];
-
-    NoshiSettingsRow *reports = [self flagRow:@"more.reports" info:nil flag:NoshiChatFlagCrashReports rebuild:NO];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"more.reports.header", nil)
-                                                           footer:nil
-                                                             rows:[NSArray arrayWithObject:reports]]];
 
     noshi_proxy proxy;
     BOOL proxyEnabled = NO;

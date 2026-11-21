@@ -37,17 +37,17 @@ typedef struct { BOOL outgoing; BOOL sticker; NSString *key; NSString *time; NSS
    name */
 static const NoshiPreviewLine NoshiPreviewNoshigram[PREVIEW_ITEMS] = {
     {YES, YES, nil, @"10:47", nil, nil, 0},
-    {NO, NO, @"chat.preview.line2", @"10:48", @"sqmrak", @"preview.sticker", 5},
+    {NO, NO, @"chat.preview.line2", @"10:48", @"Pavel", @"preview.sticker", 5},
 };
 
 /* the talk of the settings of chats: somebody asks, with a quote of an earlier message of the person in the plain link color, and the person answers with a sticker */
 static const NoshiPreviewLine NoshiPreviewSettings[PREVIEW_ITEMS] = {
-    {NO, NO, @"chat.preview.question", @"10:46", @"sqmrak", @"chat.preview.quote", -1},
+    {NO, NO, @"chat.preview.question", @"10:46", @"Pavel", @"chat.preview.quote", -1},
     {YES, YES, nil, @"10:47", nil, nil, 0},
 };
 
 static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
-    {NO, NO, @"chatset.quickreaction.preview.in", @"10:46", @"sqmrak", @"chatset.quickreaction.preview.quote", -1},
+    {NO, NO, @"chatset.quickreaction.preview.in", @"10:46", @"Pavel", @"chatset.quickreaction.preview.quote", -1},
     {YES, YES, nil, @"10:47", nil, nil, 0},
 };
 

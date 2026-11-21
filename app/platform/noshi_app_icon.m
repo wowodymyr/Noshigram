@@ -537,7 +537,7 @@ NSArray *NoshiAlternateIconNames(void) {
     NSArray *names = [[alternates allKeys] sortedArrayUsingSelector:@selector(compare:)];
     /* the plist is a dictionary, so the order is made here: the first icons first, then the others by name */
     NSMutableArray *ordered = [NSMutableArray array];
-    for (NSString *first in [NSArray arrayWithObjects:@"Exteraless", @"Blueprint", @"Red", @"Nya", @"Ayu", @"Quack", nil]) {
+    for (NSString *first in [NSArray arrayWithObjects:@"Blueprint", @"Red", @"Nya", @"Quack", nil]) {
         if ([names containsObject:first]) [ordered addObject:first];
     }
     for (NSString *name in names) if (![ordered containsObject:name]) [ordered addObject:name];

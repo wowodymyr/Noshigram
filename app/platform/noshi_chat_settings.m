@@ -366,7 +366,6 @@ static const struct { NSString *key; BOOL fallback; } NoshiChatFlagTable[NoshiCh
     [NoshiChatFlagReplyColors] = {@"noshigram.chat.replycolors", YES},
     [NoshiChatFlagReplyBackground] = {@"noshigram.chat.replybackground", YES},
     [NoshiChatFlagLocalPremium] = {@"noshigram.chat.localpremium", NO},
-    [NoshiChatFlagCrashReports] = {@"noshigram.chat.crashreports", YES},
     [NoshiChatFlagHideWaves] = {@"noshigram.chat.hidewaves", NO},
     [NoshiChatFlagShowMessageEmojiStatus] = {@"noshigram.chat.messageemojistatus", YES},
     [NoshiChatFlagShowReplyCustomEmoji] = {@"noshigram.chat.replycustomemoji", YES},

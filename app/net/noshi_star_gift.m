@@ -72,7 +72,6 @@ static NSString *NoshiUtf8(const char *bytes) {
 
 @implementation NoshiSavedGift
 
-@synthesize customImageName = _customImageName;
 
 @synthesize gift = _gift;
 @synthesize fromName = _fromName;
@@ -115,15 +114,6 @@ static NSString *NoshiUtf8(const char *bytes) {
 
 - (NoshiPhoto *)fromPhoto { return _fromPerson.photo; }
 
-- (void)setSenderPerson:(NoshiPerson *)person {
-    if (!person) return;
-    [_fromPerson release];
-    _fromPerson = [person retain];
-    _fromId = person.userId;
-    [_fromName release];
-    _fromName = [person.name copy];
-}
-
 - (BOOL)canConvertAt:(int64_t)now period:(int32_t)period {
     noshi_saved_gift gift;
     memset(&gift, 0, sizeof(gift));
@@ -140,7 +130,6 @@ static NSString *NoshiUtf8(const char *bytes) {
     [_note release];
     [_noteEntities release];
     [_fromPerson release];
-    [_customImageName release];
     [super dealloc];
 }
 

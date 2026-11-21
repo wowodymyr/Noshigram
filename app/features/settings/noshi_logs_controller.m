@@ -293,20 +293,6 @@ static UIColor *NoshiLogLineColor(NSString *line) {
     return [NSString stringWithFormat:@"noshigram-%@.zip", name];
 }
 
-/* the archive goes to the developer as a file in a private message, with no share sheet in between; a send that failed says so, and the logs stay where they are */
-- (void)deliverArchive:(NSString *)archive {
-    NoshiProblemReportSendArchive(_session, archive, ^(BOOL sent) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (sent) {
-                [[NSFileManager defaultManager] removeItemAtPath:archive error:NULL];
-                NoshiShowNotice(nil, NSLocalizedString(@"logs.export.sent", nil));
-                return;
-            }
-            NoshiShowNotice(nil, NSLocalizedString(@"logs.export.unsent", nil));
-        });
-    });
-}
-
 - (void)exportAll {
     NoshiWeakReference *weak = _weak;
     NSString *archive = [NSTemporaryDirectory() stringByAppendingPathComponent:[self archiveName]];
@@ -338,7 +324,7 @@ static UIColor *NoshiLogLineColor(NSString *line) {
                 return;
             }
             if (!packed) NSLog(@"noshigram: the archive of the logs holds the device note only, no log exists yet");
-            [me deliverArchive:archive];
+            NoshiShareFile(me, archive);
         });
         [pool release];
     });

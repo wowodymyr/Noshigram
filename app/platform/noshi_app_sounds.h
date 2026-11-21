@@ -13,5 +13,3 @@ void NoshiVibrateForCall(void);
 /* the short sound of the chat on screen: a message that came in, or one that was sent; only when In-Chat Sounds is
    on; two in a moment are one */
 void NoshiPlayInChatSound(BOOL incoming);
-/* the same for a message that came in from this user id: the tone the person has of their own when there is one, else the sound of an incoming message; zero is nobody */
-void NoshiPlayInChatSoundFromUser(long long userId);

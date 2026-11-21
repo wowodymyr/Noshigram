@@ -46,7 +46,7 @@ class LocalizationTests(unittest.TestCase):
             cls.languages[folder.name] = entries
 
     def test_the_bundle_has_english_and_the_languages_of_the_picker(self):
-        self.assertTrue({"en.lproj", "ru.lproj", "sqmrak.lproj"} <= set(self.languages))
+        self.assertTrue({"en.lproj", "ru.lproj"} <= set(self.languages))
 
     def test_every_line_parses(self):
         self.assertEqual(self.problems, [])

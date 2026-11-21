@@ -225,7 +225,6 @@ typedef enum {
     NoshiChatFlagReplyColors,                 /* the quote of a reply takes the color of the name of its author; default on */
     NoshiChatFlagReplyBackground,             /* the quote of a reply has a plate under it; default on */                 /* deleting a message in a private chat or a group leaves it with the others */
     NoshiChatFlagLocalPremium,                /* the client shows the Premium features that need no server (custom emoji and reactions, the full animations) */
-    NoshiChatFlagCrashReports,                /* a crash or a failed call is told to the developer in a private message */
     NoshiChatFlagSenderAvatars,               /* a small picture of who wrote the last message stands before the preview of a group */
     NoshiChatFlagHideSearchBar,               /* the chat list has no field of search over it */
     NoshiChatFlagHideStories,                 /* the chat list has no strip of stories */

@@ -11,8 +11,6 @@
 #import "noshi_platform.h"
 #import "noshi_theme.h"
 
-#define CARD_MAX_WIDTH 420.0
-#define CARD_SIDE 8.0
 #define CARD_HEIGHT 62.0
 #define AVATAR_SIDE 42.0
 #define PADDING 12.0
@@ -95,8 +93,6 @@ static NoshiInAppBanner *NoshiShownBanner;
         [banner addSubview:banner->_picture];
     }
     UIEdgeInsets insets = NoshiSafeInsets(window);
-    CGFloat width = MIN(CARD_MAX_WIDTH, window.bounds.size.width - 2 * CARD_SIDE - insets.left - insets.right);
-    CGFloat top = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20) + 4;
     CGFloat height = picture ? 132 : CARD_HEIGHT;
     /* the ios 5 banner is a full width bar that covers the status bar, not a floating card */
     banner->_contentTop = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20);

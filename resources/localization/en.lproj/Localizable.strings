@@ -1992,8 +1992,6 @@
 "ayu.clear" = "Clear saved messages";
 "ayu.clear.count" = "Records: %ld";
 "ayu.clear.confirm" = "Remove all kept deleted messages and edit versions from this device?";
-"more.reports.header" = "Crash reports";
-"more.reports" = "Send crash reports";
 "more.ayu.header" = "Nagram";
 "more.experimental" = "Experimental";
 "more.localpremium" = "Local Premium";
@@ -2069,10 +2067,6 @@
 "chat.toend" = "Down to the newest messages";
 "chat.reactions.jump" = "Unread reactions";
 "chat.reactions.readall" = "Read all reactions";
-"crash.title" = "Oops…";
-"crash.text" = "The app closed because of an error. Send a report about it to the lead developer? It holds none of your messages, names or numbers, only what is known of the error and the device.";
-"crash.send" = "Send the report";
-"crash.later" = "Not now";
 "profile.contact.add" = "Add to contacts";
 "contact.name.caption" = "Contact name";
 "contact.note.caption" = "Note";
@@ -2491,11 +2485,9 @@
 "logs.row.info" = "Read the logs of the app and send them as a zip";
 "logs.files" = "Files";
 "logs.files.info" = "Only the end of a long log is shown, the archive carries up to 2 MB of each.";
-"logs.export" = "Send all to the developer";
-"logs.export.info" = "noshigram-[username].zip with every log and a note about the phone goes to @sqmrak as a file";
+"logs.export" = "Export all logs";
+"logs.export.info" = "noshigram-[username].zip with every log and a note about the phone, to share or save";
 "logs.export.failed" = "The logs could not be packed.";
-"logs.export.sent" = "Your logs were sent to the main developer.";
-"logs.export.unsent" = "The logs could not be sent to the developer. Check the connection and try again.";
 "logs.share.unavailable" = "This system cannot share the file.";
 "logs.loading" = "Loading...";
 "logs.empty" = "The log is empty.";

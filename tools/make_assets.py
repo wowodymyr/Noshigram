@@ -746,9 +746,9 @@ def build_animations(source_dir, out_dir):
 
 # the alternate app icons of the chat settings: the launcher icons that are a plain color with a
 # picture over it
-ALTERNATE_ICONS = ("exteraless", "blueprint", "red", "nya", "ayu", "quack")
-# the names of the files, which the images of SenkoGram and Telegram share with the color icons above
-ALTERNATE_ICON_NAMES = tuple(name.capitalize() for name in ALTERNATE_ICONS) + ("SenkoGram", "Telegram")
+ALTERNATE_ICONS = ("blueprint", "red", "nya", "quack")
+# the names of the files, which the images of Telegram share with the color icons above
+ALTERNATE_ICON_NAMES = tuple(name.capitalize() for name in ALTERNATE_ICONS) + ("Telegram",)
 # name of the file, side in pixels: the sizes the home screen of an iPhone and an iPad ask for
 ALTERNATE_ICON_SIZES = (("-60@2x", 120), ("-60@3x", 180), ("-76", 76), ("-76@2x", 152), ("-83.5@2x", 167),
                         ("-57", 57), ("-57@2x", 114), ("-72", 72), ("-72@2x", 144))
@@ -798,10 +798,6 @@ def build_image_icons(source, name, out_dir):
         write_png(legacy_icon(icon, pixels), os.path.join(out_dir, name + suffix + ".png"), launcher=True)
     for suffix, pixels in SPLASH_SIDES:
         write_png(rounded_icon(icon, pixels), os.path.join(out_dir, "splash_" + name.lower() + suffix + ".png"))
-
-
-def build_senkogram_icons(source, out_dir):
-    build_image_icons(source, "SenkoGram", out_dir)
 
 
 def build_alternate_splash_icons(res_dir, out_dir):
@@ -928,7 +924,7 @@ def build_flags(svg_dir, countries, out_dir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("part", choices=("icons", "debicons", "qrlogo", "splash", "giftanon", "launch", "animations", "symbols", "material", "alticons", "senkogram", "telegram", "phone", "flags", "all"))
+    parser.add_argument("part", choices=("icons", "debicons", "qrlogo", "splash", "giftanon", "launch", "animations", "symbols", "material", "alticons", "telegram", "phone", "flags", "all"))
     parser.add_argument("--source", default=os.path.join(ROOT, "resources/icons/source/noshigram.png"))
     parser.add_argument("--animations", default=os.environ.get("NOSHI_LOTTIE_RAW", ""))
     parser.add_argument("--phone-video", default=os.environ.get("NOSHI_PHONE_VIDEO", ""))
@@ -970,8 +966,6 @@ def main():
             sys.exit("set NOSHI_ICON_RES to the res directory of the reference tree")
         build_alternate_icons(args.icon_res, os.path.join(args.out, "icons"))
         build_alternate_splash_icons(args.icon_res, os.path.join(args.out, "icons"))
-    if args.part in ("senkogram", "all"):
-        build_senkogram_icons(os.path.join(ROOT, "resources/icons/source/senkogram.png"), os.path.join(args.out, "icons"))
     if args.part in ("telegram", "all"):
         build_image_icons(os.path.join(ROOT, "resources/icons/source/telegram.png"), "Telegram", os.path.join(args.out, "icons"))
     if args.part in ("phone", "all"):

@@ -164,7 +164,6 @@ enum {
     NoshiEmojiLabel *_subtitle;
     NoshiGiftFactsView *_facts;
     UILabel *_footer;
-    UILabel *_customCredit;
     UIButton *_footerLink;
     NSString *_ownerName;
     NoshiStickerLibrary *_stickers;
@@ -218,8 +217,7 @@ enum {
     self = [super initWithSession:session avatars:avatars media:media];
     if (!self) return nil;
     _saved = [gift retain];
-    /* nothing can be done with the gift of the app, whose profile it is on */
-    _mine = mine && !gift.customImageName;
+    _mine = mine;
     _buttons = [[NSMutableArray alloc] init];
     _convertPeriod = NOSHI_GIFT_CONVERT_PERIOD_DEFAULT;
     _detailWeak = [[NoshiWeakReference referenceTo:self] retain];
@@ -243,7 +241,6 @@ enum {
     [_subtitle release];
     [_facts release];
     [_footer release];
-    [_customCredit release];
     [_footerLink release];
     [_ownerName release];
     [_stickers release];
@@ -294,7 +291,6 @@ static NSString *NoshiDetailRarity(int32_t permille) {
         _backdrop.centerColor = gift.backdropCenter;
         _backdrop.edgeColor = gift.backdropEdge;
         _backdrop.patternColor = gift.backdropPattern;
-        _backdrop.expressive = _saved.customImageName != nil;
         _backdrop.focus = CGPointMake(0.5, 0.42);
         [_scroll addSubview:_backdrop];
         if (gift.patternSticker) {
@@ -323,16 +319,6 @@ static NSString *NoshiDetailRarity(int32_t permille) {
     _facts.avatars = self.avatars;
     [self fillFacts];
     [_scroll addSubview:_facts];
-    if (_saved.customImageName) {
-        _customCredit = [[UILabel alloc] init];
-        _customCredit.backgroundColor = [UIColor clearColor];
-        _customCredit.textColor = NoshiColorSecondary();
-        _customCredit.font = NoshiFontRegular(13);
-        _customCredit.textAlignment = NoshiTextAlignmentCenter;
-        _customCredit.numberOfLines = 0;
-        _customCredit.text = @"by sqmrak, not a real telegram gift :3";
-        [_scroll addSubview:_customCredit];
-    }
     if (_mine) [self buildFooter];
     _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:NoshiThemeIsDark() ? UIActivityIndicatorViewStyleWhite : UIActivityIndicatorViewStyleGray];
     _spinner.hidesWhenStopped = YES;
@@ -366,8 +352,7 @@ static NSString *NoshiDetailRarity(int32_t permille) {
 
 - (void)fillFacts {
     NoshiStarGift *gift = _saved.gift;
-    /* a gift of the app is a unique one in look only: it says who sent it, when, and the words that came with it, and none of the facts of a collectible */
-    if (gift.unique && !_saved.customImageName) {
+    if (gift.unique) {
         NSString *owner = gift.ownerName.length ? gift.ownerName : _ownerName;
         if (owner.length) [_facts addRow:NSLocalizedString(@"gifts.row.owner", nil) name:owner photo:nil seed:(NSUInteger)gift.ownerId anonymous:NO];
         if (gift.model.length) [_facts addRow:NSLocalizedString(@"gifts.row.model", nil) text:gift.model pill:NoshiDetailRarity(gift.modelPermille)];
@@ -459,10 +444,6 @@ static NSString *NoshiDetailRarity(int32_t permille) {
 }
 
 - (void)showPicture {
-    if (_saved.customImageName) {
-        _picture.image = [UIImage imageNamed:_saved.customImageName];
-        return;
-    }
     NoshiMedia *sticker = _saved.gift.sticker;
     NoshiRemoteFile *thumb = sticker.previewFile;
     if (thumb) {
@@ -579,12 +560,6 @@ static NSString *NoshiDetailRarity(int32_t permille) {
     for (UIButton *button in _buttons) {
         button.frame = CGRectMake(x, y, inner, 50);
         y += 58;
-    }
-    if (_customCredit) {
-        CGSize credit = [_customCredit sizeThatFits:CGSizeMake(inner, 100)];
-        y = MAX(y, body.size.height - credit.height - 20);
-        _customCredit.frame = CGRectMake(x, y, inner, credit.height);
-        y += credit.height;
     }
     _spinner.center = CGPointMake(width / 2, y + 12);
     _scroll.contentSize = CGSizeMake(width, y + 40);

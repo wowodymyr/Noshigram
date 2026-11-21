@@ -398,7 +398,6 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NSString *architecture = @"armv7";
 #endif
     NSString *version = [NSString stringWithFormat:NSLocalizedString(@"settings.version.line", nil), [info objectForKey:@"CFBundleShortVersionString"], architecture];
-    version = [version stringByAppendingString:@"\nuse senko by sqmrak btw"];
     NoshiSettingsSection *list = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:account, chats, stickers, privacy, passcode, notifications, data, folders, devices, power, update, language, nil]];
     list.centerFooter = YES;
     NSMutableArray *sections = [NSMutableArray array];

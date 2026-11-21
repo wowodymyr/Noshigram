@@ -50,9 +50,3 @@ static void NoshiPlayInChatFile(BOOL incoming, NSString *file) {
 void NoshiPlayInChatSound(BOOL incoming) {
     NoshiPlayInChatFile(incoming, incoming ? @"sound_in.caf" : @"sound_out.caf");
 }
-
-void NoshiPlayInChatSoundFromUser(long long userId) {
-    const char *tone = noshi_notify_user_tone(userId);
-    NSString *file = tone ? [NSString stringWithUTF8String:tone] : nil;
-    NoshiPlayInChatFile(YES, file.length ? file : @"sound_in.caf");
-}

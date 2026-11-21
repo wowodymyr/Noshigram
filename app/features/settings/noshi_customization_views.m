@@ -92,7 +92,7 @@
     _title.textColor = [UIColor whiteColor];
     _title.font = [UIFont boldSystemFontOfSize:18];
     _title.textAlignment = NoshiTextAlignmentCenter;
-    _title.text = @"sqmrak";
+    _title.text = @"Pavel";
     _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
     _title.shadowOffset = CGSizeMake(0, -1);
     [self addSubview:_title];

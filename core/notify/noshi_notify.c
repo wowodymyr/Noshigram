@@ -65,43 +65,12 @@ static void write_event(noshi_notify_event *event, const noshi_dialog_row *row, 
     copy_clean(event->body, sizeof(event->body), body);
 }
 
-static const struct {
-    int64_t user_id;
-    const char *file;
-} user_tones[] = {
-    {8202789099LL, "sqmrak.caf"}
-};
-
-const char *noshi_notify_user_tone(int64_t user_id) {
-    size_t i;
-    if (user_id <= 0) return NULL;
-    for (i = 0; i < sizeof(user_tones) / sizeof(user_tones[0]); ++i) {
-        if (user_tones[i].user_id == user_id) return user_tones[i].file;
-    }
-    return NULL;
-}
-
-/* who wrote the newest message of the chat: the other person of a private chat, the sender named in a group; nobody for a channel post or an anonymous admin */
-static int64_t newest_sender(const noshi_dialog_row *row) {
-    if (row->peer_kind == 1) return row->peer_id;
-    return row->sender_id;
-}
-
-/* the decision for a chat: its own settings over those of its kind, and the two kinds of service message that have a switch of their own. a person with a tone of their own
-   gives it to every banner of theirs, in a group as in a private chat, over the sound the chat asks for; a muted chat stays muted, since no banner is made for it at all */
+/* the decision for a chat: its own settings over those of its kind, and the two kinds of service message that have a switch of their own */
 static int wanted(const noshi_dialog_row *row, const noshi_notify_settings *settings, int32_t now, noshi_notify_decision *decision) {
-    const char *tone;
     noshi_notify_decide(&settings->rules, noshi_notify_scope_of(row->peer_kind, row->kind == NOSHI_DIALOG_CHANNEL), &row->notify, now, decision);
     if (!decision->notify) return 0;
     if (row->service == NOSHI_SERVICE_PIN + 1 && !settings->rules.pinned_messages) return 0;
     if (row->service == NOSHI_SERVICE_CONTACT_JOINED + 1 && !settings->rules.contact_joined) return 0;
-    tone = noshi_notify_user_tone(newest_sender(row));
-    if (tone) {
-        memset(&decision->sound, 0, sizeof(decision->sound));
-        decision->sound.kind = NOSHI_SOUND_LOCAL;
-        snprintf(decision->sound.data, sizeof(decision->sound.data), "%s", tone);
-        snprintf(decision->sound.title, sizeof(decision->sound.title), "%s", tone);
-    }
     return 1;
 }
 

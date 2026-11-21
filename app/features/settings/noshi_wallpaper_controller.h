@@ -10,8 +10,7 @@
 /* the wallpaper of one chat alone, from the menu of that chat: what is picked stays in this chat, and the app and its other chats keep theirs */
 - (id)initWithPeerKind:(int32_t)peerKind peerId:(long long)peerId;
 
-/* the account the page is opened from; with it the previews of the customization show the picture of the lead developer from the server, without it the one kept from an
-   earlier time, or the initials */
+/* the account the page is opened from */
 @property (nonatomic, retain) NoshiSession *session;
 
 @end

@@ -83,8 +83,6 @@ diff <(grep -o '^"[^"]*"' en.lproj/Localizable.strings | sort) <(grep -o '^"[^"]
 
 plural keys of other forms show up in that diff, which is right.
 
-`sqmrak.lproj` is made from `ru.lproj` by `tools/make_sqmrak_strings.py`. run the script again after the russian texts change and never edit its output by hand.
-
 ## check
 
 1. choose the language in the app and walk the screens that have long words: the tab bar, settings rows, the chat input, alerts

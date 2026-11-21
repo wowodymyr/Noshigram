@@ -92,25 +92,6 @@ static UIImage *NoshiPremiumStarImage(void) {
     return star;
 }
 
-/* a bundled badge drawn once at the size the pictures use; the file is larger than any screen needs, so the
-   context does the scaling */
-static UIImage *NoshiBundledBadge(NSString *name, UIImage **slot) {
-    if (*slot) return *slot;
-    NSString *path = [[NSBundle mainBundle] pathForResource:name ofType:@"png"];
-    UIImage *source = path ? [UIImage imageWithContentsOfFile:path] : nil;
-    if (!source) {
-        NSLog(@"noshigram: the badge picture %@ is missing from the bundle", name);
-        return nil;
-    }
-    CGFloat side = BADGE_POINTS;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, NoshiScreenScale());
-    CGContextSetInterpolationQuality(UIGraphicsGetCurrentContext(), kCGInterpolationHigh);
-    [source drawInRect:CGRectMake(0, 0, side, side)];
-    *slot = [UIGraphicsGetImageFromCurrentImageContext() retain];
-    UIGraphicsEndImageContext();
-    return *slot;
-}
-
 #pragma mark animation
 
 #define ANIMATION_COST_LIMIT (12 * 1024 * 1024)
@@ -219,24 +200,6 @@ NSUInteger NoshiCustomEmojiAnimatedDraws(void) { return sAnimatedDraws; }
 + (UIImage *)imageForDocument:(long long)document {
     if (document == NOSHI_TELEGRAM_VERIFIED_DOCUMENT) return NoshiTelegramVerifiedImage();
     if (document == NOSHI_PREMIUM_STAR_DOCUMENT) return NoshiPremiumStarImage();
-    static UIImage *hammer, *fox, *net, *hammers, *promotion, *bugHunter, *officialTester, *manager, *videoFix, *flawSeer;
-    if (document == NOSHI_BUG_HUNTER_DOCUMENT) {
-        if (!bugHunter) {
-            NSString *path = [[NSBundle mainBundle] pathForResource:@"badge_bug_hunter" ofType:@"png"];
-            if (path) bugHunter = [NoshiDecodeImageAtURL([NSURL fileURLWithPath:path], BADGE_POINTS * NoshiScreenScale()) retain];
-            if (!bugHunter) NSLog(@"noshigram: the bug hunter badge picture could not be decoded");
-        }
-        return bugHunter;
-    }
-    if (document == NOSHI_OFFICIAL_TESTER_DOCUMENT) return NoshiBundledBadge(@"badge_official_tester", &officialTester);
-    if (document == NOSHI_FLAW_SEER_DOCUMENT) return NoshiBundledBadge(@"badge_flaw_seer", &flawSeer);
-    if (document == NOSHI_MANAGER_DOCUMENT) return NoshiBundledBadge(@"badge_manager", &manager);
-    if (document == NOSHI_VIDEO_FIX_DOCUMENT) return NoshiBundledBadge(@"badge_videofix", &videoFix);
-    if (document == NOSHI_PROMOTION_DOCUMENT) return NoshiBundledBadge(@"badge_promotion", &promotion);
-    if (document == NOSHI_DEVELOPER_DOCUMENT) return NoshiBundledBadge(@"badge_developer", &hammer);
-    if (document == NOSHI_LEAD_DOCUMENT) return NoshiBundledBadge(@"badge_lead", &hammers);
-    if (document == NOSHI_TESTER_DOCUMENT) return NoshiBundledBadge(@"badge_tester", &net);
-    if (document == NOSHI_SENKO_DOCUMENT) return NoshiBundledBadge(@"badge_senko", &fox);
     NoshiEmojiFrames *animated = [NoshiAnimations() objectForKey:[NSNumber numberWithLongLong:document]];
     if (animated && !NoshiReduceMotionEnabled()) {
         /* every emoji of a document shows the same frame at the same moment, which is what the clock of the process gives */

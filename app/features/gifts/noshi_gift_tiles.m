@@ -27,7 +27,6 @@ NoshiGiftTileInfo *NoshiTileForSavedGift(NoshiSavedGift *saved, BOOL mine) {
     tile.patternSticker = gift.patternSticker;
     if (gift.unique) {
         tile.ribbon = NoshiGiftNumberText(gift.number);
-        tile.expressive = saved.customImageName != nil;
     } else {
         /* a sender that is missing from the answer is as anonymous to the person as one who hid their name */
         tile.anonymous = saved.nameHidden || saved.fromId == 0;
@@ -35,7 +34,6 @@ NoshiGiftTileInfo *NoshiTileForSavedGift(NoshiSavedGift *saved, BOOL mine) {
         tile.fromSeed = (NSUInteger)saved.fromId;
         tile.fromInitials = NoshiInitialsOfName(saved.fromName);
     }
-    if (saved.customImageName) tile.localImage = [UIImage imageNamed:saved.customImageName];
     tile.pinned = saved.pinned;
     tile.hiddenMark = mine && saved.hidden;
     return tile;

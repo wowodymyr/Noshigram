@@ -54,9 +54,6 @@ typedef struct noshi_notify_event {
 
 void noshi_notify_state_init(noshi_notify_state *state);
 
-/* the tone of the app that one person always gets: the file of the bundle when a message of this user id is announced, NULL for a person with none of their own */
-const char *noshi_notify_user_tone(int64_t user_id);
-
 /* looks at the chat list the server just gave (newest first) and says which chats got a message worth a banner
    since the last look */
 noshi_status noshi_notify_diff(noshi_notify_state *state, const noshi_notify_settings *settings, const noshi_dialog_row *rows, size_t row_count,

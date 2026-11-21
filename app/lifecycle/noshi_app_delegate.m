@@ -29,7 +29,6 @@
 #import "noshi_back_swipe.h"
 #import "noshi_passcode_lock.h"
 #import "noshi_release_check.h"
-#import "noshi_problem_report.h"
 #import "noshi_proxy_settings.h"
 #import "noshi_session_data.h"
 #import "noshi_platform.h"
@@ -80,17 +79,6 @@
 
 /* a signed in start waits for the first list; a list that never reports must not hold the screen for ever */
 #define SPLASH_LIMIT_SECONDS 5.0
-
-/* keys and the database stay in the app's private support directory */
-static NSString *NoshiSupportDirectory(void) {
-    NSArray *roots = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
-    NSString *directory = [[roots objectAtIndex:0] stringByAppendingPathComponent:@"Noshigram"];
-    NSError *error = nil;
-    if (![[NSFileManager defaultManager] createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:&error]) {
-        NSLog(@"noshigram: cannot create %@: %@", directory, error);
-    }
-    return directory;
-}
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)options {
     (void)application;
@@ -406,12 +394,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
 
 - (UIViewController *)makeMainController {
     NoshiThemeApplyStored();
-    /* the question about the crash of the last run comes a little after the screens are up; the link has time to come while the person reads it */
-    NoshiSession *reporting = [_session retain];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        if (reporting == _session) NoshiProblemReportsStart(reporting);
-        [reporting release];
-    });
     NoshiMainController *main = [[[NoshiMainController alloc] initWithSession:_session] autorelease];
     main.delegate = self;
     /* the colors the server lists for names above the seven built in are kept for the chats to draw with; a failure leaves the ones kept before */

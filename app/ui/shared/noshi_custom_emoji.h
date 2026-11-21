@@ -7,24 +7,7 @@ extern NSString *const NoshiCustomEmojiDidLoadNotification;
 /* the stand-in document of the Telegram Premium star that follows the name of a Premium user who has no emoji
    status; draws this one itself, so it never needs a load */
 #define NOSHI_PREMIUM_STAR_DOCUMENT (-1LL)
-/* the hammer after the name of a person who took part in the development of Noshigram; a bundled picture, drawn by imageForDocument: like the star */
-#define NOSHI_DEVELOPER_DOCUMENT (-2LL)
-/* the fox tail of the developer of Senko, drawn the same way */
-#define NOSHI_SENKO_DOCUMENT (-3LL)
-/* the net of the testers */
-#define NOSHI_TESTER_DOCUMENT (-4LL)
-/* the crossed hammers of the lead developer */
-#define NOSHI_LEAD_DOCUMENT (-5LL)
-#define NOSHI_PROMOTION_DOCUMENT (-7LL)
-#define NOSHI_BUG_HUNTER_DOCUMENT (-8LL)
 #define NOSHI_TELEGRAM_VERIFIED_DOCUMENT (-9LL)
-#define NOSHI_OFFICIAL_TESTER_DOCUMENT (-10LL)
-/* the shield of the official manager of @sqmrak */
-#define NOSHI_MANAGER_DOCUMENT (-11LL)
-/* the gear and chevron of NoshiVideoFix, for its author */
-#define NOSHI_VIDEO_FIX_DOCUMENT (-12LL)
-/* the magnifier and net full of bugs, for the testers who see flaws in everything */
-#define NOSHI_FLAW_SEER_DOCUMENT (-13LL)
 
 @interface NoshiCustomEmoji : NSObject
 

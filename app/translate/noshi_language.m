@@ -8,9 +8,6 @@ NSString *const NoshiLanguageDidChangeNotification = @"NoshiLanguageDidChange";
 
 static NSString *const NoshiLanguageKey = @"noshigram.language";
 
-/* the playful russian: its texts have an lproj of their own, and everything that is not a text (plurals, dates, the translator, the notifications) treats it as russian */
-static NSString *const NoshiPlayfulRussian = @"sqmrak";
-
 static NSString *const NoshiCustomLanguagesKey = @"noshigram.language.custom";
 #define CUSTOM_FILE_BYTES_MAX (2 * 1024 * 1024)
 #define CUSTOM_KEYS_MAX 20000
@@ -40,7 +37,7 @@ BOOL NoshiIsCustomLanguage(NSString *code) {
 }
 
 NSArray *NoshiInterfaceLanguageCodes(void) {
-    return [[NSArray arrayWithObjects:@"en", @"ru", NoshiPlayfulRussian, nil] arrayByAddingObjectsFromArray:NoshiCustomLanguageCodes()];
+    return [[NSArray arrayWithObjects:@"en", @"ru", nil] arrayByAddingObjectsFromArray:NoshiCustomLanguageCodes()];
 }
 
 NSString *NoshiInterfaceLanguageChoice(void) {
@@ -50,7 +47,6 @@ NSString *NoshiInterfaceLanguageChoice(void) {
 
 NSString *NoshiInterfaceLanguage(void) {
     NSString *choice = NoshiInterfaceLanguageChoice();
-    if ([choice isEqualToString:NoshiPlayfulRussian]) return @"ru";
     if (NoshiIsCustomLanguage(choice)) {
         NSString *base = [[NoshiCustomLanguages() objectForKey:choice] objectForKey:@"base"];
         return base.length ? base : @"en";
@@ -262,13 +258,11 @@ NSString *NoshiLanguageName(NSString *code) {
 
 NSString *NoshiNativeLanguageName(NSString *code) {
     if (NoshiIsCustomLanguage(code)) return [[NoshiCustomLanguages() objectForKey:code] objectForKey:@"name"];
-    if ([code isEqualToString:NoshiPlayfulRussian]) return @"русский by sqmrak :3";
     return NoshiNameIn(code, code);
 }
 
 NSString *NoshiEnglishLanguageName(NSString *code) {
     if (NoshiIsCustomLanguage(code)) return [[NoshiCustomLanguages() objectForKey:code] objectForKey:@"english"];
-    if ([code isEqualToString:NoshiPlayfulRussian]) return @"Russian by sqmrak";
     return NoshiNameIn(code, @"en");
 }
 
