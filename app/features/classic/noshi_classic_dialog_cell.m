@@ -21,6 +21,9 @@
 
 #define ROW_HEIGHT 72.0
 #define AVATAR_SIZE 52.0
+/* the compact density of the customization: a lower row, a smaller picture and one line of the last message */
+#define COMPACT_ROW_HEIGHT 56.0
+#define COMPACT_AVATAR_SIZE 40.0
 #define RING_OUTSET 3.0
 #define FORWARD_SIDE 14.0
 #define ONLINE_SIDE 14.0
@@ -91,8 +94,12 @@
 
 @synthesize media = _media;
 
+static BOOL NoshiClassicCompact(void) {
+    return NoshiListDensityStored() == 1;
+}
+
 + (CGFloat)rowHeight {
-    return ROW_HEIGHT;
+    return NoshiClassicCompact() ? COMPACT_ROW_HEIGHT : ROW_HEIGHT;
 }
 
 static BOOL NoshiClassicShowsTopics(NoshiDialog *dialog) {
@@ -100,7 +107,7 @@ static BOOL NoshiClassicShowsTopics(NoshiDialog *dialog) {
 }
 
 + (CGFloat)rowHeightForDialog:(NoshiDialog *)dialog {
-    return NoshiClassicShowsTopics(dialog) ? FORUM_ROW_HEIGHT : ROW_HEIGHT;
+    return NoshiClassicShowsTopics(dialog) ? FORUM_ROW_HEIGHT : [self rowHeight];
 }
 
 static UIView *NoshiClassicPlate(void) {
@@ -193,7 +200,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     [self.contentView addSubview:_secondTopic];
     _muted = [[UIImageView alloc] init];
     [self.contentView addSubview:_muted];
-    _accessory = [[UIView alloc] initWithFrame:CGRectMake(0, 0, ACCESSORY_WIDTH, ROW_HEIGHT - 20)];
+    _accessory = [[UIView alloc] initWithFrame:CGRectMake(0, 0, ACCESSORY_WIDTH, [NoshiClassicDialogCell rowHeight] - 20)];
     _time = [[UILabel alloc] initWithFrame:CGRectMake(0, 2, ACCESSORY_WIDTH, 16)];
     NoshiLabelFitToWidth(_time, 9);
     _time.font = [UIFont systemFontOfSize:13];
@@ -204,7 +211,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     [_accessory addSubview:_check];
     _mutualButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _mutualButton.hidden = YES;
-    _mutualButton.frame = CGRectMake(ACCESSORY_WIDTH - 40, 0, 40, ROW_HEIGHT - 20);
+    _mutualButton.frame = CGRectMake(ACCESSORY_WIDTH - 40, 0, 40, [NoshiClassicDialogCell rowHeight] - 20);
     [_mutualButton setImage:NoshiMutualIconImage(24, [UIColor grayColor]) forState:UIControlStateNormal];
     _mutualButton.accessibilityLabel = NSLocalizedString(@"contact.mutual", nil);
     [_mutualButton addTarget:self action:@selector(mutualTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -212,7 +219,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     self.accessoryView = _accessory;
     _titleColor = [(NoshiThemeIsDark() ? NoshiColorTitle() : [UIColor blackColor]) retain];
     _previewColor = [[UIColor grayColor] retain];
-    _timeColor = [NoshiThemeTinted([UIColor colorWithRed:0.52 green:0.30 blue:0.78 alpha:1]) retain];
+    _timeColor = [NoshiThemeTinted([UIColor colorWithRed:0.30 green:0.54 blue:0.78 alpha:1]) retain];
     return self;
 }
 
@@ -270,7 +277,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     _secondTopic.text = second ? dialog.forumSecondTitle : @"";
     _secondTopic.textColor = [UIColor grayColor];
     _secondIcon.image = second ? NoshiTopicIconImageOf(dialog.forumSecondEmoji, dialog.forumSecondColor) : nil;
-    CGFloat height = (on ? FORUM_ROW_HEIGHT : ROW_HEIGHT) - 20;
+    CGFloat height = (on ? FORUM_ROW_HEIGHT : [NoshiClassicDialogCell rowHeight]) - 20;
     _accessory.frame = CGRectMake(0, 0, ACCESSORY_WIDTH, height);
     _mutualButton.frame = CGRectMake(ACCESSORY_WIDTH - 40, 0, 40, height);
 }
@@ -315,7 +322,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     _typing.hidden = YES;
     BOOL forumLine = NoshiClassicShowsTopics(dialog);
     [self setForumLine:forumLine dialog:dialog];
-    _preview.numberOfLines = forumLine || NoshiChatListStyleStored() == NoshiChatListTwoLines ? 1 : 2;
+    _preview.numberOfLines = forumLine || NoshiClassicCompact() || NoshiChatListStyleStored() == NoshiChatListTwoLines ? 1 : 2;
     [_thumb showFile:dialog.previewFile cache:_media];
     _forwardIcon.hidden = !dialog.forwarded;
     if (dialog.forwarded) _forwardIcon.image = NoshiSymbolImage(NoshiSymbolForward, FORWARD_SIDE, [UIColor grayColor]);
@@ -324,7 +331,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     _time.text = NoshiListTimeText(dialog.date);
     _muted.image = dialog.muted ? NoshiSymbolImage(NoshiSymbolBellSlash, 13, [UIColor grayColor]) : nil;
     if (dialog.outgoing && dialog.date > 0) {
-        _check.image = NoshiCheckImage(dialog.read, 12, NoshiThemeTinted([UIColor colorWithRed:0.52 green:0.30 blue:0.78 alpha:1]));
+        _check.image = NoshiCheckImage(dialog.read, 12, NoshiThemeTinted([UIColor colorWithRed:0.30 green:0.54 blue:0.78 alpha:1]));
         _check.hidden = NO;
     } else {
         _check.hidden = YES;
@@ -470,18 +477,20 @@ static UIImageView *NoshiClassicTopicImageView(void) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat width = self.contentView.bounds.size.width;
-    CGFloat rowHeight = _forumLine ? FORUM_ROW_HEIGHT : ROW_HEIGHT;
-    _avatar.frame = CGRectMake(SIDE, (rowHeight - AVATAR_SIZE) / 2, AVATAR_SIZE, AVATAR_SIZE);
+    BOOL compact = !_forumLine && NoshiClassicCompact();
+    CGFloat rowHeight = _forumLine ? FORUM_ROW_HEIGHT : [NoshiClassicDialogCell rowHeight];
+    CGFloat avatarSide = compact ? COMPACT_AVATAR_SIZE : AVATAR_SIZE;
+    _avatar.frame = CGRectMake(SIDE, (rowHeight - avatarSide) / 2, avatarSide, avatarSide);
     _topicIcon.frame = _avatar.frame;
     _storyRing.frame = CGRectInset(_avatar.frame, -RING_OUTSET, -RING_OUTSET);
     _onlineDot.frame = CGRectMake(CGRectGetMaxX(_avatar.frame) - ONLINE_SIDE + 1, CGRectGetMaxY(_avatar.frame) - ONLINE_SIDE + 1, ONLINE_SIDE, ONLINE_SIDE);
     _communityBadge.frame = CGRectMake(CGRectGetMaxX(_avatar.frame) - NOSHI_COMMUNITY_BADGE_SIDE + 2, CGRectGetMaxY(_avatar.frame) - NOSHI_COMMUNITY_BADGE_SIDE + 2,
                                        NOSHI_COMMUNITY_BADGE_SIDE, NOSHI_COMMUNITY_BADGE_SIDE);
     _communityHit.frame = CGRectInset(_communityBadge.frame, -10, -10);
-    CGFloat textX = SIDE * 2 + AVATAR_SIZE;
+    CGFloat textX = SIDE * 2 + avatarSide;
     CGFloat textWidth = MAX(0, width - textX - 4);
     CGSize titleSize = [_title sizeThatFits:CGSizeMake(textWidth - (_muted.image ? 20 : 0), 20)];
-    CGFloat titleY = _forumLine ? FORUM_TITLE_Y : 10;
+    CGFloat titleY = _forumLine ? FORUM_TITLE_Y : (compact ? 7 : 10);
     _title.frame = CGRectMake(textX, titleY, MIN(titleSize.width, textWidth - (_muted.image ? 20 : 0)), 20);
     _muted.frame = CGRectMake(CGRectGetMaxX(_title.frame) + 4, titleY + (20 - _muted.image.size.height) / 2, _muted.image.size.width, _muted.image.size.height);
     /* a label centers its text in its frame, so a one line preview in the full height of two sat far below the name; it gets
@@ -491,13 +500,13 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     CGFloat forwardRoom = _forwardIcon.hidden ? 0 : FORWARD_SIDE + 4;
     thumbRoom += forwardRoom;
     CGSize previewSize = [_preview sizeThatFits:CGSizeMake(textWidth - thumbRoom, 36)];
-    BOOL wraps = !_forumLine && previewSize.height > _preview.font.lineHeight * 1.5;
+    BOOL wraps = !_forumLine && !compact && previewSize.height > _preview.font.lineHeight * 1.5;
     CGFloat lineHeight = ceil(_preview.font.lineHeight) + 1;
     /* the message of a forum stands inside its plate, between the padding and the chevron */
     CGFloat messageY = FORUM_TOPIC_Y + PLATE_HEIGHT + PLATE_GAP;
     CGFloat previewX = _forumLine ? textX + PLATE_PAD : textX;
     CGFloat chevronRoom = _forumLine ? PLATE_PAD + CHEVRON_SIDE + 4 : 0;
-    CGFloat previewY = _forumLine ? messageY + (PLATE_HEIGHT - lineHeight) / 2 : (wraps ? 31 : 35);
+    CGFloat previewY = _forumLine ? messageY + (PLATE_HEIGHT - lineHeight) / 2 : (compact ? 29 : (wraps ? 31 : 35));
     CGFloat lineWidth = MAX(0, textWidth - (previewX - textX) - chevronRoom);
     _preview.frame = CGRectMake(previewX + thumbRoom, previewY, MAX(0, lineWidth - thumbRoom), wraps ? 36 : lineHeight);
     _typing.frame = CGRectMake(previewX, previewY, lineWidth, lineHeight);

@@ -1,0 +1,14 @@
+#import <UIKit/UIKit.h>
+#include <stdint.h>
+
+NSString *NoshiImportedThemeCheck(NSURL *url, BOOL *dark, NSString **name);
+NSString *NoshiImportedThemeInstall(NSURL *url, BOOL dark);
+NSString *NoshiImportedThemeBeginPreview(NSURL *url);
+void NoshiImportedThemeUseBuiltin(BOOL dark);
+BOOL NoshiImportedThemeSelected(BOOL dark);
+void NoshiImportedThemeSuspend(BOOL suspended);
+void NoshiImportedThemeReload(BOOL dark);
+UIColor *NoshiImportedThemeColor(const char *key);
+NSString *NoshiImportedThemeWallpaper(void);
+NSString *NoshiImportedThemeStatusBar(void);
+NSUInteger NoshiImportedThemeWallpaperGradient(uint32_t colors[4], int *angle);

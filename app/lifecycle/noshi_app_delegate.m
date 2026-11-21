@@ -1,6 +1,7 @@
 #import "noshi_alert_view.h"
 #import "noshi_power_notice.h"
 #import "noshi_app_delegate.h"
+#import "noshi_imported_theme_preview_controller.h"
 #import <objc/message.h>
 #import "noshi_quick_actions.h"
 #import "noshi_share_intake.h"
@@ -163,6 +164,10 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     (void)application;
     (void)sourceApplication;
     (void)annotation;
+    if ([url isFileURL] && [[[url path] pathExtension] caseInsensitiveCompare:@"tgios-theme"] == NSOrderedSame) {
+        [NoshiImportedThemePreviewController openURL:url fromController:_navigation];
+        return YES;
+    }
     /* a picture, a video or any file from the share sheet or "open in" waits in the inbox of the app until the person picks its chat */
     if ([url isFileURL]) {
         if (![NoshiSession hasAccountInDirectory:NoshiAccountDirectory(_activeAccount)]) return NO;

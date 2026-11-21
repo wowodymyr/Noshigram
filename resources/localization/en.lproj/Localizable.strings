@@ -2740,7 +2740,7 @@
 "custom.tab.wallpapers" = "Wallpapers";
 "custom.tab.look" = "Customization";
 "custom.avatars.header" = "Avatar shape";
-"custom.avatars.info" = "The shape applies to the pictures of people and chats, to the rings of stories and, if chosen below, to the send button. The skeuomorphic style keeps its own.";
+"custom.avatars.info" = "The shape applies to the pictures of people and chats and to the rings of stories.";
 "custom.send.header" = "Send button";
 "custom.send.circle" = "Circle";
 "custom.send.rounded" = "Rounded square";
@@ -2751,10 +2751,10 @@
 "custom.density.compact" = "Compact";
 "custom.density.info" = "A compact row is lower, has a smaller picture and keeps the last message to one line.";
 "custom.indicator" = "Pill behind the selected tab";
-"custom.preview.line" = "мяу мяу мяяу";
-"custom.preview.bubble" = "мяу мяу мяяу";
-"custom.classic.row1" = "sqmrak";
-"custom.classic.row2" = "мяу мяу мяяу";
+"custom.preview.line" = "See you tomorrow!";
+"custom.preview.bubble" = "See you tomorrow!";
+"custom.classic.row1" = "Pavel";
+"custom.classic.row2" = "See you tomorrow!";
 "custom.gloss.header" = "Gloss";
 "custom.gloss.off" = "None";
 "custom.gloss.normal" = "Normal";

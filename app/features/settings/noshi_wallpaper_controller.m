@@ -28,6 +28,7 @@
     NSUInteger _tab;
     NoshiPillTabsView *_tabs;
     NoshiClassicPreviewView *_classicPreview;
+    NoshiShapeGridView *_shapes;
     /* the classic style makes every page again after a change of the color, and the new table starts at the top; the offset of the old one is brought back */
     CGFloat _restoreOffset;
     BOOL _restoresOffset;
@@ -81,6 +82,7 @@
     [_picker release];
     [_tabs release];
     [_classicPreview release];
+    [_shapes release];
     [_session release];
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [super dealloc];
@@ -196,6 +198,16 @@
     };
     [_classicPreview release];
     _classicPreview = [[NoshiClassicPreviewView alloc] init];
+    [_shapes release];
+    _shapes = [[NoshiShapeGridView alloc] init];
+    _shapes.chooseHandler = ^(NSInteger shape) {
+        NoshiWallpaperController *me = weak.target;
+        if (!me) return;
+        NoshiAvatarShapeStore(shape);
+        [me rebuild];
+        [me applyLook];
+        [me applyLookNow];
+    };
 }
 
 /* every screen reads its settings when it is built, so the main controller builds them again on this notification; this page stays and is made again */
@@ -277,7 +289,23 @@
         NoshiClassicAvatarShadowStore(on);
         [(NoshiWallpaperController *)weak.target applyLookNow];
     }];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.avatars.header", nil) footer:nil rows:[NSArray arrayWithObjects:avatarGloss, avatarShadow, nil]]];
+    NoshiShapeGridView *shapes = _shapes;
+    shapes.selectedShape = NoshiAvatarShapeStored();
+    NSMutableArray *avatarRows = [NSMutableArray array];
+    [avatarRows addObject:[NoshiSettingsRow viewRowWithView:shapes height:^CGFloat(CGFloat width) { return [NoshiShapeGridView heightForWidth:width]; }]];
+    if (NoshiAvatarShapeStored() == NoshiShapeRounded) {
+        [avatarRows addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.avatar.corners", nil) format:@"%.0f%%" value:(float)NoshiAvatarCornerPercent()
+                                                             minimum:0 maximum:100 change:^(float value) {
+            NoshiAvatarCornerStore((NSInteger)(value + 0.5f));
+            [(NoshiWallpaperController *)weak.target applyLook];
+        }]];
+    }
+    [avatarRows addObject:avatarGloss];
+    [avatarRows addObject:avatarShadow];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.avatars.header", nil) footer:NSLocalizedString(@"custom.avatars.info", nil) rows:avatarRows]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.density.header", nil) footer:NSLocalizedString(@"custom.density.info", nil)
+        rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.density.regular", @"custom.density.compact", nil] current:NoshiListDensityStored()
+                                store:^(NSInteger value) { NoshiListDensityStore(value); }]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.separators.header", nil) footer:NSLocalizedString(@"custom.separators.info", nil)
         rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.separators.thin", @"custom.separators.etched", @"custom.separators.none", nil] current:NoshiClassicSeparators()
                                 store:^(NSInteger value) { NoshiClassicSeparatorsStore(value); }]]];

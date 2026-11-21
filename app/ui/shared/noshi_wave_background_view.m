@@ -143,19 +143,19 @@
 /* on the near white lists the corner is a pale lilac wash, so the status bar and title stay readable over it */
 - (NSArray *)colorsForTop:(BOOL)top {
     if (top && _plain && NoshiThemeIsDark()) {
-        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.42 green:0.22 blue:0.62 alpha:0.60]).CGColor,
-                (id)NoshiThemeTinted([UIColor colorWithRed:0.30 green:0.18 blue:0.48 alpha:0.10]).CGColor, nil];
+        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.22 green:0.41 blue:0.62 alpha:0.60]).CGColor,
+                (id)NoshiThemeTinted([UIColor colorWithRed:0.18 green:0.35 blue:0.48 alpha:0.10]).CGColor, nil];
     }
     if (top && _plain) {
-        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.80 green:0.62 blue:0.90 alpha:0.62]).CGColor,
-                (id)NoshiThemeTinted([UIColor colorWithRed:0.90 green:0.80 blue:0.96 alpha:0.18]).CGColor, nil];
+        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.62 green:0.71 blue:0.90 alpha:0.62]).CGColor,
+                (id)NoshiThemeTinted([UIColor colorWithRed:0.80 green:0.85 blue:0.96 alpha:0.18]).CGColor, nil];
     }
     if (NoshiThemeIsDark()) {
-        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.40 green:0.20 blue:0.55 alpha:0.85]).CGColor,
-                (id)NoshiThemeTinted([UIColor colorWithRed:0.28 green:0.16 blue:0.44 alpha:0.40]).CGColor, nil];
+        return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.20 green:0.34 blue:0.55 alpha:0.85]).CGColor,
+                (id)NoshiThemeTinted([UIColor colorWithRed:0.16 green:0.31 blue:0.44 alpha:0.40]).CGColor, nil];
     }
-    return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.70 green:0.40 blue:0.76 alpha:0.92]).CGColor,
-            (id)NoshiThemeTinted([UIColor colorWithRed:0.82 green:0.64 blue:0.88 alpha:0.50]).CGColor, nil];
+    return [NSArray arrayWithObjects:(id)NoshiThemeTinted([UIColor colorWithRed:0.40 green:0.45 blue:0.76 alpha:0.92]).CGColor,
+            (id)NoshiThemeTinted([UIColor colorWithRed:0.64 green:0.69 blue:0.88 alpha:0.50]).CGColor, nil];
 }
 
 - (void)configureTopColors {

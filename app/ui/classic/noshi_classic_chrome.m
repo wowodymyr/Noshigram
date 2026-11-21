@@ -1,4 +1,5 @@
 #import "noshi_classic_chrome.h"
+#import "noshi_imported_theme.h"
 #import "noshi_status_label.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -20,7 +21,7 @@ BOOL NoshiClassicIsFlatSystem(void) {
 #endif
 }
 
-/* the purple of the bars: deep enough in the dark theme that the gloss of ios 5 and 6 still reads, lighter in the white
+/* the blue of the bars of telegram: deep enough in the dark theme that the gloss of ios 5 and 6 still reads, lighter in the white
    theme where the deep one looks heavy next to white rows; both keep the white text */
 static UIColor *NoshiClassicBarColor(void) {
     /* the material of the customization: steel blue, graphite and black glass are fixed colors, and only the first keeps the hue of the app */
@@ -31,8 +32,11 @@ static UIColor *NoshiClassicBarColor(void) {
     case 3: return dark ? [UIColor colorWithRed:0.06 green:0.06 blue:0.07 alpha:1] : [UIColor colorWithRed:0.14 green:0.14 blue:0.16 alpha:1];
     default: break;
     }
-    if (NoshiThemeIsDark()) return NoshiThemeTinted([UIColor colorWithRed:0.40 green:0.27 blue:0.56 alpha:1]);
-    return NoshiThemeTinted([UIColor colorWithRed:0.60 green:0.44 blue:0.78 alpha:1]);
+    /* an imported theme gives the bars its accent, a little deeper so the white words and the gloss still read */
+    UIColor *imported = NoshiImportedThemeColor("list.accent");
+    if (imported) return NoshiMixedColor(imported, [UIColor blackColor], dark ? 0.35 : 0.15);
+    if (NoshiThemeIsDark()) return NoshiThemeTinted([UIColor colorWithRed:0.20 green:0.32 blue:0.47 alpha:1]);
+    return NoshiThemeTinted([UIColor colorWithRed:0.33 green:0.51 blue:0.71 alpha:1]);
 }
 
 /* every picture of the classic chrome is drawn once for a palette and then kept: the lists, the bars and the buttons ask for the same few pictures at every configure and every touch, and
@@ -165,7 +169,7 @@ static UIImage *NoshiClassicSearchWellMade(void) {
     UIBezierPath *lower = [UIBezierPath bezierPathWithRoundedRect:CGRectOffset(pill, 0, rim) cornerRadius:radius];
     [(dark ? [UIColor colorWithWhite:1 alpha:0.1] : [UIColor colorWithWhite:1 alpha:0.9]) setFill];
     [lower fill];
-    [NoshiThemeTinted(dark ? [UIColor colorWithRed:0.09 green:0.07 blue:0.13 alpha:1] : [UIColor colorWithRed:0.86 green:0.83 blue:0.91 alpha:1]) setFill];
+    [NoshiThemeTinted(dark ? [UIColor colorWithRed:0.07 green:0.11 blue:0.13 alpha:1] : [UIColor colorWithRed:0.86 green:0.83 blue:0.91 alpha:1]) setFill];
     [shape fill];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -526,7 +530,7 @@ void NoshiClassicStyleCell(UITableViewCell *cell) {
 }
 
 void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiSymbol symbol) {
-    UIColor *resting = NoshiThemeTinted([UIColor colorWithRed:0.86 green:0.78 blue:0.96 alpha:1]);
+    UIColor *resting = NoshiThemeTinted([UIColor colorWithRed:0.78 green:0.87 blue:0.96 alpha:1]);
     NSDictionary *restingText = [NSDictionary dictionaryWithObjectsAndKeys:resting, UITextAttributeTextColor,
                                  [UIColor clearColor], UITextAttributeTextShadowColor, nil];
     NSDictionary *selectedText = [NSDictionary dictionaryWithObjectsAndKeys:[UIColor whiteColor], UITextAttributeTextColor,
@@ -589,7 +593,7 @@ static UIImage *NoshiClassicRoundImageMade(NoshiSymbol symbol, CGFloat side, BOO
     CGContextRestoreGState(context);
     CGGradientRelease(cap);
     UIColor *outline = red ? [UIColor colorWithRed:0.40 green:0.04 blue:0.03 alpha:1]
-                           : NoshiThemeTinted([UIColor colorWithRed:0.26 green:0.12 blue:0.40 alpha:1]);
+                           : NoshiThemeTinted([UIColor colorWithRed:0.12 green:0.25 blue:0.40 alpha:1]);
     CGContextSetStrokeColorWithColor(context, outline.CGColor);
     CGContextSetLineWidth(context, 1);
     CGContextStrokeEllipseInRect(context, bounds);

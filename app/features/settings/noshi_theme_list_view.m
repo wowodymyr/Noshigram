@@ -1,4 +1,5 @@
 #import "noshi_theme_list_view.h"
+#import "noshi_imported_theme.h"
 
 #import <QuartzCore/QuartzCore.h>
 
@@ -137,11 +138,13 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
 }
 
 - (void)refreshSelection {
-    for (NoshiThemeCard *card in _cards) [card showSelected:card.dark == NoshiThemeIsDark()];
+    /* while an imported theme is on, neither built-in card is the one in use, and a tap on either brings the colors of the app back */
+    BOOL imported = NoshiImportedThemeSelected(NoshiThemeIsDark());
+    for (NoshiThemeCard *card in _cards) [card showSelected:!imported && card.dark == NoshiThemeIsDark()];
 }
 
 - (void)cardTapped:(NoshiThemeCard *)card {
-    if (card.dark == NoshiThemeIsDark()) return;
+    if (card.dark == NoshiThemeIsDark() && !NoshiImportedThemeSelected(card.dark)) return;
     _tapPoint = [card.superview convertPoint:card.center toView:nil];
     if (_chooseHandler) _chooseHandler(card.dark);
 }

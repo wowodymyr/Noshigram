@@ -1,4 +1,5 @@
 #import "noshi_wallpaper.h"
+#import "noshi_imported_theme.h"
 
 #include <math.h>
 #include <string.h>
@@ -617,8 +618,14 @@ UIColor *NoshiClassicLinenColor(BOOL dark) {
 }
 
 void NoshiApplyWallpaperStyle(UIImageView *view, BOOL dark) {
-    /* the doodles of the standard wallpaper, turned to the blue of the app */
-    view.image = NoshiStandardWallpaperImage(dark);
+    /* the doodles of the standard wallpaper, turned to the blue of the app; an imported theme lays its own gradient or color instead */
+    uint32_t values[4] = {0};
+    int angle = 90;
+    (void)dark;
+    NSUInteger importedColors = NoshiImportedThemeWallpaperGradient(values, &angle);
+    BOOL importedBackground = NoshiImportedThemeColor("chat.defaultWallpaper") != nil;
+    view.image = importedColors ? NoshiImportedWallpaperGradientImage(values, importedColors, angle, [UIScreen mainScreen].bounds.size)
+                                : (importedBackground ? nil : NoshiStandardWallpaperImage(dark));
     view.backgroundColor = NoshiColorChatBackground();
     view.contentMode = UIViewContentModeScaleAspectFill;
     view.clipsToBounds = YES;

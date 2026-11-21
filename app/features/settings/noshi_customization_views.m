@@ -12,6 +12,9 @@
 #import "noshi_theme.h"
 #import "noshi_wallpaper.h"
 
+#define GRID_COLUMNS 5
+#define GRID_PAD 12.0
+#define CELL_GAP 6.0
 #define CLASSIC_BAR 44.0
 #define CLASSIC_STRIP 76.0
 #define CLASSIC_ROW 40.0
@@ -138,6 +141,85 @@
     _button.frame = CGRectMake(width - 16 - 90, (CLASSIC_STRIP - 34) / 2, 90, 34);
     _buttonText.frame = _button.bounds;
     _rows.frame = CGRectMake(0, CLASSIC_BAR + CLASSIC_STRIP, width, 2 * CLASSIC_ROW);
+}
+
+@end
+
+@implementation NoshiShapeGridView
+
+@synthesize selectedShape = _selectedShape;
+@synthesize chooseHandler = _chooseHandler;
+
++ (CGFloat)heightForWidth:(CGFloat)width {
+    CGFloat cell = floor((width - 2 * GRID_PAD - (GRID_COLUMNS - 1) * CELL_GAP) / GRID_COLUMNS);
+    NSUInteger rows = (NoshiShapeCount + GRID_COLUMNS - 1) / GRID_COLUMNS;
+    return 2 * GRID_PAD + rows * cell + (rows - 1) * CELL_GAP;
+}
+
+- (id)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (!self) return nil;
+    self.backgroundColor = [UIColor clearColor];
+    self.contentMode = UIViewContentModeRedraw;
+    UITapGestureRecognizer *tap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapped:)] autorelease];
+    [self addGestureRecognizer:tap];
+    return self;
+}
+
+- (void)dealloc {
+    [_chooseHandler release];
+    [super dealloc];
+}
+
+- (void)setSelectedShape:(NSInteger)shape {
+    if (shape == _selectedShape) return;
+    _selectedShape = shape;
+    [self setNeedsDisplay];
+}
+
+- (CGFloat)cellSide {
+    return floor((self.bounds.size.width - 2 * GRID_PAD - (GRID_COLUMNS - 1) * CELL_GAP) / GRID_COLUMNS);
+}
+
+- (CGRect)rectOfCell:(NSUInteger)index {
+    CGFloat side = [self cellSide];
+    NSUInteger column = index % GRID_COLUMNS, row = index / GRID_COLUMNS;
+    return CGRectMake(GRID_PAD + column * (side + CELL_GAP), GRID_PAD + row * (side + CELL_GAP), side, side);
+}
+
+- (void)drawRect:(CGRect)dirty {
+    (void)dirty;
+    UIColor *accent = NoshiColorAccent();
+    for (NSUInteger i = 0; i < NoshiShapeCount; ++i) {
+        CGRect cell = [self rectOfCell:i];
+        BOOL chosen = (NSInteger)i == _selectedShape;
+        if (chosen) {
+            /* the chosen shape stands in a pressed well, as a selected segment of ios 6 does */
+            [[accent colorWithAlphaComponent:0.16f] setFill];
+            UIBezierPath *well = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(cell, 0.5f, 0.5f) cornerRadius:6];
+            [well fill];
+            [[accent colorWithAlphaComponent:0.5f] setStroke];
+            well.lineWidth = 1;
+            [well stroke];
+        }
+        CGRect box = CGRectInset(cell, cell.size.width * 0.17f, cell.size.width * 0.17f);
+        [chosen ? accent : NoshiColorSecondary() setFill];
+        /* the rounded square is drawn with a fixed corner, so it never looks like the circle of the next cell */
+        [NoshiShapePath((NoshiShape)i, box, i == NoshiShapeRounded ? 36 : 0) fill];
+    }
+}
+
+- (void)tapped:(UITapGestureRecognizer *)tap {
+    CGPoint point = [tap locationInView:self];
+    for (NSUInteger i = 0; i < NoshiShapeCount; ++i) {
+        if (!CGRectContainsPoint(CGRectInset([self rectOfCell:i], -CELL_GAP / 2, -CELL_GAP / 2), point)) continue;
+        if ((NSInteger)i != _selectedShape && _chooseHandler) _chooseHandler((NSInteger)i);
+        return;
+    }
+}
+
+- (BOOL)isAccessibilityElement {
+    return NO;
 }
 
 @end

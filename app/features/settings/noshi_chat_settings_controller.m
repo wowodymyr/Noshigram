@@ -23,6 +23,8 @@
 #import "noshi_wallpaper_controller.h"
 #import "noshi_theme.h"
 #import "noshi_file_picker.h"
+#import "noshi_imported_theme.h"
+#import "noshi_imported_theme_preview_controller.h"
 #import "noshi_font_choice.h"
 #import "noshi_sheet.h"
 #import "noshi_classic_chrome.h"
@@ -43,6 +45,7 @@
 - (void)chooseFontFile;
 - (void)fontsChanged;
 - (void)interfaceScaleLetGo;
+- (void)chooseThemeFile;
 @end
 
 /* the duck of the theme change covers the window while the icon is written, which takes a moment and ends the app
@@ -227,6 +230,15 @@ static NSString *NoshiNightStateText(void) {
 
     /* the classic style is drawn by the system with its own sizes, so the scale changes nothing there and the slider is not offered */
 
+    /* the fonts of the app grow with the scale; the few labels the system draws with its own sizes keep them */
+    NoshiSettingsRow *interfaceScale = [NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"chatset.uiscale.row", nil) format:@"%.0f%%" value:(float)NoshiInterfaceScaleStored()
+                                                                     minimum:NOSHI_INTERFACE_SCALE_MIN maximum:NOSHI_INTERFACE_SCALE_MAX change:^(float value) {
+        [(NoshiChatSettingsController *)weak.target interfaceScaleMoved:value];
+    }];
+    interfaceScale.slideEnded = ^{ [(NoshiChatSettingsController *)weak.target interfaceScaleLetGo]; };
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.uiscale.header", nil) footer:nil
+                                                             rows:[NSArray arrayWithObject:interfaceScale]]];
+
     NSMutableArray *looks = [NSMutableArray array];
     [looks addObject:[NoshiSettingsRow rowWithSymbol:NoshiSymbolGallery tone:NoshiSettingsToneBlue title:NSLocalizedString(@"chatset.wallpaper", nil) subtitle:nil
                                                  value:nil tap:^{
@@ -256,7 +268,10 @@ static NSString *NoshiNightStateText(void) {
         };
         [themeRows addObject:[NoshiSettingsRow viewRowWithView:themes height:^CGFloat(CGFloat width) { (void)width; return [NoshiThemeListView height]; }]];
     }
-    NSString *themeFooter = nil;
+    [themeRows addObject:[NoshiSettingsRow rowWithSymbol:NoshiSymbolGallery tone:NoshiSettingsToneBlue title:NSLocalizedString(@"theme.import.title", nil) subtitle:nil value:nil tap:^{
+        [(NoshiChatSettingsController *)weak.target chooseThemeFile];
+    }]];
+    NSString *themeFooter = NoshiImportedThemeSelected(NoshiThemeIsDark()) ? NSLocalizedString(@"theme.import.active", nil) : nil;
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.colortheme.header", nil) footer:themeFooter rows:themeRows]];
     [sections addObject:[self fontSection]];
 
@@ -543,8 +558,26 @@ static NSString *NoshiNightStateText(void) {
 
 #pragma mark actions
 
-/* the colors spread from the point that was touched */
+- (void)chooseThemeFile {
+    /* the same browser as the one that picks a file to send, asking for a theme: only folders and .tgios-theme files show, and the one that is tapped opens its preview */
+    NoshiWeakReference *weak = _weak;
+    NoshiFilePicker *picker = [[[NoshiFilePicker alloc] initWithDirectory:nil handler:^(NSString *path) {
+        NoshiChatSettingsController *me = weak.target;
+        if (me) [NoshiImportedThemePreviewController openURL:[NSURL fileURLWithPath:path] fromController:me];
+    } cancel:nil] autorelease];
+    picker.extensions = [NSArray arrayWithObject:@"tgios-theme"];
+    picker.rootTitle = NSLocalizedString(@"theme.pick.title", nil);
+    picker.searchPlaceholder = NSLocalizedString(@"theme.pick.search", nil);
+    picker.emptyText = NSLocalizedString(@"theme.import.empty", nil);
+    picker.fileSymbol = NoshiSymbolBackground;
+    UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:picker] autorelease];
+    NoshiClassicStyleNavigationBar(navigation.navigationBar);
+    [self presentViewController:navigation animated:YES completion:nil];
+}
+
+/* the colors spread from the point that was touched; a built-in card puts the colors of the app back over an imported theme */
 - (void)applyThemeDark:(BOOL)dark from:(CGPoint)origin {
+    NoshiImportedThemeUseBuiltin(dark);
     NoshiThemeStoreDark(dark);
     [[NSNotificationCenter defaultCenter] postNotificationName:NoshiThemeDidChangeNotification object:nil
                                                       userInfo:[NSDictionary dictionaryWithObject:[NSValue valueWithCGPoint:origin] forKey:NoshiThemeOriginKey]];

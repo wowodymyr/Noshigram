@@ -2745,7 +2745,7 @@
 "custom.tab.wallpapers" = "Обои";
 "custom.tab.look" = "Кастомизация";
 "custom.avatars.header" = "Форма аватарок";
-"custom.avatars.info" = "Форма применяется к картинкам людей и чатов, кольцам историй и, если выбрано ниже, к кнопке отправки. Скевоморфический стиль сохраняет свою.";
+"custom.avatars.info" = "Форма применяется к фотографиям людей и чатов и к кольцам историй.";
 "custom.send.header" = "Кнопка отправки";
 "custom.send.circle" = "Круг";
 "custom.send.rounded" = "Скруглённый квадрат";
@@ -2756,10 +2756,10 @@
 "custom.density.compact" = "Компактный";
 "custom.density.info" = "Компактная строка ниже, с меньшей картинкой, и показывает последнее сообщение в одну строку.";
 "custom.indicator" = "Пилюля под выбранной вкладкой";
-"custom.preview.line" = "мяу мяу мяяу";
-"custom.preview.bubble" = "мяу мяу мяяу";
-"custom.classic.row1" = "sqmrak";
-"custom.classic.row2" = "мяу мяу мяяу";
+"custom.preview.line" = "До завтра!";
+"custom.preview.bubble" = "До завтра!";
+"custom.classic.row1" = "Павел";
+"custom.classic.row2" = "До завтра!";
 "custom.gloss.header" = "Глянец";
 "custom.gloss.off" = "Нет";
 "custom.gloss.normal" = "Обычный";

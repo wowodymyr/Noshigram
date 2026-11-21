@@ -29,10 +29,21 @@ noshigram ("no shit telegram") is a fork of [exteria](https://github.com/sqmrak/
 - passcode lock, several accounts, login by phone or qr
 - session files (`session-N.bin`) are sealed with chacha20-poly1305 under a random device key, kept in the keychain (this device only, after first unlock) or, where the keychain refuses the app, in `Application Support/Noshigram/session-key`. files from older builds are sealed on first read. restoring a backup onto another device signs the account out, since the key does not travel
 - the look of telegram for ios 6 and 7: glossy bars, the classic bubbles and the blue of telegram, by day and by night
+- `.tgios-theme` files and `t.me/addtheme` links
+- avatar shapes, a compact chat list and the size of the interface in the customization
 - in-app browser for web links, a sheet that slides up and is pulled down to close
 - a font file of your own (`.ttf` or `.otf`) or Rubik for the whole app, in chat settings
 - power saver, local notifications
 - russian, english
+
+## themes
+
+open a `.tgios-theme` file in Noshigram, or copy it to Documents and choose it in chat settings. a `t.me/addtheme/<slug>` link works too. the preview shows both bubbles before applying.
+
+- limits: 256 KiB, 512 values, 16 nesting levels
+- colors reach the lists, the bars (the glossy bars take the accent of the theme), the chat background and the bubbles; missing values use the Noshigram palette
+- gradients of up to four colors are drawn static; wallpaper slugs, patterns and motion are not reproduced
+- a tap on the day or the night card goes back to the colors of the app
 
 ## browser
 

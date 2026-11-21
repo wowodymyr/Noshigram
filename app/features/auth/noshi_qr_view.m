@@ -96,7 +96,7 @@ static CGFloat NoshiEaseOutBack(CGFloat t) {
 #pragma mark modules
 
 - (void)setModuleTopColor:(UIColor *)top bottomColor:(UIColor *)bottom {
-    UIColor *colors[2] = {top ? top : [UIColor colorWithRed:0.11 green:0.07 blue:0.19 alpha:1], bottom ? bottom : (top ? top : [UIColor colorWithRed:0.11 green:0.07 blue:0.19 alpha:1])};
+    UIColor *colors[2] = {top ? top : [UIColor colorWithRed:0.07 green:0.15 blue:0.19 alpha:1], bottom ? bottom : (top ? top : [UIColor colorWithRed:0.07 green:0.15 blue:0.19 alpha:1])};
     for (int i = 0; i < 2; ++i) {
         CGFloat alpha;
         if (![colors[i] getRed:&_ink[i][0] green:&_ink[i][1] blue:&_ink[i][2] alpha:&alpha]) {

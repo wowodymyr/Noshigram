@@ -242,7 +242,7 @@
     BOOL dark = NoshiThemeIsDark();
     UIView *strip = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, tableView.bounds.size.width, 22)] autorelease];
     strip.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    strip.backgroundColor = NoshiThemeTinted(dark ? [UIColor colorWithRed:0.40 green:0.27 blue:0.56 alpha:1] : [UIColor colorWithRed:0.60 green:0.44 blue:0.78 alpha:1]);
+    strip.backgroundColor = NoshiThemeTinted(dark ? [UIColor colorWithRed:0.27 green:0.42 blue:0.56 alpha:1] : [UIColor colorWithRed:0.44 green:0.61 blue:0.78 alpha:1]);
     UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(12, 0, strip.bounds.size.width - 24, 22)] autorelease];
     label.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     label.backgroundColor = [UIColor clearColor];
