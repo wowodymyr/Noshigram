@@ -20,8 +20,6 @@
 #import "exteria_stickers_settings_controller.h"
 #import "exteria_passcode_settings_controller.h"
 #import "exteria_people_avatars.h"
-#import "exteria_plugin_ui.h"
-#import "exteria_plugins.h"
 #import "exteria_passcode_store.h"
 #import "exteria_privacy_controller.h"
 #import "exteria_classic_devices_controller.h"
@@ -103,7 +101,6 @@ static NSString *const ExteriaDevicesCountKey = @"exteria.devices.count";
     /* the words the classic bar shows now: the title view is made again only when they change */
     NSString *_barHandle;
     BOOL _signingOut;
-    CGSize _pluginPageSize;
     UIButton *_more;
     UIButton *_qr;
     void (^_signOutHandler)(void (^)(NSString *));
@@ -131,7 +128,6 @@ static NSString *const ExteriaDevicesCountKey = @"exteria.devices.count";
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:ExteriaChatSettingsDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:ExteriaPluginCardsNotification object:nil];
     [_weak clear];
     [_weak release];
     [_session release];
@@ -154,12 +150,6 @@ static NSString *const ExteriaDevicesCountKey = @"exteria.devices.count";
     [super viewDidLoad];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(chatSettingsChanged) name:ExteriaChatSettingsDidChangeNotification object:nil];
     BOOL classic = ExteriaThemeIsClassic();
-    if (!classic) {
-        /* plugins put a picture under the rows through this layer and make the plates see-through (the classic table has no background to show it on) */
-        self.underlay = ExteriaPluginPageLayer(EXTERIA_PLUGIN_PAGE_SETTINGS);
-        self.cardFade = 1 - ExteriaPluginCardAlpha();
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(pluginCardsChanged) name:ExteriaPluginCardsNotification object:nil];
-    }
     _header = [[ExteriaSettingsHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, classic ? CLASSIC_HEADER_HEIGHT : HEADER_HEIGHT)
                                                    identityTop:classic ? EXTERIA_IDENTITY_TOP : EXTERIA_IDENTITY_BAR + EXTERIA_IDENTITY_TOP];
     _header.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -200,30 +190,6 @@ static NSString *const ExteriaDevicesCountKey = @"exteria.devices.count";
     }
     [self rebuildRows];
     [self loadPerson];
-    [self reportPluginPage:@"create"];
-}
-
-- (void)pluginCardsChanged {
-    self.cardFade = 1 - ExteriaPluginCardAlpha();
-}
-
-/* the plugins that hook the settings page (SettingsActivity.createView, onResume, onPause) hear of it here. nothing is sent when no plugin runs, or in the classic
-   style, which has no layer for them */
-- (void)reportPluginPage:(NSString *)event {
-    if (!self.underlay || !ExteriaPluginsAreRunning()) return;
-    CGSize size = self.view.bounds.size;
-    _pluginPageSize = size;
-    ExteriaPluginsCallHost(@"fragment_event", [NSArray arrayWithObjects:@"settings", event, [NSNumber numberWithDouble:size.width], [NSNumber numberWithDouble:size.height], nil]);
-}
-
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    if (_pluginPageSize.width > 0 && !CGSizeEqualToSize(_pluginPageSize, self.view.bounds.size)) [self reportPluginPage:@"layout"];
-}
-
-- (void)viewWillDisappear:(BOOL)animated {
-    [super viewWillDisappear:animated];
-    [self reportPluginPage:@"pause"];
 }
 
 - (void)chatSettingsChanged {
@@ -240,7 +206,6 @@ static NSString *const ExteriaDevicesCountKey = @"exteria.devices.count";
     [super viewWillAppear:animated];
     [self rebuildRows];
     [self loadPerson];
-    [self reportPluginPage:@"resume"];
 }
 
 - (void)loadPerson {

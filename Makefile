@@ -1,11 +1,27 @@
-# host tests and generated tables only, the ios build is meow.toml (`meow build`)
-# the ios toolchain's cc cannot build host test executables
+# the ios build of noshigram with theos: the app, its share extension, the deb (`make package`) and the ipa
+# (`make package PACKAGE_FORMAT=ipa`). the host tests stay in tests/Makefile (`make test`)
+#
+# needs: THEOS, the ios toolchain and the iPhoneOS14.5 sdk of theos/sdks, the static deps from
+# scripts/build_deps.sh in deps/<slice>, and NOSHI_API_ID / NOSHI_API_HASH in the environment
+# (or in local/credentials.env)
 
+TARGET := iphone:clang:14.5:5.0
+ARCHS ?= armv7 arm64
+INSTALL_TARGET_PROCESSES = Noshigram
+
+-include local/credentials.env
+
+DEPS ?= $(CURDIR)/deps
+SDK_LIB = $(THEOS)/sdks/iPhoneOS14.5.sdk/usr/lib
+
+include $(THEOS)/makefiles/common.mk
+
+# host side: tests and the tl tables, the ios toolchain cannot build host programs
 PYTHON  ?= python3
 SCHEMAS := schemas/api.tl schemas/mtproto.tl schemas/secret.tl
 TLGEN   := $(PYTHON) tools/tlgen.py
 
-.PHONY: test test-icons test-video sanitize generate check-generated clean
+.PHONY: test test-icons test-video sanitize generate check-generated credentials
 
 test:
 	$(MAKE) -C tests test
@@ -27,5 +43,87 @@ check-generated:
 	@$(TLGEN) --out build/generated-check $(SCHEMAS)
 	@diff -r build/generated-check core/tl/generated && echo "generated tl tables are current"
 
-clean:
-	rm -rf build
+# the api id and hash never enter the repository
+credentials:
+	@bash scripts/gen_credentials.sh build/generated/noshi_credentials.h
+
+before-all:: credentials
+
+# ---- sources -------------------------------------------------------------------------------------------
+
+WEBP_FILES   := $(wildcard third_party/libwebp/src/*/*.c)
+OPUS_FILES   := $(wildcard third_party/opus/celt/*.c third_party/opus/silk/*.c third_party/opus/silk/fixed/*.c \
+                  third_party/opus/src/*.c third_party/ogg/src/*.c)
+ZBAR_FILES   := $(addprefix third_party/zbar/zbar/,config.c error.c symbol.c image.c refcnt.c img_scanner.c scanner.c \
+                  decoder.c misc.c decoder/qr_finder.c qrcode/qrdec.c qrcode/qrdectxt.c qrcode/rs.c qrcode/isaac.c \
+                  qrcode/bch15_5.c qrcode/binarize.c qrcode/util.c)
+RLOTTIE_FILES := $(wildcard third_party/rlottie/src/*/*.cpp third_party/rlottie/src/*/*/*.cpp)
+TGVOIP_FILES := $(wildcard third_party/libtgvoip/*.cpp third_party/libtgvoip/audio/*.cpp \
+                  third_party/libtgvoip/os/posix/*.cpp third_party/libtgvoip/os/darwin/*.cpp)
+CORE_FILES   := $(wildcard core/*/*.c core/tl/generated/*.c)
+APP_FILES    := $(wildcard app/*/*.m app/*/*/*.m)
+
+CORE_DIRS := $(sort $(dir $(wildcard core/*/*.h))) core/tl/generated/
+APP_DIRS  := $(sort $(dir $(wildcard app/*/*.h app/*/*/*.h)))
+CORE_INCLUDES := $(addprefix -I,$(CORE_DIRS)) -isystem $(DEPS)/$(THEOS_CURRENT_ARCH)/include \
+                 -Ithird_party/opus/include -Ithird_party/ogg/include
+
+# the c core is held to the strict warnings, upstream libraries build as they ship
+STRICT_C := -std=c99 -Wall -Wextra -Werror -Wshadow -Wstrict-prototypes -Wmissing-prototypes -Wconversion -Wno-sign-conversion
+VENDOR_CXX := -std=c++14 -fvisibility=hidden -w
+
+$(foreach f,$(WEBP_FILES),$(eval $(f)_CFLAGS = -std=c99 -w -Ithird_party/libwebp))
+$(foreach f,$(OPUS_FILES),$(eval $(f)_CFLAGS = -std=c99 -w -DOPUS_BUILD -DFIXED_POINT -DDISABLE_FLOAT_API -DVAR_ARRAYS \
+    -DPACKAGE_VERSION=\"1.5.2\" -Ithird_party/opus/include -Ithird_party/opus/celt -Ithird_party/opus/silk \
+    -Ithird_party/opus/silk/fixed -Ithird_party/opus/src -Ithird_party/ogg/include))
+# NOSHI_ZBAR_IOS keeps the timer of zbar off the posix timers ios lacks
+$(foreach f,$(ZBAR_FILES),$(eval $(f)_CFLAGS = -std=gnu99 -w -DNOSHI_ZBAR_IOS -Ithird_party/zbar/include \
+    -Ithird_party/zbar/zbar -Ithird_party/zbar/zbar/decoder -Ithird_party/zbar/zbar/qrcode))
+# the portable raster path: the neon asm needs a build of its own
+$(foreach f,$(RLOTTIE_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -fno-exceptions -fno-rtti -U__ARM_NEON__ \
+    -include limits -include cstdint -D_LIBCPP_DISABLE_AVAILABILITY -Ithird_party/rlottie/config \
+    -Ithird_party/rlottie/inc -Ithird_party/rlottie/src/vector -Ithird_party/rlottie/src/vector/freetype \
+    -Ithird_party/rlottie/src/vector/pixman -Ithird_party/rlottie/src/lottie -Ithird_party/rlottie/src/binding/c))
+# libtgvoip throws and casts across its address classes, so it keeps exceptions and rtti
+$(foreach f,$(TGVOIP_FILES),$(eval $(f)_CFLAGS = $(VENDOR_CXX) -DTGVOIP_NO_DSP -DTGVOIP_LOG_VERBOSITY=2 \
+    -D_LIBCPP_DISABLE_AVAILABILITY -Ithird_party/libtgvoip -Ithird_party/opus/include -Iapp/net -Icore/base))
+$(foreach f,$(CORE_FILES),$(eval $(f)_CFLAGS = $(STRICT_C)))
+$(foreach f,$(APP_FILES),$(eval $(f)_CFLAGS = -std=gnu99 -fno-objc-arc -fblocks -Wall -Wextra -Wno-unused-parameter \
+    $(addprefix -I,$(APP_DIRS)) -Ibuild/generated -Ithird_party/rlottie/inc -Ithird_party/libwebp \
+    -Ithird_party/libtgvoip -Ithird_party/zbar/include))
+
+# ---- the app -------------------------------------------------------------------------------------------
+
+APPLICATION_NAME = Noshigram
+
+Noshigram_FILES = $(APP_FILES) $(CORE_FILES) $(WEBP_FILES) $(OPUS_FILES) $(ZBAR_FILES) $(RLOTTIE_FILES) $(TGVOIP_FILES)
+Noshigram_USE_MODULES = 0
+Noshigram_CFLAGS = -O2 -g $(CORE_INCLUDES)
+Noshigram_FRAMEWORKS = UIKit Foundation Security CoreGraphics QuartzCore ImageIO CoreText AVFoundation CoreMedia \
+    CoreVideo CoreAudio AudioToolbox CoreLocation Accelerate MobileCoreServices CFNetwork
+Noshigram_WEAK_FRAMEWORKS = OpenGLES CoreMotion AssetsLibrary AddressBook AddressBookUI MediaPlayer
+Noshigram_LIBRARIES = z c++ sqlite3 iconv
+Noshigram_LDFLAGS = $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libssl.a $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libcrypto.a \
+    $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavformat.a $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavcodec.a \
+    $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libswresample.a $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libavutil.a \
+    $(DEPS)/$(THEOS_CURRENT_ARCH)/lib/libvpx.a -Wl,-dead_strip
+Noshigram_CODESIGN_FLAGS = -Spackaging/entitlements.plist
+
+# ios 5 needs the crt1.3.1.o start file, which ld64 picks by name only with the default start files
+armv7_LDFLAGS = -nostartfiles $(SDK_LIB)/crt1.3.1.o
+
+include $(THEOS_MAKE_PATH)/application.mk
+
+# the share sheet extension starts at _NSExtensionMain and needs ios 8, it is built by its own makefile
+SUBPROJECTS += extension/share
+include $(THEOS_MAKE_PATH)/aggregate.mk
+
+# the flat resources of the bundle, staged by the same script for the deb and the ipa
+Noshigram_RESOURCE_STAGE = $(THEOS_STAGING_DIR)/Applications/Noshigram.app
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+Noshigram_RESOURCE_STAGE = $(THEOS_STAGING_DIR)/var/jb/Applications/Noshigram.app
+endif
+
+internal-stage::
+	$(ECHO_NOTHING)bash scripts/stage_bundle.sh "$(Noshigram_RESOURCE_STAGE)"$(ECHO_END)
+	$(ECHO_NOTHING)cp packaging/Info.plist "$(Noshigram_RESOURCE_STAGE)/Info.plist"$(ECHO_END)

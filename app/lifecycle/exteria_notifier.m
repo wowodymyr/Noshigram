@@ -524,22 +524,6 @@ static void present_notice(NSString *title, NSString *body, NSDictionary *info, 
     present_notice(title, body, info, sound, application);
 }
 
-BOOL ExteriaNotifyPluginNotice(NSString *key, NSString *title, NSString *body) {
-    if (!ExteriaNotifyEnabled()) return NO;
-    /* the key names the notice for a later take-back; a tap on it only opens the app, since it names no chat */
-    NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:key, @"plugin_notice", [@"exteria.plugin." stringByAppendingString:key], @"identifier", nil];
-    present_notice(title, body, info, @"", [UIApplication sharedApplication]);
-    return YES;
-}
-
-void ExteriaNotifyPluginNoticeCancel(NSString *key) {
-    id center = user_notification_center();
-    if (!center) return;
-    /* a notice on screen can be taken back from ios 10; before that the system keeps it until the person clears it */
-    NSArray *identifiers = [NSArray arrayWithObject:[@"exteria.plugin." stringByAppendingString:key]];
-    ((void (*)(id, SEL, NSArray *))objc_msgSend)(center, NSSelectorFromString(@"removeDeliveredNotificationsWithIdentifiers:"), identifiers);
-}
-
 /* the reminder of what is still unread, a notification that fires after the interval of the settings and is taken
    back whenever the app looks again; an hour by default */
 - (void)scheduleRepeatForUnread:(NSInteger)unreadChats application:(UIApplication *)application {

@@ -1,4 +1,3 @@
-#import "exteria_plugins.h"
 #import "exteria_alert_view.h"
 #import "exteria_power_notice.h"
 #import "exteria_app_delegate.h"
@@ -111,7 +110,6 @@ static NSString *ExteriaSupportDirectory(void) {
     ExteriaNightCheck(NO);
     /* and before the splash, the window and the tab bar, which draw with the colors of the tone that is current, light until it is applied */
     ExteriaThemeApplyStored();
-    ExteriaPluginsStart();
     NSString *directory = ExteriaSupportDirectory();
     _activeAccount = [ExteriaAccountActive() copy];
     NSString *accountDirectory = ExteriaAccountDirectory(_activeAccount);
@@ -294,11 +292,6 @@ static NSURL *ExteriaKeepOpenedFile(NSURL *url, NSString **directory) {
     [_notifier settingsChanged];
 }
 
-- (void)applicationWillResignActive:(UIApplication *)application {
-    (void)application;
-    ExteriaPluginsEvent("pause");
-}
-
 - (void)applicationDidEnterBackground:(UIApplication *)application {
     /* ios 6 resigns active for the notification center and the multitasking bar without going to the background, and a cover raised then hid both; the
        snapshot of the switcher is taken after this method returns, so the cover is raised here */
@@ -320,9 +313,6 @@ static NSURL *ExteriaKeepOpenedFile(NSURL *url, NSString **directory) {
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
     [_passcodeLock evaluateReturn];
-    /* the pad and the dissolve of the cover are drawn when this pass of the run loop ends, and a plugin hook runs python on this thread (it can wait on the gil
-       or on a worker's call into the app for seconds), which can leave the bare cover on screen; the hook goes to the next pass */
-    dispatch_async(dispatch_get_main_queue(), ^{ ExteriaPluginsEvent("resume"); });
     [_notifier applicationDidBecomeActive:application];
     /* the remote events of a song that plays need a responder in the window, which a screen that came and went in the meantime may have taken the focus from */
     ExteriaRemoteControlsClaim();
@@ -389,11 +379,6 @@ static NSURL *ExteriaKeepOpenedFile(NSURL *url, NSString **directory) {
     UIViewController *top = _navigation.topViewController;
     if ([top isKindOfClass:[ExteriaSplitController class]]) return [(ExteriaSplitController *)top canRebuildForTheme];
     return [top isKindOfClass:[ExteriaMainController class]];
-}
-
-- (void)applicationWillTerminate:(UIApplication *)application {
-    (void)application;
-    ExteriaPluginsEvent("stop");
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {

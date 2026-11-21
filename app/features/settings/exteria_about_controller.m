@@ -2,7 +2,6 @@
 #import "exteria_about_controller.h"
 #import "exteria_general_settings_controller.h"
 #import "exteria_more_settings_controller.h"
-#import "exteria_plugins_controller.h"
 #import "exteria_link_router.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -613,9 +612,6 @@ static NSString *const ExteriaMorphTurnKey = @"about.turn";
         }],
         [self categoryRow:ExteriaSymbolEyeSlash tone:ExteriaSettingsTonePurplePastel key:@"ayu.title" page:^UIViewController *{
             return [[[ExteriaAyuController alloc] initWithSession:session] autorelease];
-        }],
-        [self categoryRow:ExteriaSymbolApps tone:ExteriaSettingsToneCyan key:@"plugins.title" page:^UIViewController *{
-            return [[[ExteriaPluginsController alloc] init] autorelease];
         }],
         [self categoryRow:ExteriaSymbolEllipsis tone:ExteriaSettingsToneGray key:@"about.more" page:^UIViewController *{
             return [[[ExteriaMoreSettingsController alloc] initWithSession:session] autorelease];

@@ -9,7 +9,6 @@
 #import "exteria_alert.h"
 #import "exteria_emoji_label.h"
 #import "exteria_person.h"
-#import "exteria_plugin_story.h"
 #import "exteria_profile_photo_picker.h"
 #import "exteria_story.h"
 #import "exteria_story_camera_controller.h"
@@ -531,12 +530,6 @@ static UIColor *ExteriaStoryShelfColor(CGFloat height) {
 - (void)postStoryAtPath:(NSString *)path caption:(NSString *)caption audience:(ExteriaStoryAudience *)audience {
     if (_posting) {
         [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
-        return;
-    }
-    /* a plugin that schedules stories takes it and publishes it later; it asks for the file to stay while it still reads it */
-    BOOL keepFile = NO;
-    if (ExteriaPluginStoryTaken(path, caption, audience, &keepFile)) {
-        if (!keepFile) [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
         return;
     }
     _posting = YES;

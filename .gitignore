@@ -3,3 +3,7 @@ local/
 *.o
 *.a
 __pycache__/
+deps/
+.theos/
+packages/
+obj/
