@@ -23,7 +23,6 @@
 #define LABEL_HEIGHT 22.0
 #define SHEET_RADIUS 22.0
 #define SHEET_MARGIN 16.0
-#define TILE_MODERN 60.0
 #define TILE_CLASSIC 48.0
 #define TILE_GAP 8.0
 #define SWITCH_HEIGHT 30.0

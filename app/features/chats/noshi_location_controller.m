@@ -1,6 +1,5 @@
 #import "noshi_location_controller.h"
 #import "noshi_alert_view.h"
-#import "noshi_bar_button.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_image_decoder.h"
 #import "noshi_map_view.h"
@@ -22,11 +21,6 @@
     UISearchBar *_search;
     UIButton *_position, *_plus, *_minus;
     /* the modern top bar, which replaces the system bar; the classic style keeps the system one */
-    UIView *_header;
-    UILabel *_headerTitle;
-    NoshiBarButton *_headerClose;
-    UIButton *_headerAction;
-    UIImage *_badgeSend, *_badgePlace, *_badgeIdle;
     /* the category pictures of the places the bot sent, as the badges of their rows, by the id of the result */
     NSMutableDictionary *_placeIcons;
     NSMutableSet *_placeIconAsks;
@@ -47,23 +41,6 @@
 @end
 
 /* how far the list card of the modern style rises over the foot of the map */
-#define MODERN_CARD_RISE 16.0
-#define MODERN_BAR_HEIGHT 44.0
-#define MODERN_BUTTON 44.0
-
-/* a round badge with a white pin, the icon of a row of the modern list */
-static UIImage *NoshiLocationBadge(NoshiSymbol symbol, UIColor *fill) {
-    CGFloat side=40;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side,side),NO,0);
-    CGContextRef context=UIGraphicsGetCurrentContext();
-    [fill setFill];
-    CGContextFillEllipseInRect(context,CGRectMake(0,0,side,side));
-    UIImage *glyph=NoshiSymbolImage(symbol,20,[UIColor whiteColor]);
-    [glyph drawInRect:CGRectMake((side-glyph.size.width)/2,(side-glyph.size.height)/2,glyph.size.width,glyph.size.height)];
-    UIImage *image=UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
 
 /* the disc of a place row: the category picture the bot sent, or nothing yet */
 static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
@@ -102,8 +79,7 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     [self cancel];
     [_session release]; [_dialog release]; [_weak release]; [_map release]; [_table release]; [_search release];
     [_position release]; [_plus release]; [_minus release]; [_details release];
-    [_header release]; [_headerTitle release]; [_headerClose release]; [_headerAction release];
-    [_badgeSend release]; [_badgePlace release]; [_badgeIdle release]; [_placeIcons release]; [_placeIconAsks release];
+    [_placeIcons release]; [_placeIconAsks release];
     [_fix release]; [_bot release]; [_venues release]; [_selectedVenue release]; [_searchError release]; [_selection release]; [_closeHandler release];
     [super dealloc];
 }
@@ -153,11 +129,6 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
             address.length ? [address stringByAppendingString:@"\n"] : @"",_location.latitude,_location.longitude];
         [root addSubview:_details];
     }
-    if (_header) [root addSubview:_header];
-}
-- (void)viewWillAppear:(BOOL)animated {
-    [super viewWillAppear:animated];
-    if (_header) [self.navigationController setNavigationBarHidden:YES animated:animated];
 }
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
@@ -171,31 +142,15 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     CGSize size=self.view.bounds.size;
-    BOOL modern=_header!=nil;
     CGFloat top=0;
-    if (modern) {
-        UIEdgeInsets insets=NoshiLayoutInsets(self);
-        top=insets.top+MODERN_BAR_HEIGHT;
-        _header.frame=CGRectMake(0,0,size.width,top);
-        CGFloat barY=insets.top;
-        _headerClose.frame=CGRectMake(MAX(insets.left,0)+4,barY,88,MODERN_BAR_HEIGHT);
-        _headerAction.frame=CGRectMake(size.width-MAX(insets.right,0)-MODERN_BAR_HEIGHT-4,barY,MODERN_BAR_HEIGHT,MODERN_BAR_HEIGHT);
-        _headerTitle.frame=CGRectMake(100,barY,MAX(0,size.width-200),MODERN_BAR_HEIGHT);
-    }
     CGFloat searchHeight=_selection && _searchOpen ? 44 : 0;
     BOOL searching=_search.text.length>0;
     CGFloat room=size.height-top;
     CGFloat mapHeight=_selection ? (searching ? 0 : MAX(130,floor((room-searchHeight)*0.52))) : MAX(0,room-94);
-    CGFloat rise=modern ? MODERN_CARD_RISE : 0;
     _search.frame=CGRectMake(0,top,size.width,searchHeight);
     _map.hidden=searching; _map.frame=CGRectMake(0,top+searchHeight,size.width,mapHeight);
-    /* the card of the modern list covers the foot of the map, so the map is as tall as the list lets it be seen */
-    _table.frame=CGRectMake(0,top+searchHeight+mapHeight-(searching ? 0 : rise),size.width,MAX(0,room-searchHeight-mapHeight+(searching ? 0 : rise)));
+    _table.frame=CGRectMake(0,top+searchHeight+mapHeight,size.width,MAX(0,room-searchHeight-mapHeight));
     _details.frame=CGRectMake(12,top+mapHeight,size.width-24,94);
-    if (modern) {
-        _position.frame=CGRectMake(MAX(0,size.width-MODERN_BUTTON-12),MAX(12,mapHeight-rise-MODERN_BUTTON-12),MODERN_BUTTON,MODERN_BUTTON);
-        return;
-    }
     _position.frame=CGRectMake(MAX(0,size.width-52),MAX(12,mapHeight-68),40,40);
     _plus.frame=CGRectMake(12,12,40,40); _minus.frame=CGRectMake(12,56,40,40);
 }
@@ -367,41 +322,29 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     (void)tableView; return section==0 ? 1 : (NSInteger)MAX((NSUInteger)1,_venues.count);
 }
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
-    (void)tableView; return section==1 && !_header ? NSLocalizedString(@"map.nearby",nil) : nil;
+    (void)tableView; return section==1 ? NSLocalizedString(@"map.nearby",nil) : nil;
 }
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
     if (section!=1) return nil;
-    if (!_header) {
-        /* the system header of a plain table is a grey strip that ignores the accent of the theme, so the classic list draws its own as the other lists of that style do */
-        CGFloat width=tableView.bounds.size.width;
-        UIView *strip=[[[UIView alloc] initWithFrame:CGRectMake(0,0,width,24)] autorelease];
-        strip.autoresizingMask=UIViewAutoresizingFlexibleWidth;
-        strip.backgroundColor=NoshiClassicStripGround();
-        UILabel *name=[[[UILabel alloc] initWithFrame:CGRectMake(14,0,MAX(0,width-28),24)] autorelease];
-        name.autoresizingMask=UIViewAutoresizingFlexibleWidth;
-        name.backgroundColor=[UIColor clearColor]; name.font=[UIFont boldSystemFontOfSize:15]; name.textColor=NoshiColorAccent();
-        name.text=NSLocalizedString(@"map.nearby",nil);
-        [strip addSubview:name];
-        return strip;
-    }
-    UIView *bar=[[[UIView alloc] initWithFrame:CGRectMake(0,0,320,34)] autorelease];
-    bar.backgroundColor=NoshiColorCard();
-    UILabel *label=[[[UILabel alloc] initWithFrame:CGRectMake(16,8,288,22)] autorelease];
-    label.autoresizingMask=UIViewAutoresizingFlexibleWidth;
-    label.backgroundColor=[UIColor clearColor]; label.font=NoshiFontSemibold(14); label.textColor=NoshiColorAccent();
-    label.text=NSLocalizedString(@"map.nearby",nil);
-    [bar addSubview:label];
-    return bar;
+    /* the system header of a plain table is a grey strip that ignores the accent of the theme, so the list draws its own as the other lists do */
+    CGFloat width=tableView.bounds.size.width;
+    UIView *strip=[[[UIView alloc] initWithFrame:CGRectMake(0,0,width,24)] autorelease];
+    strip.autoresizingMask=UIViewAutoresizingFlexibleWidth;
+    strip.backgroundColor=NoshiClassicStripGround();
+    UILabel *name=[[[UILabel alloc] initWithFrame:CGRectMake(14,0,MAX(0,width-28),24)] autorelease];
+    name.autoresizingMask=UIViewAutoresizingFlexibleWidth;
+    name.backgroundColor=[UIColor clearColor]; name.font=[UIFont boldSystemFontOfSize:15]; name.textColor=NoshiColorAccent();
+    name.text=NSLocalizedString(@"map.nearby",nil);
+    [strip addSubview:name];
+    return strip;
 }
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     (void)tableView;
-    if (!_header) return section==1 ? 24 : 0.01f;
-    return section==1 ? 34 : 0.01f;
+    return section==1 ? 24 : 0.01f;
 }
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
-    /* the modern list carries no credit line under the places */
-    if (_header || section!=1 || !_venues.count) return nil;
+    if (section!=1 || !_venues.count) return nil;
     noshi_geo_point point=[(NoshiInlineResult *)[_venues objectAtIndex:0] media].location;
     return !strcmp(point.provider,"foursquare") ? NSLocalizedString(@"map.foursquare",nil) : nil;
 }
@@ -414,17 +357,11 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     cell.detailTextLabel.textColor=NoshiColorSecondary(); cell.detailTextLabel.numberOfLines=2;
     cell.accessoryType=UITableViewCellAccessoryNone; cell.imageView.image=nil; cell.detailTextLabel.text=nil;
     cell.selectionStyle=UITableViewCellSelectionStyleBlue;
-    if (_header) {
-        /* the rows of the modern list are set in from the badge, as the lists of the app are */
-        cell.textLabel.font=NoshiFontSemibold(16);
-        SEL inset=NSSelectorFromString(@"setSeparatorInset:");
-        if ([cell respondsToSelector:inset]) [cell setValue:[NSValue valueWithUIEdgeInsets:UIEdgeInsetsMake(0,68,0,0)] forKey:@"separatorInset"];
-    }
     if (path.section==0) {
         cell.textLabel.text=NSLocalizedString(!_hasPoint ? @"map.choose_point" : (_manual ? @"map.send_selected" : @"map.send_current"),nil);
         if (_selectedVenue) cell.textLabel.text=NSLocalizedString(@"map.send_place",nil);
         cell.textLabel.textColor=_hasPoint ? NoshiColorAccent() : NoshiColorSecondary();
-        cell.imageView.image=_header ? (_hasPoint ? _badgeSend : _badgeIdle) : NoshiSymbolImage(NoshiSymbolSendArrow,24,_hasPoint ? NoshiColorAccent() : NoshiColorSecondary());
+        cell.imageView.image=NoshiSymbolImage(NoshiSymbolSendArrow,24,_hasPoint ? NoshiColorAccent() : NoshiColorSecondary());
         if (_hasPoint) cell.detailTextLabel.text=[NSString stringWithFormat:@"%.6f, %.6f%@",_map.latitude,_map.longitude,
             !_manual && _fix ? [NSString stringWithFormat:@" · ±%.0f m",_fix.horizontalAccuracy] : @""];
         if (_selectedVenue) cell.detailTextLabel.text=[NSString stringWithUTF8String:_selectedVenue.media.location.title];
@@ -435,8 +372,8 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
         cell.detailTextLabel.text=result.subtitle.length ? result.subtitle : [NSString stringWithUTF8String:point.address];
         UIImage *placeIcon=[_placeIcons objectForKey:result.resultId];
         if (!placeIcon) [self loadIconOfResult:result];
-        cell.imageView.image=placeIcon ? placeIcon : (_header ? _badgePlace : NoshiSymbolImage(NoshiSymbolMapPin,24,NoshiColorAccent()));
-        cell.accessoryType=_header ? UITableViewCellAccessoryNone : UITableViewCellAccessoryDisclosureIndicator;
+        cell.imageView.image=placeIcon ? placeIcon : NoshiSymbolImage(NoshiSymbolMapPin,24,NoshiColorAccent());
+        cell.accessoryType=UITableViewCellAccessoryDisclosureIndicator;
     } else {
         cell.textLabel.text=NSLocalizedString(_loading || _botLoading ? @"map.loading" : (_searchError ? @"map.places_failed" : @"map.no_places"),nil);
         cell.detailTextLabel.text=_searchError ? NSLocalizedString(@"map.retry_places",nil) : nil;

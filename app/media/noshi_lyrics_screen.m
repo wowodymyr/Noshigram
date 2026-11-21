@@ -58,28 +58,6 @@ static void NoshiLyricsGround(UIImage *cover, UIColor **top, UIColor **bottom) {
     *bottom = [UIColor colorWithHue:bestHue saturation:saturation brightness:0.16f alpha:1];
 }
 
-/* the average color of the cover, which is the ground of the modern screen; one pixel drawn from the whole picture is its average. no cover, or a clear one, gives the accent */
-static UIColor *NoshiLyricsCoverTint(UIImage *cover) {
-    CGImageRef image = cover.CGImage;
-    if (!image) return NoshiColorAccent();
-    unsigned char pixel[4] = {0, 0, 0, 0};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = CGBitmapContextCreate(pixel, 1, 1, 8, 4, space, kCGImageAlphaPremultipliedLast);
-    CGColorSpaceRelease(space);
-    if (!context) return NoshiColorAccent();
-    CGContextSetInterpolationQuality(context, kCGInterpolationMedium);
-    CGContextDrawImage(context, CGRectMake(0, 0, 1, 1), image);
-    CGContextRelease(context);
-    if (!pixel[3]) return NoshiColorAccent();
-    return [UIColor colorWithRed:pixel[0] / 255.0 green:pixel[1] / 255.0 blue:pixel[2] / 255.0 alpha:1];
-}
-
-/* how far the cover color goes into the screen color at the top and at the bottom of the panel; the top is the share the player card wears, so the card reads as part of the ground */
-static CGFloat NoshiLyricsTintShare(BOOL top) {
-    if (NoshiThemeIsDark()) return top ? 0.5 : 0.18;
-    return top ? 0.4 : 0.14;
-}
-
 @interface NoshiLyricsScreen () {
     UIView *_dim;
     UIView *_panel;
@@ -163,10 +141,10 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
 - (void)applyCover:(UIImage *)cover {
     [_cover release];
     _cover = [cover retain];
-    UIColor *top, *bottom, *tint = nil;
+    UIColor *top, *bottom;
     NoshiLyricsGround(cover, &top, &bottom);
     NSArray *colors = [NSArray arrayWithObjects:(id)top.CGColor, (id)bottom.CGColor, nil];
-    /* the first cover is laid down at once, the next songs fade the ground and the card to their colors together */
+    /* the first cover is laid down at once, the next songs fade the ground to their colors */
     BOOL fade = _grounded && self.window != nil;
     if (fade) {
         CABasicAnimation *change = [CABasicAnimation animationWithKeyPath:@"colors"];

@@ -5,6 +5,10 @@
 #import "noshi_pinned_line.h"
 #import "noshi_round_glow.h"
 #import "noshi_chat_controller.h"
+#import "noshi_message_effect_player.h"
+#import "noshi_saved_media_controller.h"
+#import "noshi_send_as_menu.h"
+#import "noshi_send_menu.h"
 #import "noshi_group_call_engine.h"
 #import "noshi_location_controller.h"
 #import "noshi_status_label.h"
@@ -6928,6 +6932,950 @@ static NSDate *NoshiReminderDate(NSUInteger choice) {
     if (![self selectedMessages].count) return;
     [self askWithMessage:[NSString stringWithFormat:NSLocalizedString(@"chat.select.delete.confirm", nil), (long)[self selectedMessages].count]
                   action:NSLocalizedString(@"chat.msg.delete", nil) tag:NoshiChatAlertDeleteSelected];
+}
+
+- (void)deleteSelectedNow {
+    NSMutableArray *ids = [NSMutableArray array];
+    for (NoshiMessage *message in [self selectedMessages]) [ids addObject:[NSNumber numberWithInt:message.messageId]];
+    if (!ids.count) return;
+    NoshiWeakReference *weak = _weak;
+    [_session deleteMessageIds:ids ofDialog:_dialog revoke:!NoshiChatFlagGet(NoshiChatFlagDeleteForMe) completion:^(NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (errorName) {
+            NSLog(@"noshigram: delete of %lu messages failed: %@", (unsigned long)ids.count, errorName);
+            NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));
+            return;
+        }
+        for (NSNumber *identifier in ids) {
+            [chat->_server removeObjectForKey:identifier];
+            for (NoshiMessage *local in [[chat->_local copy] autorelease]) if (local.messageId == identifier.intValue) [chat->_local removeObject:local];
+            if (chat->_replyToId == identifier.intValue || chat->_editingId == identifier.intValue) [chat cancelCompose];
+        }
+        [chat endSelection];
+        [chat rebuildItems];
+        [[NSNotificationCenter defaultCenter] postNotificationName:NoshiDialogsChangedNotification object:nil];
+    }];
+}
+
+/* the message goes into the list of bookmarks of this phone, with a line to know it by */
+- (void)bookmarkMessage:(NoshiMessage *)message {
+    if ([[NoshiBookmarks bookmarksForSession:_session] addMessageId:message.messageId date:message.date text:NoshiMessageSummary(message) inDialog:_dialog]) {
+        [self toast:NSLocalizedString(@"chat.msg.bookmarked", nil)];
+    } else {
+        NoshiGiftAlert(nil, NSLocalizedString(@"bookmarks.failed", nil));
+    }
+}
+
+#pragma mark transcript
+
+/* the server writes a voice message down; it may still be listening, so a pending answer is asked for again a moment later */
+#pragma mark translation
+
+/* the button is off until the settings turn it on, and a message in a language the person left alone has none; a text whose language cannot be told has it */
+- (BOOL)translateWantedForMessage:(NoshiMessage *)message {
+    if (!NoshiTranslateButtonEnabled() || !message.text.length) return NO;
+    NSString *guess = NoshiGuessLanguageOfText(message.text);
+    return !(guess && NoshiTranslateSkips(guess));
+}
+
+/* the lines before the message, for an AI translator that was asked to read them */
+- (NSString *)translationContextBefore:(NoshiMessage *)message {
+    if (NoshiTranslateProviderChoice() != NoshiTranslateProviderLLM || !NoshiLlmUsesContext()) return nil;
+    NSMutableArray *before = [NSMutableArray array];
+    for (NoshiMessage *other in [_server allValues]) {
+        if (other.messageId > 0 && other.messageId < message.messageId && other.text.length && !other.service) [before addObject:other];
+    }
+    [before sortUsingComparator:^NSComparisonResult(NoshiMessage *a, NoshiMessage *b) {
+        return a.messageId > b.messageId ? NSOrderedAscending : (a.messageId < b.messageId ? NSOrderedDescending : NSOrderedSame);
+    }];
+    NSUInteger count = MIN(before.count, (NSUInteger)NoshiLlmContextCount());
+    NSMutableArray *lines = [NSMutableArray array];
+    for (NSUInteger i = count; i > 0; --i) {
+        NoshiMessage *other = [before objectAtIndex:i - 1];
+        [lines addObject:[NSString stringWithFormat:@"%@: %@", [self senderNameOfMessage:other], other.text]];
+    }
+    return lines.count ? [lines componentsJoinedByString:@"\n"] : nil;
+}
+
+- (void)translateMessage:(NoshiMessage *)message {
+    if (!message.text.length) return;
+    NSString *context = [self translationContextBefore:message];
+    /* a toast while the service works, then the words with Copy in the system alert */
+    [self toast:NSLocalizedString(@"tr.translating", nil)];
+    [NoshiTranslateJob translateText:message.text entities:message.entities to:NoshiTranslateTargetLanguage() context:context session:_session
+                             completion:^(NoshiTranslation *translation, NSString *failure) {
+        if (!translation) {
+            NoshiShowNotice(NSLocalizedString(@"tr.sheet.title", nil), failure);
+            return;
+        }
+        NSString *words = translation.text;
+        NoshiShowAlert(NSLocalizedString(@"tr.sheet.title", nil), words, [NSArray arrayWithObjects:NSLocalizedString(@"tr.sheet.close", nil), NSLocalizedString(@"tr.copy", nil), nil], 0, NO,
+                         ^(NSInteger index, NSString *text) {
+            (void)text;
+            if (index == 1) [UIPasteboard generalPasteboard].string = words;
+        });
+    }];
+}
+
+- (void)transcribeMessage:(NoshiMessage *)message {
+    if (!_transcripts) _transcripts = [[NSMutableDictionary alloc] init];
+    [self toast:NSLocalizedString(@"chat.msg.transcribing", nil)];
+    [self requestTranscriptOfMessageId:message.messageId attempt:0];
+}
+
+- (void)requestTranscriptOfMessageId:(int32_t)messageId attempt:(NSUInteger)attempt {
+    NoshiWeakReference *weak = _weak;
+    [_session transcribeMessageId:messageId ofDialog:_dialog completion:^(NSString *text, BOOL pending, NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (errorName) {
+            NSLog(@"noshigram: transcription of message %d failed: %@", (int)messageId, errorName);
+            /* an account without Premium that has an AI provider set for the translator has its voice notes written by that provider */
+            if ([errorName isEqualToString:@"PREMIUM_ACCOUNT_REQUIRED"] && [chat transcribeWithProviderMessageId:messageId]) return;
+            NoshiGiftAlert(nil, [errorName isEqualToString:@"PREMIUM_ACCOUNT_REQUIRED"] ? NSLocalizedString(@"chat.msg.transcribe.premium", nil)
+                                                                                      : NoshiGiftErrorText(errorName));
+            return;
+        }
+        if (text.length) [chat showTranscript:text ofMessageId:messageId];
+        if (pending && attempt < 12) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [(NoshiChatController *)weak.target requestTranscriptOfMessageId:messageId attempt:attempt + 1];
+            });
+        } else if (!text.length) {
+            NoshiGiftAlert(nil, NSLocalizedString(@"chat.msg.transcribe.empty", nil));
+        }
+    }];
+}
+
+- (BOOL)transcribeWithProviderMessageId:(int32_t)messageId {
+    NoshiMessage *message = [self messageWithId:messageId];
+    if (!message || message.media.kind != NOSHI_PREVIEW_VOICE || !message.media.file || ![NoshiVoiceTranscriber isConfigured]) return NO;
+    [self toast:NSLocalizedString(@"chat.msg.transcribe.ai", nil)];
+    NoshiWeakReference *weak = _weak;
+    [_voiceJob cancel];
+    [_voiceJob release];
+    _voiceJob = nil;
+    [_media loadPathForFile:message.media.file size:message.media.size progress:nil completion:^(NSString *path) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (!path) {
+            NoshiGiftAlert(nil, NSLocalizedString(@"chat.msg.transcribe.unreadable", nil));
+            return;
+        }
+        chat->_voiceJob = [[NoshiVoiceTranscriber transcribeVoiceAtPath:path completion:^(NSString *text, NSString *failure) {
+            NoshiChatController *owner = weak.target;
+            if (!owner) return;
+            if (failure) {
+                NoshiGiftAlert(nil, failure);
+                return;
+            }
+            if (text.length) [owner showTranscript:text ofMessageId:messageId];
+            else NoshiGiftAlert(nil, NSLocalizedString(@"chat.msg.transcribe.empty", nil));
+        }] retain];
+    }];
+    return YES;
+}
+
+/* the words go under the voice message; its item is built again to carry them */
+- (void)showTranscript:(NSString *)text ofMessageId:(int32_t)messageId {
+    NoshiMessage *message = [self messageWithId:messageId];
+    if (!message) return;
+    [_transcripts setObject:text forKey:[NSNumber numberWithInt:messageId]];
+    [_itemCache removeObjectForKey:[self cacheKeyForMessage:message]];
+    [self rebuildItems];
+}
+
+/* one tap passes the message to the favorites, with no list of chats to pick from; the favorites are the chat with the account's own user id */
+- (void)saveMessageToFavorites:(NoshiMessage *)message {
+    NoshiWeakReference *weak = _weak;
+    NSNumber *messageId = [NSNumber numberWithInt:message.messageId];
+    [_session loadSelf:^(NSArray *items, NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        NoshiPerson *me = items.count ? [items objectAtIndex:0] : nil;
+        if (!chat) return;
+        if (!me) {
+            NSLog(@"noshigram: the account is not known for the favorites: %@", errorName);
+            NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));
+            return;
+        }
+        [chat forwardMessages:[NSArray arrayWithObject:message] toDialog:[NoshiDialog savedMessagesOfUserId:me.userId] hideAuthor:NO
+                   completion:^(NSString *forwardError) {
+            NoshiChatController *again = weak.target;
+            if (!again) return;
+            if (forwardError) {
+                NSLog(@"noshigram: saving message %@ failed: %@", messageId, forwardError);
+                NoshiGiftAlert(nil, forwardError);
+                return;
+            }
+            [[NSNotificationCenter defaultCenter] postNotificationName:NoshiDialogsChangedNotification object:nil];
+            [again toast:NSLocalizedString(@"chat.msg.saved", nil)];
+        }];
+    }];
+}
+
+- (void)deleteMessageNow {
+    int32_t messageId = _deleteId;
+    _deleteId = 0;
+    if (messageId <= 0) return;
+    NoshiWeakReference *weak = _weak;
+    NoshiMessage *message = [self storedMessageWithId:messageId];
+    if (!message) return;
+    void (^finished)(NSString *) = ^(NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (errorName) {
+            NSLog(@"noshigram: delete of message %d failed: %@", (int)messageId, errorName);
+            NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));
+            return;
+        }
+        [chat->_server removeObjectForKey:[NSNumber numberWithInt:messageId]];
+        for (NoshiMessage *local in [[chat->_local copy] autorelease]) if (local.messageId == messageId) [chat->_local removeObject:local];
+        if (chat->_replyToId == messageId || chat->_editingId == messageId) [chat cancelCompose];
+        [chat rebuildItems];
+        [[NSNotificationCenter defaultCenter] postNotificationName:NoshiDialogsChangedNotification object:nil];
+    };
+    [_session deleteMessageIds:[NSArray arrayWithObject:[NSNumber numberWithInt:messageId]] ofDialog:_dialog revoke:!NoshiChatFlagGet(NoshiChatFlagDeleteForMe) completion:finished];
+}
+
+- (void)showDetailsOfMessage:(NoshiMessage *)message {
+    NSMutableArray *lines = [NSMutableArray array];
+    [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.id", nil), (int)message.messageId]];
+    NSDate *sent = [NSDate dateWithTimeIntervalSince1970:message.date];
+    [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.sent", nil),
+        [NSDateFormatter localizedStringFromDate:sent dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterMediumStyle]]];
+    if (!message.post) [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.from", nil), [self senderNameOfMessage:message]]];
+    if (message.forwarded) {
+        [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.forward", nil),
+            NoshiForwardName(message, _people).length ? NoshiForwardName(message, _people) : NSLocalizedString(@"chat.someone", nil)]];
+    }
+    if (message.views > 0) [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.views", nil), (int)message.views]];
+    if (message.media.kind == NOSHI_PREVIEW_VOICE) {
+        /* of a note that came in, the time the phone heard it; of one of ours, only whether the other side did, since the server gives no time */
+        if (message.listenedDate) [lines addObject:[NSString stringWithFormat:NSLocalizedString(@"chat.msg.details.listened", nil),
+            [NSDateFormatter localizedStringFromDate:message.listenedDate dateStyle:NSDateFormatterMediumStyle timeStyle:NSDateFormatterMediumStyle]]];
+        else [lines addObject:NSLocalizedString(message.mediaUnread ? @"chat.msg.details.notlistened" : @"chat.msg.details.listenedunknown", nil)];
+    }
+    NoshiGiftAlert(NSLocalizedString(@"chat.msg.details", nil), [lines componentsJoinedByString:@"\n"]);
+}
+
+#pragma mark gifts
+
+/* a gift goes to a person: not to a bot, a group, a channel or the chat with oneself */
+- (BOOL)canReceiveGift {
+    return _dialog.kind == NOSHI_DIALOG_USER && !_dialog.saved;
+}
+
+- (void)openGiftCatalog {
+    NoshiGiftCatalogController *catalog = [[[NoshiGiftCatalogController alloc] initWithSession:_session dialog:_dialog avatars:_avatars media:_media] autorelease];
+    [self.navigationController pushViewController:catalog animated:YES];
+}
+
+/* the picture and name at the top of the chat open the gifts of that person, or our own for the saved messages */
+/* the favorites split by the chat each message came from, as the saved chats of exteraGram */
+- (void)openSavedDialogs {
+    [self.navigationController pushViewController:NoshiTopicsScreen(_session, _dialog, _avatars, _media, _stickers, nil) animated:YES];
+}
+
+- (void)openProfileGifts {
+    NSTimeInterval began = [NSDate timeIntervalSinceReferenceDate];
+    BOOL channelLike = _dialog.peerKind == 3;
+    if (!_dialog.saved && _dialog.kind != NOSHI_DIALOG_USER && _dialog.kind != NOSHI_DIALOG_BOT && !channelLike) return;
+    [_input.textView resignFirstResponder];
+    UIViewController *screen;
+    if (_dialog.saved) {
+        screen = [[[NoshiSavedMediaController alloc] initWithSession:_session dialog:_dialog avatars:_avatars media:_media] autorelease];
+    } else if (channelLike) {
+        screen = [[[NoshiChannelProfileController alloc] initWithSession:_session dialog:_dialog avatars:_avatars media:_media stickers:_stickers] autorelease];
+    } else {
+        screen = [[[NoshiUserProfileController alloc] initWithSession:_session dialog:_dialog avatars:_avatars media:_media stickers:_stickers] autorelease];
+    }
+    [self.navigationController pushViewController:screen animated:YES];
+    NSLog(@"noshigram: the profile screen was made and pushed in %.0f ms", ([NSDate timeIntervalSinceReferenceDate] - began) * 1000);
+}
+
+/* the chat as a sender: what an anonymous admin's message shows as its name and picture */
+- (NoshiPerson *)chatAsPerson {
+    noshi_person_row row;
+    memset(&row, 0, sizeof(row));
+    row.id = _dialog.peerId;
+    row.access_hash = _dialog.peerHash;
+    snprintf(row.name, sizeof(row.name), "%s", _dialog.title.UTF8String);
+    if (_dialog.photo) row.photo = _dialog.photo.ref;
+    return [[[NoshiPerson alloc] initWithRow:&row] autorelease];
+}
+
+- (void)messageCellDidTapSender:(NoshiMessageCell *)cell {
+    [self openSender:cell.item.senderPerson key:cell.item.message.senderKey messageId:cell.item.message.messageId];
+}
+
+/* the line of a service message opens the profile of the person it is about: the one added, removed or invited, and for the rest (a join, a new title, a pin) whoever did it */
+- (void)messageCellDidTapService:(NoshiMessageCell *)cell {
+    NoshiMessage *message = cell.item.message;
+    switch ((noshi_service_kind)(message.service - 1)) {
+    case NOSHI_SERVICE_OTHER:
+    case NOSHI_SERVICE_CALL:
+    case NOSHI_SERVICE_HISTORY_CLEAR:
+    case NOSHI_SERVICE_MIGRATED:
+    case NOSHI_SERVICE_CUSTOM:
+        return;
+    default:
+        break;
+    }
+    BOOL aboutTarget = message.service == NOSHI_SERVICE_USER_ADDED + 1 || message.service == NOSHI_SERVICE_USER_REMOVED + 1 ||
+                       message.service == NOSHI_SERVICE_VIDEO_CHAT_INVITE + 1;
+    long long key = aboutTarget && message.targetId ? message.targetId : message.senderKey;
+    if (!key) return;
+    NoshiPerson *person = [_people objectForKey:[NSNumber numberWithLongLong:key]];
+    if (key > 0 && !person) {
+        [_router openProfileOfUser:key inMessage:message.messageId dialog:_dialog];
+        return;
+    }
+    [self openSender:person key:key messageId:message.messageId];
+}
+
+/* the line "forwarded from" opens the profile or the channel of whoever wrote the message, as in exteraGram; one who hid the link to their account cannot be opened,
+   and the plate says so */
+- (void)messageCellDidTapForward:(NoshiMessageCell *)cell {
+    NoshiMessage *message = cell.item.message;
+    long long key = message.forwardKey;
+    if (!key) {
+        NSString *name = NoshiForwardName(message, _people);
+        NoshiShowNotice(nil, name.length ? [NSString stringWithFormat:NSLocalizedString(@"chat.forward.hidden.named", nil), name] : NSLocalizedString(@"chat.forward.hidden", nil));
+        return;
+    }
+    NoshiPerson *person = [_people objectForKey:[NSNumber numberWithLongLong:key]];
+    if (key > 0 && !person) {
+        [_router openProfileOfUser:key inMessage:message.messageId dialog:_dialog];
+        return;
+    }
+    [self openSender:person key:key messageId:message.messageId];
+}
+
+- (void)openSender:(NoshiPerson *)person key:(long long)key messageId:(int32_t)messageId {
+    /* the group itself wrote it: its own profile is the place to go */
+    if (!key) {
+        [self openProfileGifts];
+        return;
+    }
+    if (!person) return;
+    if (key > 0 && !person.accessHash) {
+        [_router openProfileOfUser:key inMessage:messageId dialog:_dialog];
+        return;
+    }
+    if (key < 0 && !person.accessHash) {
+        NoshiWeakReference *weak = _weak;
+        [_session loadChannelSender:-key ofMessage:messageId inDialog:_dialog completion:^(NoshiPerson *sender, NSString *errorName) {
+            NoshiChatController *chat = weak.target;
+            if (!chat || chat.navigationController.topViewController != chat) return;
+            if (errorName) {
+                [chat toast:[NoshiLinkRouter textForError:errorName]];
+                return;
+            }
+            [chat->_people setObject:sender forKey:[NSNumber numberWithLongLong:key]];
+            [chat rebuildItems];
+            [chat openSender:sender key:key messageId:messageId];
+        }];
+        return;
+    }
+    NoshiDialog *dialog = nil;
+    if (key > 0) dialog = [NoshiDialog dialogWithPerson:person];
+    else {
+        noshi_dialog_row row;
+        memset(&row, 0, sizeof(row));
+        row.peer_kind = 3;
+        row.peer_id = -key;
+        row.peer_hash = person.accessHash;
+        row.kind = NOSHI_DIALOG_CHANNEL;
+        row.verified = person.verified;
+        if (person.photo) row.photo = person.photo.ref;
+        snprintf(row.title, sizeof(row.title), "%s", person.name.UTF8String);
+        dialog = [[[NoshiDialog alloc] initWithRow:&row] autorelease];
+    }
+    if (!dialog) {
+        [self toast:NSLocalizedString(@"error.internal", nil)];
+        return;
+    }
+    [_input.textView resignFirstResponder];
+    UIViewController *profile = key > 0
+        ? [[[NoshiUserProfileController alloc] initWithSession:_session dialog:dialog avatars:_avatars media:_media stickers:_stickers] autorelease]
+        : [[[NoshiChannelProfileController alloc] initWithSession:_session dialog:dialog avatars:_avatars media:_media stickers:_stickers] autorelease];
+    [self.navigationController pushViewController:profile animated:YES];
+}
+
+#pragma mark recording
+
+/* the round video is limited to a minute, as the other clients limit it */
+#define ROUND_SECONDS_MAX 60.0
+#define ROUND_PREVIEW_SIDE 240.0
+/* the room the circle keeps above and under itself, and the least it is drawn at before the keyboard has to give way */
+#define ROUND_PREVIEW_TOP 60.0
+#define ROUND_PREVIEW_GAP 8.0
+#define ROUND_PREVIEW_MIN 96.0
+
+static UIImage *NoshiRoundTorchImage(UIColor *color) {
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(22, 22), NO, 0);
+    UIBezierPath *bolt = [UIBezierPath bezierPath];
+    [bolt moveToPoint:CGPointMake(12, 1)];
+    [bolt addLineToPoint:CGPointMake(4, 12)];
+    [bolt addLineToPoint:CGPointMake(10, 12)];
+    [bolt addLineToPoint:CGPointMake(8, 21)];
+    [bolt addLineToPoint:CGPointMake(18, 9)];
+    [bolt addLineToPoint:CGPointMake(12, 9)];
+    [bolt closePath];
+    [color setFill];
+    [bolt fill];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
+- (void)showRecordingFailure:(NSString *)reason {
+    Class alertClass = NoshiAlertClass();
+    NSString *text = reason.length ? [NSString stringWithFormat:@"%@\n%@", NSLocalizedString(@"chat.record.unavailable", nil), reason]
+                                   : NSLocalizedString(@"chat.record.unavailable", nil);
+    id alert = [[alertClass alloc] initWithTitle:nil message:text delegate:nil
+                               cancelButtonTitle:NSLocalizedString(@"notice.ok", nil) otherButtonTitles:nil];
+    [alert show];
+    [alert release];
+}
+
+/* a swipe from the edge while a voice note or a video message is being recorded would drag the screen away, and the finger that holds the record button often starts near it */
+- (BOOL)blocksBackSwipe {
+    return _voice != nil || _roundRecorder != nil;
+}
+
+- (BOOL)inputBar:(NoshiInputBar *)bar didBeginRecording:(NoshiRecordMode)mode {
+    (void)bar;
+    if (_voice || _roundRecorder) return NO;
+    [self.view endEditing:YES];
+    /* before the recorder takes the audio session: switching to the record category under a playing song cuts it off without a pause, and it would never come back */
+    NoshiMusicPlayer *music = [NoshiMusicPlayer sharedPlayer];
+    [music pauseForRecording];
+    if (mode == NoshiRecordVoice) {
+        _voice = [[NoshiVoiceRecorder alloc] init];
+        if (![_voice start]) {
+            [_voice release];
+            _voice = nil;
+            [music resumeAfterRecording];
+            [self showRecordingFailure:nil];
+            return NO;
+        }
+    } else {
+        _roundRecorder = [[NoshiRoundRecorder alloc] init];
+        if (![_roundRecorder start]) {
+            NSString *reason = [[_roundRecorder.failure copy] autorelease];
+            [_roundRecorder release];
+            _roundRecorder = nil;
+            [music resumeAfterRecording];
+            [self showRecordingFailure:reason];
+            return NO;
+        }
+        [self showRoundPreview];
+    }
+    _recordTimer = [[NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:@selector(recordTick) userInfo:nil repeats:YES] retain];
+    return YES;
+}
+
+/* the screen behind the picture dims while the clip records; the input bar stays above the shade with its record button and hints */
+- (void)showRoundShade {
+    _roundShade = [[UIView alloc] initWithFrame:self.view.bounds];
+    _roundShade.backgroundColor = [UIColor blackColor];
+    _roundShade.alpha = 0;
+    _roundShade.userInteractionEnabled = NO;
+    _roundShade.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view insertSubview:_roundShade belowSubview:_input];
+    [UIView animateWithDuration:0.2 animations:^{ _roundShade.alpha = 0.5; }];
+    _roundGlow = [[NoshiRoundGlow alloc] initWithFrame:self.view.bounds];
+    _roundGlow.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view insertSubview:_roundGlow belowSubview:_input];
+    _roundFlash = NO;
+}
+
+- (void)removeRoundShade {
+    NoshiRoundGlow *glow = _roundGlow;
+    _roundGlow = nil;
+    _roundFlash = NO;
+    if (glow) {
+        [glow setLit:NO];
+        /* the light fades for 0.24 s, and the view holds the screen brightness until it is released */
+        [glow performSelector:@selector(removeFromSuperview) withObject:nil afterDelay:0.3];
+        [glow performSelector:@selector(release) withObject:nil afterDelay:0.35];
+    }
+    UIView *shade = _roundShade;
+    _roundShade = nil;
+    if (!shade) return;
+    [UIView animateWithDuration:0.2 animations:^{ shade.alpha = 0; } completion:^(BOOL finished) {
+        (void)finished;
+        [shade removeFromSuperview];
+        [shade release];
+    }];
+}
+
+/* the picture grows out of the record button, overshoots a little and settles, as the other clients do it */
+- (void)showRoundPreview {
+    [self showRoundShade];
+    CGSize size = self.view.bounds.size;
+    /* the keyboard is another window and stays over the chat, so a circle that reaches down to it is half hidden: with the keyboard up the picture takes the room
+       between the top of the screen and the input bar, which stands right over the keys */
+    _roundSide = MIN(ROUND_PREVIEW_SIDE, MAX(ROUND_PREVIEW_MIN, _input.frame.origin.y - ROUND_PREVIEW_GAP - ROUND_PREVIEW_TOP));
+    CGRect frame = CGRectMake((size.width - _roundSide) / 2, MAX(ROUND_PREVIEW_TOP, (_input.frame.origin.y - _roundSide) / 2), _roundSide, _roundSide);
+    _roundPreview = [[UIView alloc] initWithFrame:frame];
+    UIView *disc = [[[UIView alloc] initWithFrame:_roundPreview.bounds] autorelease];
+    disc.layer.cornerRadius = _roundSide / 2;
+    disc.layer.masksToBounds = YES;
+    disc.layer.borderWidth = 3;
+    disc.layer.borderColor = NoshiColorAccent().CGColor;
+    disc.backgroundColor = [UIColor blackColor];
+    CALayer *picture = _roundRecorder.previewLayer;
+    picture.frame = disc.bounds;
+    [disc.layer addSublayer:picture];
+    [_roundPreview addSubview:disc];
+    UIImageView *flip = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolCameraFlip, 22, [UIColor whiteColor])] autorelease];
+    flip.backgroundColor = [UIColor colorWithWhite:0 alpha:0.45];
+    flip.contentMode = UIViewContentModeCenter;
+    flip.frame = CGRectMake(_roundSide * 0.7, _roundSide * 0.7, 36, 36);
+    flip.layer.cornerRadius = 18;
+    [_roundPreview addSubview:flip];
+    UITapGestureRecognizer *tap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(flipRoundCamera)] autorelease];
+    [disc addGestureRecognizer:tap];
+    _roundTorch = [UIButton buttonWithType:UIButtonTypeCustom];
+    _roundTorch.frame = CGRectMake(_roundSide * 0.7, _roundSide * 0.14, 40, 40);
+    _roundTorch.backgroundColor = [UIColor colorWithWhite:0 alpha:0.45];
+    _roundTorch.layer.cornerRadius = 20;
+    _roundTorch.accessibilityLabel = NSLocalizedString(@"chat.round.torch", nil);
+    [_roundTorch addTarget:self action:@selector(toggleRoundTorch) forControlEvents:UIControlEventTouchUpInside];
+    [_roundPreview addSubview:_roundTorch];
+    [self refreshRoundTorch];
+    UIPinchGestureRecognizer *pinch = [[[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(pinchedRoundPreview:)] autorelease];
+    [_roundPreview addGestureRecognizer:pinch];
+    [self.view addSubview:_roundPreview];
+
+    CGPoint origin = [_input recordButtonCenterInView:self.view];
+    CGPoint center = _roundPreview.center;
+    CGAffineTransform small = CGAffineTransformScale(CGAffineTransformMakeTranslation(origin.x - center.x, origin.y - center.y), 0.1, 0.1);
+    _roundPreview.alpha = 0;
+    _roundPreview.transform = small;
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        _roundPreview.alpha = 1;
+        _roundPreview.transform = CGAffineTransformMakeScale(1.07, 1.07);
+    } completion:^(BOOL finished) {
+        (void)finished;
+        [UIView animateWithDuration:0.1 animations:^{ _roundPreview.transform = CGAffineTransformIdentity; }];
+    }];
+}
+
+/* the circle dims and shrinks a little while the camera is swapped (the picture goes black for a moment while the
+   session is held) */
+- (void)flipRoundCamera {
+    if (!_roundRecorder || !_roundPreview || _roundFlipping || _roundTorchBusy) return;
+    _roundFlipping = YES;
+    [self refreshRoundTorch];
+    UIView *preview = _roundPreview;
+    UIView *disc = [preview.subviews count] ? [preview.subviews objectAtIndex:0] : nil;
+    UIView *flip = [preview.subviews count] > 1 ? [preview.subviews objectAtIndex:1] : nil;
+    [UIView animateWithDuration:0.16 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+        disc.alpha = 0.25f;
+        disc.transform = CGAffineTransformMakeScale(0.94f, 0.94f);
+        flip.transform = CGAffineTransformMakeRotation((CGFloat)M_PI);
+    } completion:nil];
+    NoshiWeakReference *weak = _weak;
+    [_roundRecorder switchCameraWithCompletion:^(BOOL switched) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        chat->_roundFlipping = NO;
+        [chat applyRoundFlash];
+        [chat refreshRoundTorch];
+        /* a little later than the swap, so the first frame of the new camera is already in the layer */
+        [UIView animateWithDuration:0.3 delay:switched ? 0.12 : 0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+            disc.alpha = 1;
+            disc.transform = CGAffineTransformIdentity;
+            flip.transform = CGAffineTransformMakeRotation(0);
+        } completion:nil];
+    }];
+}
+
+- (void)refreshRoundTorch {
+    _roundTorch.hidden = !_roundRecorder || _roundFlipping || !(_roundRecorder.canUseTorch || _roundRecorder.usesFrontCamera);
+    _roundTorch.enabled = !_roundTorchBusy;
+    [_roundTorch setImage:NoshiRoundTorchImage(_roundFlash ? NoshiColorAccent() : [UIColor whiteColor]) forState:UIControlStateNormal];
+    _roundTorch.accessibilityValue = NSLocalizedString(_roundFlash ? @"chat.round.torch.on" : @"chat.round.torch.off", nil);
+}
+
+/* the front camera has no torch, so its flash is the light of the screen; the back camera lights its torch, and a camera swap carries the choice over */
+- (void)applyRoundFlash {
+    if (!_roundRecorder) return;
+    if (_roundRecorder.usesFrontCamera) {
+        [_roundGlow setLit:_roundFlash];
+        return;
+    }
+    [_roundGlow setLit:NO];
+    if (_roundRecorder.torchOn == _roundFlash || !_roundRecorder.canUseTorch) return;
+    _roundTorchBusy = YES;
+    NoshiRoundRecorder *recorder = _roundRecorder;
+    NoshiWeakReference *weak = _weak;
+    [recorder setTorchOn:_roundFlash completion:^(BOOL success) {
+        NoshiChatController *chat = weak.target;
+        if (!chat || chat->_roundRecorder != recorder) return;
+        chat->_roundTorchBusy = NO;
+        if (!success) {
+            chat->_roundFlash = recorder.torchOn;
+            NoshiShowNotice(nil, NSLocalizedString(@"chat.round.torch.failed", nil));
+        }
+        [chat refreshRoundTorch];
+    }];
+}
+
+- (void)toggleRoundTorch {
+    if (!_roundRecorder || _roundFlipping || _roundTorchBusy) return;
+    _roundFlash = !_roundFlash;
+    [self applyRoundFlash];
+    [self refreshRoundTorch];
+}
+
+/* two fingers on the circle zoom the camera, and a small label says how far; ios 7 and later, where the lens has the zoom */
+- (void)pinchedRoundPreview:(UIPinchGestureRecognizer *)pinch {
+    if (!_roundRecorder || !_roundRecorder.canZoom) return;
+    if (pinch.state == UIGestureRecognizerStateBegan) _roundZoomStart = _roundRecorder.zoom;
+    if (pinch.state != UIGestureRecognizerStateBegan && pinch.state != UIGestureRecognizerStateChanged) return;
+    [_roundRecorder setZoom:_roundZoomStart * pinch.scale];
+    CGFloat shown = MAX(1, MIN(5, _roundZoomStart * pinch.scale));
+    if (!_roundZoomLabel) {
+        _roundZoomLabel = [[UILabel alloc] init];
+        _roundZoomLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.5f];
+        _roundZoomLabel.textColor = [UIColor whiteColor];
+        _roundZoomLabel.font = NoshiFontSemibold(13);
+        _roundZoomLabel.textAlignment = NoshiTextAlignmentCenter;
+        _roundZoomLabel.layer.cornerRadius = 11;
+        _roundZoomLabel.layer.masksToBounds = YES;
+        _roundZoomLabel.frame = CGRectMake((_roundSide - 52) / 2, 14, 52, 22);
+        [_roundPreview addSubview:_roundZoomLabel];
+    }
+    _roundZoomLabel.text = [NSString stringWithFormat:@"%.1f\u00d7", shown];
+    _roundZoomLabel.alpha = 1;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideRoundZoomLabel) object:nil];
+    [self performSelector:@selector(hideRoundZoomLabel) withObject:nil afterDelay:0.9];
+}
+
+- (void)hideRoundZoomLabel {
+    [UIView animateWithDuration:0.25 animations:^{ _roundZoomLabel.alpha = 0; }];
+}
+
+/* the picture flies back into the button when it is sent */
+- (void)dismissRoundPreviewSent:(BOOL)sent {
+    UIView *preview = _roundPreview;
+    _roundPreview = nil;
+    _roundTorch = nil;
+    _roundTorchBusy = NO;
+    if (!preview) return;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideRoundZoomLabel) object:nil];
+    [_roundZoomLabel release];
+    _roundZoomLabel = nil;
+    CGPoint center = preview.center;
+    CGPoint target;
+    if (sent) {
+        target = [_input recordButtonCenterInView:self.view];
+    } else {
+        BOOL leaves = _roundRecorder.elapsed > 0.3;
+        target = CGPointMake(leaves ? 24 : center.x, CGRectGetMidY(_input.frame));
+    }
+    CGAffineTransform gone = CGAffineTransformScale(CGAffineTransformMakeTranslation(target.x - center.x, target.y - center.y), 0.1, 0.1);
+    preview.userInteractionEnabled = NO;
+    [UIView animateWithDuration:sent ? 0.28 : 0.18 delay:0 options:sent ? UIViewAnimationOptionCurveEaseIn : UIViewAnimationOptionCurveEaseOut animations:^{
+        preview.alpha = 0;
+        preview.transform = gone;
+    } completion:^(BOOL finished) {
+        (void)finished;
+        [preview removeFromSuperview];
+        [preview release];
+    }];
+}
+
+- (void)recordTick {
+    NSTimeInterval elapsed = _voice ? _voice.elapsed : _roundRecorder.elapsed;
+    [_input setRecordingElapsed:elapsed];
+    /* a note that reaches the limit of the encoder goes by itself, a second short of it */
+    if ((_roundRecorder && elapsed >= ROUND_SECONDS_MAX) || (_voice && elapsed >= NOSHI_VOICE_SECONDS_MAX - 1)) {
+        /* the minute is up: the clip goes now, and the hold that is still down ends without a second send */
+        [self finishRecordingCancelled:NO];
+        [_input releaseHold];
+    }
+}
+
+- (void)stopRecordTimer {
+    [_recordTimer invalidate];
+    [_recordTimer release];
+    _recordTimer = nil;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(hideRoundZoomLabel) object:nil];
+    [_roundZoomLabel release];
+    _roundZoomLabel = nil;
+    [_roundPreview removeFromSuperview];
+    [_roundPreview release];
+    _roundPreview = nil;
+    _roundTorch = nil;
+    _roundTorchBusy = NO;
+    [self removeRoundShade];
+}
+
+/* the screen goes away or the app is left: whatever was recording is dropped */
+- (void)discardRecording {
+    [self stopRecordTimer];
+    [_voice cancel];
+    [_voice release];
+    _voice = nil;
+    [_roundRecorder cancel];
+    [_roundRecorder release];
+    _roundRecorder = nil;
+    [[NoshiMusicPlayer sharedPlayer] resumeAfterRecording];
+}
+
+- (void)inputBar:(NoshiInputBar *)bar didFinishRecordingCancelled:(BOOL)cancelled {
+    /* the choice of the chip belongs to this recording alone: it is read now and the chip goes back to off */
+    _recordingOneTime = !cancelled && bar.oneTimeRecording;
+    [bar clearOneTimeRecording];
+    [self finishRecordingCancelled:cancelled];
+}
+
+- (void)finishRecordingCancelled:(BOOL)cancelled {
+    if (!_voice && !_roundRecorder) return;
+    [self dismissRoundPreviewSent:!cancelled];
+    if (cancelled) {
+        [self discardRecording];
+        return;
+    }
+    NoshiWeakReference *weak = _weak;
+    BOOL once = _recordingOneTime;
+    _recordingOneTime = NO;
+    NoshiVoiceRecorder *voice = _voice;
+    NoshiRoundRecorder *round = _roundRecorder;
+    _voice = nil;
+    _roundRecorder = nil;
+    [self stopRecordTimer];
+    [[NoshiMusicPlayer sharedPlayer] resumeAfterRecording];
+    if (voice) {
+        [voice finishWithCompletion:^(NSString *path, int32_t durationMs, NSData *waveform) {
+            NoshiChatController *chat = weak.target;
+            if (path && chat) [chat sendRecordingAtPath:path durationMs:durationMs side:0 waveform:waveform viewOnce:once];
+            else if (path) [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
+            else if (voice.failed) NoshiGiftAlert(nil, NSLocalizedString(@"chat.voice.failed", nil));
+            [voice release];
+        }];
+    } else {
+        [round finishWithCompletion:^(NSString *path, int32_t durationMs, int32_t side) {
+            NoshiChatController *chat = weak.target;
+            if (path && chat) [chat sendRecordingAtPath:path durationMs:durationMs side:side waveform:nil viewOnce:once];
+            else if (path) [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
+            [round release];
+        }];
+    }
+}
+
+- (void)sendRecordingAtPath:(NSString *)path durationMs:(int32_t)durationMs side:(int32_t)side waveform:(NSData *)waveform viewOnce:(BOOL)once {
+    NSString *file = [[path copy] autorelease];
+    NSData *bars = [[waveform copy] autorelease];
+    /* a recording nobody wants goes away with its file */
+    [self askFirst:NoshiChatFlagAskRecording message:NSLocalizedString(side > 0 ? @"chat.ask.round" : @"chat.ask.voice", nil) action:NSLocalizedString(@"chat.ask.record.action", nil) then:^{
+        [self sendConfirmedRecordingAtPath:file durationMs:durationMs side:side waveform:bars viewOnce:once];
+    } declined:^{
+        [[NSFileManager defaultManager] removeItemAtPath:file error:NULL];
+    }];
+}
+
+- (void)sendConfirmedRecordingAtPath:(NSString *)path durationMs:(int32_t)durationMs side:(int32_t)side waveform:(NSData *)waveform viewOnce:(BOOL)once {
+    NoshiOutgoing *outgoing = [[[NoshiOutgoing alloc] init] autorelease];
+    outgoing->kind = side > 0 ? NoshiOutgoingRound : NoshiOutgoingVoice;
+    outgoing->path = [path copy];
+    outgoing->name = [path.lastPathComponent copy];
+    outgoing->durationMs = durationMs;
+    outgoing->width = side;
+    outgoing->height = side;
+    outgoing->waveform = [waveform copy];
+    outgoing->temporary = YES;
+    outgoing->viewOnce = once;
+    [self sendOutgoing:outgoing];
+}
+
+/* the message shows at once as pending, and the file or point goes up behind it */
+/* several photos and videos at once go out as one album: a pending message for each shows at once, and one request sends them together */
+- (void)sendAlbum:(NSArray *)outgoings {
+    /* telegram takes ten to an album: more go out as several, and the answer target stays for each */
+    const NSUInteger piece = 10;
+    int32_t reply = _replyToId;
+    for (NSUInteger at = 0; at < outgoings.count; at += piece) {
+        NSArray *part = [outgoings subarrayWithRange:NSMakeRange(at, MIN(piece, outgoings.count - at))];
+        _replyToId = reply;
+        if (part.count == 1) [self sendOutgoing:[part objectAtIndex:0]];
+        else [self sendAlbumPart:part];
+    }
+}
+
+- (void)sendAlbumPart:(NSArray *)outgoings {
+    [self leaveWindow];
+    int32_t now = (int32_t)[[NSDate date] timeIntervalSince1970];
+    NSMutableArray *messages = [NSMutableArray arrayWithCapacity:outgoings.count], *randomIds = [NSMutableArray arrayWithCapacity:outgoings.count];
+    long long albumNumber = [self newRandomId];
+    for (NoshiOutgoing *outgoing in outgoings) {
+        long long randomId = [self newRandomId];
+        outgoing->replyTo = _replyToId;
+        NoshiMessage *message = [NoshiMessage pendingOutgoing:outgoing randomId:randomId date:now];
+        message.sendReplyTo = _replyToId;
+        message.state = NoshiMessageStateSending;
+        message.groupedId = albumNumber;
+        message.sentAfterId = [self newestLoadedId];
+        [messages addObject:message];
+        [randomIds addObject:[NSNumber numberWithLongLong:randomId]];
+        if (_dialog.kind == NOSHI_DIALOG_CHANNEL) [message showAsChannelPost];
+        [_local addObject:message];
+    }
+    [self cancelCompose];
+    _stickToBottom = YES;
+    [_table setHidden:NO];
+    [self showStatus:nil retry:NO];
+    [self rebuildItems];
+    NoshiWeakReference *weak = _weak;
+    [_session sendAlbumOfOutgoings:outgoings toDialog:_dialog randomIds:randomIds completion:^(NSArray *messageIds, NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        for (NSUInteger i = 0; i < messages.count; ++i) {
+            [chat didSend:[messages objectAtIndex:i] messageId:messageIds ? [[messageIds objectAtIndex:i] intValue] : 0 error:errorName];
+        }
+    }];
+}
+
+- (void)sendOutgoing:(NoshiOutgoing *)outgoing {
+    NoshiMessage *message = [NoshiMessage pendingOutgoing:outgoing randomId:[self newRandomId] date:(int32_t)[[NSDate date] timeIntervalSince1970]];
+    [self afterAppendingLocal:message];
+    [self dispatchLocal:message];
+}
+
+- (void)inputBarDidTapSend:(NoshiInputBar *)bar {
+    [self sendComposedFromBar:bar silent:NO];
+}
+
+/* the hold on the send button with words in the field: send without a sound, or send later; an edit in progress has neither */
+- (void)inputBarDidHoldSend:(NoshiInputBar *)bar {
+    if (_editingId || ![[bar trimmedText] length]) return;
+    NoshiWeakReference *weak = _weak;
+    /* the effects are for a private chat with a person; a Premium effect is offered to a Premium account only */
+    NSMutableArray *effects = nil;
+    if (_dialog.kind == NOSHI_DIALOG_USER && !_dialog.saved && !_pinnedList) {
+        BOOL premium = [_session ownPerson].premium;
+        effects = [NSMutableArray array];
+        for (NoshiMessageEffect *effect in _messageEffects) if (premium || !effect.premium) [effects addObject:effect];
+    }
+    /* a sheet from the bottom stands under the keyboard that is up while the words are written, so the card is drawn right over the button */
+    UIView *host = self.view;
+    [NoshiSendMenu presentAboveRect:[bar sendButtonFrameInView:host] inView:host effects:effects handler:^(NoshiSendMenuChoice choice, long long effectId) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (choice == NoshiSendMenuSilent) {
+            [chat sendComposedFromBar:bar silent:YES];
+        } else if (choice == NoshiSendMenuLater) {
+            [chat chooseTimeToSendFromBar:bar];
+        } else {
+            chat->_nextSendEffect = effectId;
+            [chat sendComposedFromBar:bar silent:NO];
+            chat->_nextSendEffect = 0;
+        }
+    }];
+}
+
+/* the list of effects is asked for when a private chat opens, so the hold on the send button finds it in */
+- (void)playMessageEffect:(long long)effectId {
+    if (!_visible) return;
+    NoshiMessageEffect *effect = [NoshiMessageEffect effectWithId:effectId];
+    if (effect) [NoshiMessageEffectPlayer playEffect:effect inView:self.view media:_media];
+}
+
+- (void)loadMessageEffectsIfPrivate {
+    if (_dialog.kind != NOSHI_DIALOG_USER || _dialog.saved || _pinnedList || _messageEffects) return;
+    NoshiWeakReference *weak = _weak;
+    [_session loadMessageEffects:^(NSArray *effects, NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (errorName) {
+            NSLog(@"noshigram: the message effects could not be loaded: %@", errorName);
+            return;
+        }
+        [chat->_messageEffects release];
+        chat->_messageEffects = [effects retain];
+    }];
+}
+
+- (void)chooseTimeToSendFromBar:(NoshiInputBar *)bar {
+    NoshiWeakReference *weak = _weak;
+    NSArray *titles = [NSArray arrayWithObjects:NSLocalizedString(@"chat.remind.hour", nil), NSLocalizedString(@"chat.remind.three", nil),
+                       NSLocalizedString(@"chat.remind.tomorrow", nil), NSLocalizedString(@"chat.remind.week", nil), nil];
+    [NoshiSheet presentInView:self.view title:NSLocalizedString(@"chat.send.later", nil) message:nil options:titles destructive:nil
+                    cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:^(NSUInteger index) {
+        NoshiChatController *chat = weak.target;
+        if (chat) [chat scheduleComposedFromBar:bar at:NoshiReminderDate(index)];
+    }];
+}
+
+/* the server keeps the message and sends it at the time; it is not in the chat until then, so there is no pending copy to draw */
+- (void)scheduleComposedFromBar:(NoshiInputBar *)bar at:(NSDate *)when {
+    NSString *text = [bar trimmedText];
+    if (!text.length || !when) return;
+    NSArray *entities = [bar sendEntities];
+    int32_t replyTo = _replyToId ? _replyToId : [_bots replyTargetForText];
+    NoshiWeakReference *weak = _weak;
+    [_session scheduleText:text entities:entities atDate:(int32_t)[when timeIntervalSince1970] toDialog:_dialog replyTo:replyTo completion:^(NSString *errorName) {
+        NoshiChatController *chat = weak.target;
+        if (!chat) return;
+        if (errorName) {
+            NSLog(@"noshigram: the message was not scheduled: %@", errorName);
+            NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));
+            return;
+        }
+        [chat toast:NSLocalizedString(@"chat.send.scheduled", nil)];
+    }];
+    [bar clear];
+    [_bots didSendText];
+    [self cancelCompose];
+    [self saveDraftNow];
+}
+
+- (void)sendComposedFromBar:(NoshiInputBar *)bar silent:(BOOL)silent {
+    NSString *text = [bar trimmedText];
+    if (!text.length) return;
+    if (_editingId) {
+        [self commitEditWithText:text];
+        return;
+    }
+    NSArray *entities = [bar sendEntities];
+    int32_t replyTo = _replyToId ? _replyToId : [_bots replyTargetForText];
+    NSString *quote = _replyToId ? [[_replyQuote copy] autorelease] : nil;
+    int32_t quoteOffset = _replyQuoteOffset;
+    [bar clear];
+    [_bots didSendText];
+    [self cancelCompose];
+    [self sendText:text entities:entities replyTo:replyTo quote:quote quoteOffset:quoteOffset silent:silent];
+    /* the message is on its way, and the draft that held its words goes at once instead of after the pause */
+    [self saveDraftNow];
+}
+
+- (void)afterAppendingLocal:(NoshiMessage *)message {
+    [self leaveWindow];
+    if (!_voice) NoshiPlayInChatSound(NO);
+    if (_dialog.kind == NOSHI_DIALOG_CHANNEL) [message showAsChannelPost];
+    if (!message.sendReplyTo) message.sendReplyTo = _replyToId;
+    message.sentAfterId = [self newestLoadedId];
+    [self cancelComposeAnimated:NO];
+    [_local addObject:message];
+    _interacting = NO;
+    _stickToBottom = YES;
+    [_table setHidden:NO];
+    [self showStatus:nil retry:NO];
+    [self rebuildItems];
+}
+
+- (void)sendText:(NSString *)text entities:(NSArray *)entities {
+    [self sendText:text entities:entities replyTo:0];
+}
+
+- (void)sendText:(NSString *)text entities:(NSArray *)entities replyTo:(int32_t)replyTo {
+    [self sendText:text entities:entities replyTo:replyTo quote:nil quoteOffset:-1];
 }
 
 - (void)sendText:(NSString *)text entities:(NSArray *)entities replyTo:(int32_t)replyTo quote:(NSString *)quote quoteOffset:(int32_t)quoteOffset {

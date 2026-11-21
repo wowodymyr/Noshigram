@@ -169,17 +169,14 @@
     };    [self buildCustomizationViews];
 }
 
-/* the rows under the tabs come in from the side the new tab lies on: with a wobble, a spring that overshoots and settles back, in the modern style, and with a plain ease in the
-   skeuomorphic one. the tabs themselves stay where they are */
+/* the rows under the tabs come in with a plain ease from the side the new tab lies on; the tabs themselves stay where they are */
 - (void)animateTabChangeFrom:(NSUInteger)previous {
     if (previous == _tab || !self.isViewLoaded) return;
     [self.table layoutIfNeeded];
     CGFloat direction = _tab > previous ? 1 : -1;
-    BOOL modern = NO;
     for (UITableViewCell *cell in self.table.visibleCells) {
         if ([_tabs isDescendantOfView:cell]) continue;
-        if (modern) NoshiAnimateEnter(cell, CGAffineTransformConcat(CGAffineTransformMakeScale(0.94f, 0.94f), CGAffineTransformMakeTranslation(direction * 56, 0)), 0, NOSHI_MOTION_WOBBLE);
-        else NoshiAnimateEnter(cell, CGAffineTransformMakeTranslation(direction * 24, 0), 0, NOSHI_MOTION_ENTER);
+        NoshiAnimateEnter(cell, CGAffineTransformMakeTranslation(direction * 24, 0), 0, NOSHI_MOTION_ENTER);
     }
 }
 
