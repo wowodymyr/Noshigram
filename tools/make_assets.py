@@ -69,7 +69,7 @@ QR_LOGOS = {
 # the icon in the middle of the splash screen, shown SPLASH_POINTS wide; the launch image is dark, the dark screen color of the app, because
 # a launch image cannot follow the chosen theme and a white one flashes on the dark themes
 SPLASH_POINTS = 96
-SPLASH_BACKGROUND = (21, 18, 31)
+SPLASH_BACKGROUND = (18, 18, 20)
 SPLASH_ICONS = {
     "splash_icon.png": 96,
     "splash_icon@2x.png": 192,
@@ -94,12 +94,6 @@ LEGACY_ICON_RADIUS = 0.18
 # the ipad takes 72 and 144 on ios 5 and 6 and draws the transparent corners of an icon black, so these two stay opaque squares
 OPAQUE_ICON_SIDES = (72, 144)
 
-# share of the master edge dropped on every side, about the corner radius of the source artwork
-ICON_BLEED = 0.08
-WELCOME_LAYER_POINTS = 200
-# the smoothing used to find the bumps flattens them, the source edge is about this much deeper
-RIPPLE_GAIN = 1.4
-GEOMETRY_HEADER = os.path.join(ROOT, "app/ui/shared/noshi_welcome_icon_geometry.h")
 PHONE_HEADER = os.path.join(ROOT, "app/ui/shared/noshi_phone_ring.h")
 FLAG_HEADER = os.path.join(ROOT, "app/ui/shared/noshi_flag_sprite.h")
 
@@ -110,7 +104,6 @@ FLAG_COLUMNS = 16
 FLAG_RADIUS = 7
 # the country list also holds codes that are not countries
 FLAG_FALLBACK = ("FT", "GO", "YL")
-WELCOME_SCALES = ((1, ""), (2, "@2x"), (3, "@3x"))
 
 # source file and the name it gets in the bundle
 ANIMATIONS = {
@@ -182,91 +175,11 @@ def nearest_fill(rgb, known):
     return rgb[idx[0], idx[1]]
 
 
-def load_master(path):
-    """square rgba master with a clean antialiased silhouette and no white halo"""
-    rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float64)
-    near_white = rgb.min(axis=2) >= 240
-    labels, _ = ndi.label(near_white)
-    outside = labels == labels[0, 0]
-    shape = ndi.binary_fill_holes(~outside)
-    shape = ndi.binary_opening(shape, iterations=2)
-    core = ndi.binary_erosion(shape, iterations=2)
-    clean = nearest_fill(rgb, core)
-    ys, xs = np.where(shape)
-    box = (xs.min(), ys.min(), xs.max() + 1, ys.max() + 1)
-    color = Image.fromarray(clean.astype(np.uint8)).crop(box).resize((MASTER, MASTER), Image.LANCZOS)
-    cover = Image.fromarray((shape * 255).astype(np.uint8)).crop(box).resize((MASTER, MASTER), Image.LANCZOS)
-    cover = ndi.gaussian_filter(np.asarray(cover, dtype=np.float64) / 255.0, 0.7)
-    alpha = np.clip((cover - 0.5) * 2.0 + 0.5, 0.0, 1.0)
-    return np.asarray(color, dtype=np.float64), alpha
-
-
 def to_image(rgb, alpha):
     out = np.zeros((rgb.shape[0], rgb.shape[1], 4), dtype=np.uint8)
     out[..., :3] = np.clip(rgb + 0.5, 0, 255).astype(np.uint8)
     out[..., 3] = np.clip(alpha * 255.0 + 0.5, 0, 255).astype(np.uint8)
     return Image.fromarray(out, "RGBA")
-
-
-def harmonic_fill(rgb, known, size=256, iterations=4000):
-    """smooth background under the artwork, solved on a small grid and scaled back up"""
-    small_rgb = np.asarray(Image.fromarray(rgb.astype(np.uint8)).resize((size, size), Image.BOX), dtype=np.float64)
-    small_known = np.asarray(Image.fromarray((known * 255).astype(np.uint8)).resize((size, size), Image.BOX)) > 250
-    field = nearest_fill(small_rgb, small_known)
-    for _ in range(iterations):
-        padded = np.pad(field, ((1, 1), (1, 1), (0, 0)), mode="edge")
-        avg = (padded[:-2, 1:-1] + padded[2:, 1:-1] + padded[1:-1, :-2] + padded[1:-1, 2:]) * 0.25
-        field = np.where(small_known[..., None], small_rgb, avg)
-    big = Image.fromarray(np.clip(field, 0, 255).astype(np.uint8)).resize((MASTER, MASTER), Image.BICUBIC)
-    return np.asarray(big, dtype=np.float64)
-
-
-def split_layers(rgb, alpha):
-    """back, top wave, bottom wave and arrow as separate full canvas layers"""
-    shape = alpha > 0.5
-    # the crop touches the array border, so pad it or the distance there reads as far from the edge
-    edge_dist = ndi.distance_transform_edt(np.pad(shape, 1))[1:-1, 1:-1]
-    green = rgb[..., 1]
-    ink = shape & (green < 135)
-    # the dark rim joins the two waves along the left edge, so they are told apart away from it
-    labels, count = ndi.label(ink & (edge_dist > 16))
-    sizes = ndi.sum(ink & (edge_dist > 16), labels, range(1, count + 1))
-    pieces = []
-    for label in np.argsort(sizes)[::-1][:3]:
-        if sizes[label] < 20000:
-            continue
-        core = labels == label + 1
-        ys, _ = np.where(core)
-        grown = ndi.binary_dilation(core, iterations=18) & ink
-        touches_edge = edge_dist[grown].min() < 4
-        pieces.append((grown, ys.mean(), touches_edge))
-    arrow = [p for p in pieces if not p[2]]
-    waves = sorted([p for p in pieces if p[2]], key=lambda p: p[1])
-    if len(arrow) != 1 or len(waves) != 2:
-        sys.exit("icon artwork did not split into one arrow and two waves")
-    art = ink
-    known_bg = shape & ~ndi.binary_dilation(art, iterations=7) & (edge_dist > 5)
-    back_rgb = harmonic_fill(rgb, known_bg)
-
-    layers = {}
-    for name, piece in (("wave_top", waves[0][0]), ("wave_bottom", waves[1][0]), ("arrow", arrow[0][0])):
-        inside = ndi.distance_transform_edt(piece)
-        outside = ndi.distance_transform_edt(~piece)
-        interior = piece & (inside > 4)
-        fg = nearest_fill(rgb, interior)
-        delta = fg - back_rgb
-        span = np.maximum((delta * delta).sum(axis=2), 1.0)
-        cover = ((rgb - back_rgb) * delta).sum(axis=2) / span
-        band = (inside <= 4) & piece | (outside <= 4) & ~piece
-        mix = np.where(band, np.clip(cover, 0.0, 1.0), piece.astype(np.float64))
-        mix = np.where(outside > 4, 0.0, mix)
-        layers[name] = (fg, mix * alpha)
-    layers["back"] = (back_rgb, alpha)
-    return layers
-
-
-def resize_rgba(image, side):
-    return image.resize((side, side), Image.LANCZOS)
 
 
 def legacy_icon(square, side, force=False):
@@ -281,6 +194,22 @@ def legacy_icon(square, side, force=False):
     return big.resize((side, side), Image.LANCZOS)
 
 
+def load_square(path):
+    """the square artwork of the icon, full bleed, at the master size"""
+    return Image.open(path).convert("RGB").resize((MASTER, MASTER), Image.LANCZOS)
+
+
+def build_icons(square, out_dir):
+    for name, side in APP_ICONS.items():
+        write_png(legacy_icon(square, side), os.path.join(out_dir, name), launcher=True)
+
+
+def build_rounded(square, names, out_dir):
+    """the logo of the qr codes and the icon of the splash: the artwork with the rounded corners of an icon and real alpha"""
+    for name, side in names.items():
+        write_png(rounded_icon(square, side), os.path.join(out_dir, name))
+
+
 def write_png(image, path, launcher=False):
     """saves the image and recompresses it without changing a pixel: the pngs are most of the resources of the app, and oxipng makes them about a fifth smaller.
     the icons of the home screen keep their color type, since a palette icon has not been tried on the springboard of ios 5 and 6"""
@@ -290,91 +219,6 @@ def write_png(image, path, launcher=False):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     image.save(path, optimize=True)
     subprocess.run([oxipng, "-o", "4", "--strip", "safe", "-q"] + (["--nc", "--np"] if launcher else []) + [path], check=True)
-
-
-class Disk:
-    """a scalloped disk fitted to one wave: centre, radius and a ripple that repeats all round"""
-
-    def __init__(self, cx, cy, radius, bumps, amplitude, phase):
-        self.cx, self.cy, self.radius = cx, cy, radius
-        self.bumps, self.amplitude, self.phase = bumps, amplitude, phase
-
-    def reach(self):
-        return self.radius + self.amplitude + 4
-
-    def radius_at(self, angle):
-        return self.radius + self.amplitude * np.cos(self.bumps * angle - self.phase)
-
-    def alpha(self, side, scale, center_x, center_y):
-        """coverage on a side x side grid; (center_x, center_y) is the disk centre in grid units"""
-        ys, xs = np.mgrid[0:side, 0:side]
-        dx = (xs + 0.5 - center_x) / scale
-        dy = (ys + 0.5 - center_y) / scale
-        edge = self.radius_at(np.arctan2(dy, dx)) - np.hypot(dx, dy)
-        return np.clip(edge * scale + 0.5, 0.0, 1.0)
-
-
-def fit_disk(coverage, alpha):
-    mask = coverage > 0.5
-    edge = mask & ~ndi.binary_erosion(mask)
-    outline = ndi.distance_transform_edt(np.pad(alpha > 0.5, 1))[1:-1, 1:-1]
-    ys, xs = np.where(edge & (outline > 25))
-    xs, ys = xs.astype(np.float64), ys.astype(np.float64)
-    start = (xs.mean(), ys.mean(), 450.0)
-    fit = least_squares(lambda p: np.hypot(xs - p[0], ys - p[1]) - p[2], start)
-    cx, cy, radius = fit.x
-    angle = np.arctan2(ys - cy, xs - cx)
-    reach = np.hypot(xs - cx, ys - cy) - radius
-    order = np.argsort(angle)
-    angle, reach = angle[order], reach[order]
-    grid = np.linspace(angle[0], angle[-1], 2048)
-    ripple = ndi.uniform_filter1d(np.interp(grid, angle, reach), 15)
-    ripple = ripple - ndi.uniform_filter1d(ripple, 400)
-    # the strongest ripple over the visible arc gives the bump count for the full circle
-    spectrum = np.abs(np.fft.rfft(ripple * np.hanning(len(ripple)), 1 << 16))
-    cycles = np.fft.rfftfreq(1 << 16, d=(grid[1] - grid[0])) * 2 * np.pi
-    band = (cycles >= 8) & (cycles <= 40)
-    bumps = int(round(cycles[band][np.argmax(spectrum[band])]))
-    basis = np.stack([np.cos(bumps * grid), np.sin(bumps * grid)], 1)
-    (cos_part, sin_part), *_ = np.linalg.lstsq(basis, ripple, rcond=None)
-    amplitude = float(np.hypot(cos_part, sin_part)) * RIPPLE_GAIN
-    return Disk(cx, cy, radius, bumps, amplitude, float(np.arctan2(sin_part, cos_part)))
-
-
-def build_waves(layers, alpha, out_dir):
-    """fill images, scalloped disk masks and the geometry header the animated icon reads"""
-    lines = ["/* generated by tools/make_assets.py, do not edit */", ""]
-    disks = {}
-    for name in ("wave_top", "wave_bottom"):
-        fill, coverage = layers[name]
-        disk = fit_disk(coverage, alpha)
-        disks[name] = disk
-        side = 2 * disk.reach()
-        tag = name.upper()
-        lines.append("#define NOSHI_ICON_%s_CENTER_X %.5f" % (tag, disk.cx / MASTER))
-        lines.append("#define NOSHI_ICON_%s_CENTER_Y %.5f" % (tag, disk.cy / MASTER))
-        lines.append("#define NOSHI_ICON_%s_SIDE %.5f" % (tag, side / MASTER))
-        fill_image = to_image(fill, np.ones_like(alpha))
-        for scale, suffix in WELCOME_SCALES:
-            points = WELCOME_LAYER_POINTS * scale
-            write_png(resize_rgba(fill_image, points),
-                      os.path.join(out_dir, "welcome_icon_%s_fill%s.png" % (name, suffix)))
-            pixels = int(np.ceil(side * points / MASTER))
-            mask = np.zeros((pixels, pixels, 4), dtype=np.uint8)
-            mask[..., :3] = 255
-            mask[..., 3] = (disk.alpha(pixels, points / MASTER, pixels / 2.0, pixels / 2.0) * 255 + 0.5).astype(np.uint8)
-            write_png(Image.fromarray(mask, "RGBA"), os.path.join(out_dir, "welcome_icon_%s_disk%s.png" % (name, suffix)))
-    with open(GEOMETRY_HEADER, "w") as handle:
-        handle.write("\n".join(lines) + "\n")
-    return disks
-
-
-def build_icons(rgb, out_dir):
-    # remove the source rim before drawing the mask for the ios 5 and 6 icon sizes
-    cut = int(MASTER * ICON_BLEED)
-    square = to_image(rgb, np.ones(rgb.shape[:2])).convert("RGB").crop((cut, cut, MASTER - cut, MASTER - cut))
-    for name, side in APP_ICONS.items():
-        write_png(legacy_icon(square, side), os.path.join(out_dir, name), launcher=True)
 
 
 ICON_GLOSS = os.path.join(ROOT, "resources/icons/source/icon_gloss.png")
@@ -409,51 +253,10 @@ def build_deb_icons(source_dir, out_dir):
             write_png(glossed_icon(icon, side) if side in LEGACY_ICON_SIDES else legacy_icon(icon, side, force=True), os.path.join(out_dir, name), launcher=True)
 
 
-def build_qr_logo(rgb, alpha, out_dir):
-    # the clean master keeps the icon's own rounded silhouette as alpha, so the code shows its paper through the corners
-    master = to_image(rgb, alpha)
-    for name, side in QR_LOGOS.items():
-        write_png(resize_rgba(master, side), os.path.join(out_dir, name))
-
-
-def build_splash_icon(rgb, alpha, out_dir):
-    master = to_image(rgb, alpha)
-    for name, side in SPLASH_ICONS.items():
-        write_png(resize_rgba(master, side), os.path.join(out_dir, name))
-
-
 def build_gift_anonymous(source, out_dir):
     master = Image.open(source).convert("RGBA")
     for name, side in GIFT_ANONYMOUS.items():
         write_png(master.resize((side, side), Image.LANCZOS), os.path.join(out_dir, name))
-
-
-def build_welcome_layers(layers, alpha, out_dir):
-    for name in ("back", "arrow"):
-        rgb, layer_alpha = layers[name]
-        full = to_image(rgb, layer_alpha)
-        for scale, suffix in WELCOME_SCALES:
-            write_png(resize_rgba(full, WELCOME_LAYER_POINTS * scale),
-                      os.path.join(out_dir, "welcome_icon_%s%s.png" % (name, suffix)))
-    return build_waves(layers, alpha, out_dir)
-
-
-def check_layers(rgb, alpha, layers, disks):
-    canvas = np.zeros_like(rgb)
-    for name in ("back", "wave_top", "wave_bottom", "arrow"):
-        fill, cover = layers[name]
-        if name in disks:
-            disk = disks[name]
-            side = int(np.ceil(2 * disk.reach()))
-            ys, xs = np.mgrid[0:MASTER, 0:MASTER]
-            edge = disk.radius_at(np.arctan2(ys + 0.5 - disk.cy, xs + 0.5 - disk.cx)) - np.hypot(xs + 0.5 - disk.cx, ys + 0.5 - disk.cy)
-            cover = np.clip(edge + 0.5, 0.0, 1.0) * alpha
-        canvas = fill * cover[..., None] + canvas * (1.0 - cover[..., None])
-    inside = alpha > 0.99
-    diff = np.abs(canvas - rgb)[inside]
-    print("layer recompose error: mean %.2f, p99 %.1f" % (diff.mean(), np.percentile(diff, 99)))
-    for name, disk in disks.items():
-        print("%s: centre (%.0f, %.0f) radius %.0f, %d bumps per turn" % (name, disk.cx, disk.cy, disk.radius, disk.bumps))
 
 
 def splash_launch_image(size, scale):
@@ -747,8 +550,7 @@ def build_animations(source_dir, out_dir):
 # the alternate app icons of the chat settings: the launcher icons that are a plain color with a
 # picture over it
 ALTERNATE_ICONS = ("blueprint", "red", "nya", "quack")
-# the names of the files, which the images of Telegram share with the color icons above
-ALTERNATE_ICON_NAMES = tuple(name.capitalize() for name in ALTERNATE_ICONS) + ("Telegram",)
+ALTERNATE_ICON_NAMES = tuple(name.capitalize() for name in ALTERNATE_ICONS)
 # name of the file, side in pixels: the sizes the home screen of an iPhone and an iPad ask for
 ALTERNATE_ICON_SIZES = (("-60@2x", 120), ("-60@3x", 180), ("-76", 76), ("-76@2x", 152), ("-83.5@2x", 167),
                         ("-57", 57), ("-57@2x", 114), ("-72", 72), ("-72@2x", 144))
@@ -788,16 +590,6 @@ def build_alternate_icons(res_dir, out_dir):
 
 # the splash shows the icon the person chose, so each alternate icon also has the picture the splash draws: rounded, at the three scales of splash_icon
 SPLASH_SIDES = (("", 96), ("@2x", 192), ("@3x", 288))
-
-
-def build_image_icons(source, name, out_dir):
-    icon = Image.open(source).convert("RGB")
-    if icon.width != icon.height:
-        raise ValueError("%s icon must be square" % name)
-    for suffix, pixels in ALTERNATE_ICON_SIZES:
-        write_png(legacy_icon(icon, pixels), os.path.join(out_dir, name + suffix + ".png"), launcher=True)
-    for suffix, pixels in SPLASH_SIDES:
-        write_png(rounded_icon(icon, pixels), os.path.join(out_dir, "splash_" + name.lower() + suffix + ".png"))
 
 
 def build_alternate_splash_icons(res_dir, out_dir):
@@ -924,8 +716,8 @@ def build_flags(svg_dir, countries, out_dir):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("part", choices=("icons", "debicons", "qrlogo", "splash", "giftanon", "launch", "animations", "symbols", "material", "alticons", "telegram", "phone", "flags", "all"))
-    parser.add_argument("--source", default=os.path.join(ROOT, "resources/icons/source/noshigram.png"))
+    parser.add_argument("part", choices=("icons", "debicons", "qrlogo", "splash", "giftanon", "launch", "animations", "symbols", "material", "alticons", "phone", "flags", "all"))
+    parser.add_argument("--source", default=os.path.join(ROOT, "resources/icons/source/telegram.png"))
     parser.add_argument("--animations", default=os.environ.get("NOSHI_LOTTIE_RAW", ""))
     parser.add_argument("--phone-video", default=os.environ.get("NOSHI_PHONE_VIDEO", ""))
     parser.add_argument("--flag-svgs", default=os.environ.get("NOSHI_FLAG_SVGS", ""))
@@ -935,17 +727,11 @@ def main():
     if args.part == "debicons":
         build_deb_icons(os.path.join(ROOT, "resources/icons"), os.path.join(args.out, "deb-icons"))
     if args.part in ("icons", "all"):
-        rgb, alpha = load_master(args.source)
-        build_icons(rgb, os.path.join(args.out, "icons"))
-        layers = split_layers(rgb, alpha)
-        disks = build_welcome_layers(layers, alpha, os.path.join(args.out, "icons"))
-        check_layers(rgb, alpha, layers, disks)
+        build_icons(load_square(args.source), os.path.join(args.out, "icons"))
     if args.part in ("qrlogo", "all"):
-        rgb, alpha = load_master(args.source)
-        build_qr_logo(rgb, alpha, os.path.join(args.out, "icons"))
+        build_rounded(load_square(args.source), QR_LOGOS, os.path.join(args.out, "icons"))
     if args.part in ("splash", "all"):
-        rgb, alpha = load_master(args.source)
-        build_splash_icon(rgb, alpha, os.path.join(args.out, "icons"))
+        build_rounded(load_square(args.source), SPLASH_ICONS, os.path.join(args.out, "icons"))
     if args.part in ("giftanon", "all"):
         build_gift_anonymous(GIFT_ANONYMOUS_SOURCE, os.path.join(args.out, "icons"))
     if args.part in ("launch", "all"):
@@ -966,8 +752,6 @@ def main():
             sys.exit("set NOSHI_ICON_RES to the res directory of the reference tree")
         build_alternate_icons(args.icon_res, os.path.join(args.out, "icons"))
         build_alternate_splash_icons(args.icon_res, os.path.join(args.out, "icons"))
-    if args.part in ("telegram", "all"):
-        build_image_icons(os.path.join(ROOT, "resources/icons/source/telegram.png"), "Telegram", os.path.join(args.out, "icons"))
     if args.part in ("phone", "all"):
         if not args.phone_video:
             sys.exit("set NOSHI_PHONE_VIDEO to IntroPhone.mp4")

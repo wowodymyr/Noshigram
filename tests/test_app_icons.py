@@ -3,7 +3,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-import numpy as np
 from PIL import Image
 
 from tools import make_assets
@@ -49,9 +48,9 @@ class AppIconTests(unittest.TestCase):
                 self.assertEqual(icon.size, (side, side), str(path))
 
     def test_primary_generator_rounds_legacy_sizes(self):
-        rgb = np.full((make_assets.MASTER, make_assets.MASTER, 3), (41, 79, 113), dtype=np.uint8)
+        square = Image.new("RGB", (make_assets.MASTER, make_assets.MASTER), (41, 79, 113))
         with tempfile.TemporaryDirectory() as directory:
-            make_assets.build_icons(rgb, directory)
+            make_assets.build_icons(square, directory)
             for name, side in make_assets.APP_ICONS.items():
                 with self.subTest(name=name):
                     path = Path(directory) / name
@@ -100,24 +99,6 @@ class AppIconTests(unittest.TestCase):
             for name, icon in plist[key]["CFBundleAlternateIcons"].items():
                 with self.subTest(key=key, name=name):
                     self.assertTrue(icon["UIPrerenderedIcon"])
-
-    def test_senkogram_generator(self):
-        source = Path(make_assets.ROOT) / "resources/icons/source/senkogram.png"
-        with tempfile.TemporaryDirectory() as directory:
-            make_assets.build_senkogram_icons(source, directory)
-            for suffix, side in make_assets.ALTERNATE_ICON_SIZES:
-                self.assert_launcher_icon(Path(directory) / ("SenkoGram" + suffix + ".png"), side, side in make_assets.LEGACY_ICON_SIDES)
-            for suffix, side in make_assets.SPLASH_SIDES:
-                self.assert_launcher_icon(Path(directory) / ("splash_senkogram" + suffix + ".png"), side, True)
-
-    def test_telegram_generator(self):
-        source = Path(make_assets.ROOT) / "resources/icons/source/telegram.png"
-        with tempfile.TemporaryDirectory() as directory:
-            make_assets.build_image_icons(source, "Telegram", directory)
-            for suffix, side in make_assets.ALTERNATE_ICON_SIZES:
-                self.assert_launcher_icon(Path(directory) / ("Telegram" + suffix + ".png"), side, side in make_assets.LEGACY_ICON_SIDES)
-            for suffix, side in make_assets.SPLASH_SIDES:
-                self.assert_launcher_icon(Path(directory) / ("splash_telegram" + suffix + ".png"), side, True)
 
     def test_every_plist_icon_has_expected_shape(self):
         root = Path(make_assets.ROOT)

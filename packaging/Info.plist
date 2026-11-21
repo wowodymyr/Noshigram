@@ -64,18 +64,6 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>Telegram</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Telegram-60@2x.png</string>
-					<string>Telegram-60@3x.png</string>
-					<string>Telegram-57.png</string>
-					<string>Telegram-57@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
 			<key>Blueprint</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
@@ -149,19 +137,6 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>Telegram</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Telegram-76.png</string>
-					<string>Telegram-76@2x.png</string>
-					<string>Telegram-83.5@2x.png</string>
-					<string>Telegram-72.png</string>
-					<string>Telegram-72@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
 			<key>Blueprint</key>
 			<dict>
 				<key>CFBundleIconFiles</key>

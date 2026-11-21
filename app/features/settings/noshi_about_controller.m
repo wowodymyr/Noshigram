@@ -18,7 +18,7 @@ static NSString *const NoshiUpstreamAddress = @"https://github.com/sqmrak/exteri
 
 /* the developers of exteria, which noshigram is a fork of; its license asks every fork to name them */
 static NSString *const NoshiUpstreamDevelopers[] = {
-    @"sqmrak", @"QWERTYU1OPZ", @"LimeDev", @"menstry", @"anazerka", @"loveiOS6", @"nestorvashenko", @"svcayon4ik",
+    @"sqmrak", @"QWERTYU1OPZ", @"LimeDev", @"menstry", @"anazerka", @"loveiOS6", @"nestorvashenko", @"svcayon4ik", @"illyagif",
 };
 
 /* the slice the running code was built for, which the version line shows */

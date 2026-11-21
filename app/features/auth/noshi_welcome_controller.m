@@ -1,6 +1,5 @@
 #import "noshi_welcome_controller.h"
 
-#import "noshi_animated_icon_view.h"
 #import "noshi_alert.h"
 #import "noshi_proxy_settings.h"
 #import "noshi_lottie_view.h"
@@ -63,7 +62,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     if (!self) return nil;
     NSString *sticker = NoshiWelcomeStickers[index];
     _art = [(sticker ? (UIView *)[[[NoshiLottieView alloc] initWithAnimationNamed:sticker] autorelease]
-                     : (UIView *)[[[NoshiAnimatedIconView alloc] init] autorelease]) retain];
+                     : (UIView *)[[[UIImageView alloc] initWithImage:[UIImage imageNamed:@"splash_icon"]] autorelease]) retain];
     _title = [NoshiWelcomeLabel(NoshiColorTitle(), 1) retain];
     _message = [NoshiWelcomeLabel(NoshiColorMessage(), 0) retain];
     _title.text = NSLocalizedString(([NSString stringWithFormat:@"welcome.title.%d", (int)index]), nil);
@@ -304,14 +303,11 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     for (NSInteger i = 0; i < NOSHI_WELCOME_PAGES; ++i) {
         UIView *art = ((NoshiWelcomePage *)[_pages objectAtIndex:i]).art;
         BOOL active = _visible && i == _page;
-        if ([art isKindOfClass:[NoshiAnimatedIconView class]]) {
-            if (active) [(NoshiAnimatedIconView *)art startAnimating];
-            else [(NoshiAnimatedIconView *)art stopAnimating];
-        } else {
-            NoshiLottieView *sticker = (NoshiLottieView *)art;
-            [sticker setLoaded:ABS(i - _page) <= 1];
-            [sticker setPlaying:active];
-        }
+        /* the first page shows the still icon of the app, the others play their stickers */
+        if (![art isKindOfClass:[NoshiLottieView class]]) continue;
+        NoshiLottieView *sticker = (NoshiLottieView *)art;
+        [sticker setLoaded:ABS(i - _page) <= 1];
+        [sticker setPlaying:active];
     }
 }
 
