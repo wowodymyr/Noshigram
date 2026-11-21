@@ -6,12 +6,15 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 THEOS="${THEOS:-$HOME/theos}"
 TC="${NOSHI_TC:-$THEOS/toolchain/linux/iphone/bin}"
+# the clang 11 of the theos toolchain miscompiles openssl for armv7 at -O2 (a load of a method store node goes wrong and the first
+# certificate read crashes on an iphone 5 with ios 6.1.4); a current clang builds it right, the ld64 of theos still links
+OSSL_CC="${NOSHI_OPENSSL_CC:-$(command -v clang-21 || command -v clang)}"
 SDK="${NOSHI_SDK:-$THEOS/sdks/iPhoneOS14.5.sdk}"
 OUT="${NOSHI_DEPS:-$ROOT/deps}"
 SRC="$OUT/src"
 JOBS="${NOSHI_JOBS:-$(nproc)}"
 
-OPENSSL_VER=3.0.15
+OPENSSL_VER=3.5.9
 VPX_VER=1.15.0
 FFMPEG_VER=7.1.1
 
@@ -39,9 +42,8 @@ for slice in ${NOSHI_SLICES:-armv7 arm64}; do
             # the ios configs of openssl put their own sysroot at $CROSS_TOP/SDKs/$CROSS_SDK
             mkdir -p "$OUT/sdkroot/SDKs" && ln -sfn "$SDK" "$OUT/sdkroot/SDKs/iPhoneOS.sdk"
             export CROSS_TOP="$OUT/sdkroot" CROSS_SDK=iPhoneOS.sdk
-            # armv7 has no 64 bit atomics in the ios 5 runtime, openssl falls back to its locks
-            extra=""; [[ "$slice" == armv7 ]] && extra="-DBROKEN_CLANG_ATOMICS"
-            CC="$TC/clang $flags $extra" AR="$TC/llvm-ar" RANLIB="$TC/llvm-ranlib" \
+            # the 64 bit atomics openssl calls on armv7 come from core/base/noshi_atomic.c, as compiler-rt is not linked
+            CC="$OSSL_CC $flags" AR="$TC/llvm-ar" RANLIB="$TC/llvm-ranlib" \
             "$SRC/openssl-$OPENSSL_VER/Configure" "$ossl" no-shared no-async no-tests no-ui-console no-engine \
                 no-dso no-asm --prefix="$prefix" --openssldir=/var/mobile/Library/Noshigram/ssl
             make -j"$JOBS" build_libs
