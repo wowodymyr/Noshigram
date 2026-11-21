@@ -103,9 +103,6 @@
 #import "noshi_translate_config.h"
 #import "noshi_translate_sheet.h"
 #import "noshi_translator.h"
-#import "noshi_ayu.h"
-#import "noshi_edit_history_controller.h"
-#import "noshi_session_saved.h"
 #import "noshi_falling_view.h"
 #import "noshi_wallpaper.h"
 #import "noshi_chats_controller.h"
@@ -2299,8 +2296,8 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
 
 #pragma mark menu
 
-typedef enum { NoshiChatMenuSearch, NoshiChatMenuPinned, NoshiChatMenuVoiceChat, NoshiChatMenuDiscussion, NoshiChatMenuNotifications, NoshiChatMenuWallpaper, NoshiChatMenuClear, NoshiChatMenuBookmarks, NoshiChatMenuSavedDialogs, NoshiChatMenuBotSettings, NoshiChatMenuBotHelp, NoshiChatMenuReport, NoshiChatMenuDelete, NoshiChatMenuClearSaved } NoshiChatMenuEntry;
-enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMessage, NoshiChatAlertSearch, NoshiChatAlertDeleteSelected, NoshiChatAlertStartVoice, NoshiChatAlertClearSaved };
+typedef enum { NoshiChatMenuSearch, NoshiChatMenuPinned, NoshiChatMenuVoiceChat, NoshiChatMenuDiscussion, NoshiChatMenuNotifications, NoshiChatMenuWallpaper, NoshiChatMenuClear, NoshiChatMenuBookmarks, NoshiChatMenuSavedDialogs, NoshiChatMenuBotSettings, NoshiChatMenuBotHelp, NoshiChatMenuReport, NoshiChatMenuDelete } NoshiChatMenuEntry;
+enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMessage, NoshiChatAlertSearch, NoshiChatAlertDeleteSelected, NoshiChatAlertStartVoice };
 
 /* asks the question first when the person wants it asked (the setting), then runs the block; declined runs when the answer is no */
 - (void)askFirst:(NoshiChatFlag)flag message:(NSString *)message action:(NSString *)action then:(void (^)(void))go declined:(void (^)(void))declined {
@@ -2341,8 +2338,6 @@ enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMes
     if (!_dialog.saved) MENU_ROW(NoshiSymbolBell, @"notif.chat.header", NoshiChatMenuNotifications);
     MENU_ROW(NoshiSymbolBackground, @"chat.menu.wallpaper", NoshiChatMenuWallpaper);
     if (!channelLike && _server.count) MENU_ROW(NoshiSymbolClearHistory, @"chat.menu.clear", NoshiChatMenuClear);
-    /* messages deleted by the other side are kept on the phone while AyuMoments holds them, and this row sweeps the ones of this chat */
-    if (NoshiChatFlagGet(NoshiChatFlagAyuSaveDeleted) && !_pinnedList) MENU_ROW(NoshiSymbolBroom, @"chat.menu.clearsaved", NoshiChatMenuClearSaved);
     /* the saved messages are listed once the person has marked any is shown only then */
     if ([[NoshiBookmarks bookmarksForSession:_session] entries].count) MENU_ROW(NoshiSymbolFave, @"bookmarks.title", NoshiChatMenuBookmarks);
     if (bot) {
@@ -2375,7 +2370,6 @@ enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMes
             break;
         case NoshiChatMenuWallpaper: [chat.navigationController pushViewController:[[[NoshiWallpaperController alloc] initWithPeerKind:chat->_dialog.peerKind peerId:chat->_dialog.peerId] autorelease] animated:YES]; break;
         case NoshiChatMenuClear: [chat askWithMessage:NSLocalizedString(@"chat.clear.confirm", nil) action:NSLocalizedString(@"chat.menu.clear", nil) tag:NoshiChatAlertClear]; break;
-        case NoshiChatMenuClearSaved: [chat askWithMessage:NSLocalizedString(@"chat.clearsaved.confirm", nil) action:NSLocalizedString(@"chat.menu.clearsaved", nil) tag:NoshiChatAlertClearSaved]; break;
         case NoshiChatMenuBookmarks:
             [chat.navigationController pushViewController:[[[NoshiBookmarksController alloc] initWithSession:chat->_session avatars:chat->_avatars media:chat->_media
                                                                                                        stickers:chat->_stickers] autorelease] animated:YES];
@@ -2676,33 +2670,9 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     NoshiConfirmAction(self, message, action, ^{ [(NoshiChatController *)weak.target confirmedTag:tag]; });
 }
 
-/* the kept deleted messages of this chat go from the phone, and from the list with them */
-- (void)clearSavedDeleted {
-    NoshiWeakReference *weak = _weak;
-    [_session clearSavedDeletedOfDialog:_dialog completion:^(NSString *errorName) {
-        NoshiChatController *chat = weak.target;
-        if (!chat) return;
-        if (errorName) {
-            NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));
-            return;
-        }
-        for (NSNumber *key in [chat->_server allKeys]) {
-            if ([[chat->_server objectForKey:key] deletedLocally]) [chat->_server removeObjectForKey:key];
-        }
-        for (NoshiMessage *local in [[chat->_local copy] autorelease]) if (local.deletedLocally) [chat->_local removeObject:local];
-        if (chat->_replyToId > 0 && ![chat storedMessageWithId:chat->_replyToId]) [chat cancelCompose];
-        [chat rebuildItems];
-        [[NSNotificationCenter defaultCenter] postNotificationName:NoshiDialogsChangedNotification object:nil];
-    }];
-}
-
 - (void)confirmedTag:(NSInteger)tag {
     if (tag == NoshiChatAlertStartVoice) {
         [_session.groupCalls startVoiceChatInDialog:_dialog title:nil];
-        return;
-    }
-    if (tag == NoshiChatAlertClearSaved) {
-        [self clearSavedDeleted];
         return;
     }
     if (tag == NoshiChatAlertDeleteSelected) {
@@ -3180,7 +3150,7 @@ static NSString *const NoshiChatScrollKey = @"noshigram.chat.scrollpos";
         for (NSIndexPath *path in _table.indexPathsForVisibleRows) {
             if ((NSUInteger)path.row >= _items.count) continue;
             NoshiMessage *message = ((NoshiChatItem *)[_items objectAtIndex:(NSUInteger)path.row]).message;
-            if (message.messageId > shown && !message.deletedLocally) shown = message.messageId;
+            if (message.messageId > shown) shown = message.messageId;
         }
     }
     if (shown > 0) {
@@ -4043,7 +4013,7 @@ static NSString *const NoshiListenedKey = @"noshigram.voice.listened";
 }
 
 - (void)markReadIfNeeded {
-    if (!_visible || !_loadedFirst || _opening || _loadingWindow || _scrollTarget > 0 || _jumpLink || _pinnedList || NoshiChatFlagGet(NoshiChatFlagGhostNoRead)) return;
+    if (!_visible || !_loadedFirst || _opening || _loadingWindow || _scrollTarget > 0 || _jumpLink || _pinnedList) return;
     [self scheduleVisibleMentionsRead];
     [self scheduleVisibleReactionsRead];
     int32_t newest = 0;
@@ -4118,7 +4088,7 @@ static NSString *const NoshiListenedKey = @"noshigram.voice.listened";
 }
 
 - (void)markVisibleMentionsRead {
-    if (!_visible || _pinnedList || NoshiChatFlagGet(NoshiChatFlagGhostNoRead) || [UIApplication sharedApplication].applicationState != UIApplicationStateActive) return;
+    if (!_visible || _pinnedList || [UIApplication sharedApplication].applicationState != UIApplicationStateActive) return;
     NSMutableArray *ids = [NSMutableArray array];
     for (NSIndexPath *path in [_table indexPathsForVisibleRows]) {
         if ((NSUInteger)path.row >= _items.count) continue;
@@ -4202,10 +4172,7 @@ static int NoshiCompareMessageOrder(const void *first, const void *second) {
     qsort(order, count, sizeof(*order), NoshiCompareMessageOrder);
     NSMutableArray *sorted = [NSMutableArray arrayWithCapacity:count];
     for (NSUInteger i = 0; i < count; ++i) {
-        NoshiMessage *message = [all objectAtIndex:order[i].index];
-        /* a message of someone else whose text a filter of the person matches is not shown */
-        if (message.messageId > 0 && !message.outgoing && NoshiAyuHidesText(message.text)) continue;
-        [sorted addObject:message];
+        [sorted addObject:[all objectAtIndex:order[i].index]];
     }
     free(order);
     return sorted;
@@ -5320,7 +5287,7 @@ static void NoshiRedrawTree(UIView *view) {
 /* the oldest unseen reaction first, which reads forward; the last one seen tells the server that all of them were */
 - (void)reactionJumpTapped {
     if (!_unreadReactionIds.count) return;
-    if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_AUTOMATIC)) {
+    if (!noshi_read_action_allowed(0, NOSHI_READ_AUTOMATIC)) {
         NSUInteger index = _unreadReactionIds.count - 1 - (_ghostReactionIndex++ % _unreadReactionIds.count);
         [self jumpToMessageId:[[_unreadReactionIds objectAtIndex:index] intValue]];
         return;
@@ -5347,7 +5314,7 @@ static void NoshiRedrawTree(UIView *view) {
 }
 
 - (void)markVisibleReactionsRead {
-    if (!_visible || _pinnedList || !_unreadReactionIds.count || NoshiChatFlagGet(NoshiChatFlagGhostNoRead) || [UIApplication sharedApplication].applicationState != UIApplicationStateActive) return;
+    if (!_visible || _pinnedList || !_unreadReactionIds.count || [UIApplication sharedApplication].applicationState != UIApplicationStateActive) return;
     BOOL seen = NO;
     for (NSIndexPath *path in [_table indexPathsForVisibleRows]) {
         if ((NSUInteger)path.row >= _items.count) continue;
@@ -6288,7 +6255,6 @@ static const NoshiMessageActionRow NoshiMessageActionRows[] = {
     {NOSHI_ACTION_REPLY_PRIVATE, NoshiSymbolChats, @"chat.msg.replyprivate", NO},
     {NOSHI_ACTION_REMIND, NoshiSymbolClock, @"chat.msg.remind", NO},
     {NOSHI_ACTION_SELECT, NoshiSymbolCheck, @"chat.msg.select", NO},
-    {NOSHI_ACTION_EDIT_HISTORY, NoshiSymbolClock, @"chat.msg.edithistory", NO},
     {NOSHI_ACTION_DETAILS, NoshiSymbolInfo, @"chat.msg.details", NO},
     {NOSHI_ACTION_REPORT, NoshiSymbolReport, @"chat.msg.report", YES},
 };
@@ -6371,10 +6337,6 @@ static NSArray *NoshiMenuItems(const NoshiMessageActionRow *table, size_t count,
     if (!NoshiChatFlagGet(NoshiChatFlagMenuDetails)) mask &= ~(uint32_t)NOSHI_ACTION_DETAILS;
     if (!NoshiChatFlagGet(NoshiChatFlagMenuBookmark)) mask &= ~(uint32_t)(NOSHI_ACTION_BOOKMARK | NOSHI_ACTION_UNBOOKMARK);
     if (!NoshiChatFlagGet(NoshiChatFlagMenuReplyPrivate)) mask &= ~(uint32_t)NOSHI_ACTION_REPLY_PRIVATE;
-    /* a message that was edited may have kept its earlier texts, and the person sees them from here */
-    if (message.edited && !message.deletedLocally && NoshiChatFlagGet(NoshiChatFlagAyuSaveEdits)) mask |= NOSHI_ACTION_EDIT_HISTORY;
-    /* a kept message can be removed locally, but the server no longer has it for other actions */
-    if (message.deletedLocally) mask = (mask & (NOSHI_ACTION_COPY | NOSHI_ACTION_DETAILS | NOSHI_ACTION_TRANSLATE)) | NOSHI_ACTION_DELETE;
     /* the server refuses the list of who reacted in a broadcast channel (BROADCAST_FORBIDDEN, so that readers cannot be told apart), so the entry is not offered there */
     /* the post that heads its comments is that same post, forwarded into the discussion group, and the server refuses the list for it as well: it comes from a channel (its origin is one), or it is the root of the thread */
     else if (message.messageId > 0 && message.reactions.count && _dialog.kind != NOSHI_DIALOG_CHANNEL && _dialog.kind != NOSHI_DIALOG_USER && _dialog.kind != NOSHI_DIALOG_BOT &&
@@ -6547,8 +6509,6 @@ static NSArray *NoshiMenuItems(const NoshiMessageActionRow *table, size_t count,
 
 - (NoshiMessage *)messageWithId:(int32_t)messageId {
     NoshiMessage *message = [self storedMessageWithId:messageId];
-    /* a reply to a message that was deleted shows its words only when the person asked for it, and is a reply to a message that is gone otherwise */
-    if (message && message.deletedLocally && !NoshiChatFlagGet(NoshiChatFlagAyuReplyQuote)) return nil;
     return message;
 }
 
@@ -6598,30 +6558,11 @@ static NSArray *NoshiMenuItems(const NoshiMessageActionRow *table, size_t count,
         [self.navigationController pushViewController:page animated:YES];
         break;
     }
-    case NOSHI_ACTION_EDIT_HISTORY: [self showEditHistoryOfMessage:message]; break;
     case NOSHI_ACTION_DELETE:
         _deleteId = message.messageId;
-        [self askWithMessage:NSLocalizedString(message.deletedLocally ? @"chat.msg.delete.saved.confirm" : @"chat.msg.delete.confirm", nil) action:NSLocalizedString(@"chat.msg.delete", nil) tag:NoshiChatAlertDeleteMessage];
+        [self askWithMessage:NSLocalizedString(@"chat.msg.delete.confirm", nil) action:NSLocalizedString(@"chat.msg.delete", nil) tag:NoshiChatAlertDeleteMessage];
         break;
     }
-}
-
-#pragma mark edit history
-
-/* the texts the message had before its edits, the oldest first, and the one it has now at the end */
-- (void)showEditHistoryOfMessage:(NoshiMessage *)message {
-    NoshiWeakReference *weak = _weak;
-    NSString *current = message.text;
-    int32_t editedAt = message.date;
-    [_session loadEditVersionsOfMessage:message.messageId dialog:_dialog completion:^(NSArray *versions) {
-        NoshiChatController *chat = weak.target;
-        if (!chat) return;
-        if (!versions.count) {
-            NoshiGiftAlert(nil, NSLocalizedString(@"chat.edithistory.none", nil));
-            return;
-        }
-        [chat.navigationController pushViewController:[[[NoshiEditHistoryController alloc] initWithVersions:versions current:current date:editedAt] autorelease] animated:YES];
-    }];
 }
 
 #pragma mark reply and edit
@@ -7369,7 +7310,7 @@ static NSDate *NoshiReminderDate(NSUInteger choice) {
 /* a tap on the card of a one-time file: it opens in a viewer of its own, the server hears that it was opened when the picture is on the screen, and the card burns when the viewer is closed */
 - (void)messageCellDidTapViewOnce:(NoshiMessageCell *)cell {
     NoshiMessage *message = cell.item.message;
-    if (!message.outgoing && !noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_ONCE)) {
+    if (!message.outgoing && !noshi_read_action_allowed(0, NOSHI_READ_ONCE)) {
         NoshiShowNotice(nil, NSLocalizedString(@"ayu.ghost.once", nil));
         return;
     }

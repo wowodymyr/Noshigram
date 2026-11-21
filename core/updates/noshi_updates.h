@@ -3,16 +3,6 @@
 
 #include "noshi_store.h"
 
-/* what AyuMoments keeps of the messages the other side takes away: bits of noshi_updates.keep */
-enum {
-    NOSHI_KEEP_DELETED = 1,       /* a deleted message stays, under the kind of the deleted ones, in the chats the bits below name */
-    NOSHI_KEEP_PRIVATE = 2,
-    NOSHI_KEEP_GROUPS = 4,
-    NOSHI_KEEP_CHANNELS = 8,
-    NOSHI_KEEP_BOTS = 16,
-    NOSHI_KEEP_EDITS = 32         /* the text before an edit stays as a version of the message */
-};
-
 typedef struct noshi_updates {
     noshi_store *store;
     int64_t account;
@@ -23,7 +13,6 @@ typedef struct noshi_updates {
     int global_gap;
     int64_t channels[128];
     uint32_t channel_count;
-    uint32_t keep;
 } noshi_updates;
 
 noshi_status noshi_updates_init(noshi_updates *u, noshi_store *store, int64_t account_id);

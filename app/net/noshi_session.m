@@ -702,30 +702,6 @@ static NSString *NoshiMachineName(void) {
     return _store;
 }
 
-- (void)setKeepMask:(uint32_t)mask {
-    _client.updates.keep = mask;
-}
-
-/* a message that only came in a history page is not in the store, so the server telling that it is gone would
-   leave nothing to keep */
-- (void)keepMessagesOfAnswer:(const noshi_tl_value *)answer {
-    if (!_store || !(_client.updates.keep & NOSHI_KEEP_DELETED)) return;
-    const noshi_tl_value *list = noshi_tl_get(answer, "messages");
-    if (!list || list->kind != NOSHI_TL_V_VEC) return;
-    /* the store syncs to disk at every commit, so a page written message by message held this thread, and every answer behind it, for seconds */
-    BOOL batched = noshi_store_begin(_store) == NOSHI_OK;
-    for (uint32_t i = 0; i < list->u.vec.count; ++i) {
-        const noshi_tl_value *item = list->u.vec.items[i];
-        if (!noshi_tl_is(item, NOSHI_TL_ID_message) && !noshi_tl_is(item, NOSHI_TL_ID_messageService)) continue;
-        noshi_status status = noshi_updates_cache_message(&_client.updates, item);
-        if (status != NOSHI_OK) {
-            NSLog(@"noshigram: a message of a history page was not kept: %s", noshi_status_name(status));
-            break;
-        }
-    }
-    if (batched && noshi_store_commit(_store) != NOSHI_OK) NSLog(@"noshigram: the history page was not committed");
-}
-
 - (void)workerCancelSend:(long long)randomId {
     if (!_cancelledSends) _cancelledSends = [[NSMutableSet alloc] init];
     [_cancelledSends addObject:[NSNumber numberWithLongLong:randomId]];
@@ -1701,7 +1677,6 @@ static void NoshiAuthChanged(void *ctx, noshi_auth_state state, noshi_status sta
     if (status != NOSHI_OK) return status;
     status = noshi_client_attach_store(&_client, _store, account);
     if (status != NOSHI_OK) [self closeStore];
-    else _client.updates.keep = NoshiSavingMask();
     return status;
 }
 

@@ -1,4 +1,3 @@
-#import "noshi_ayu_controller.h"
 #import "noshi_about_controller.h"
 #import "noshi_general_settings_controller.h"
 #import "noshi_more_settings_controller.h"
@@ -609,9 +608,6 @@ static NSString *const NoshiMorphTurnKey = @"about.turn";
         }],
         [self categoryRow:NoshiSymbolSettingsChat tone:NoshiSettingsToneGreen key:@"about.chats" page:^UIViewController *{
             return [[[NoshiChatExtrasController alloc] initWithSession:session] autorelease];
-        }],
-        [self categoryRow:NoshiSymbolEyeSlash tone:NoshiSettingsTonePurplePastel key:@"ayu.title" page:^UIViewController *{
-            return [[[NoshiAyuController alloc] initWithSession:session] autorelease];
         }],
         [self categoryRow:NoshiSymbolEllipsis tone:NoshiSettingsToneGray key:@"about.more" page:^UIViewController *{
             return [[[NoshiMoreSettingsController alloc] initWithSession:session] autorelease];

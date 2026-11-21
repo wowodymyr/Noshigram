@@ -220,7 +220,6 @@ static NSMutableDictionary *NoshiCustomTexts(void) {
 @synthesize viewOnceOpened = _viewOnceOpened;
 @synthesize forwarded = _forwarded;
 @synthesize edited = _edited;
-@synthesize deletedLocally = _deletedLocally;
 @synthesize uploadProgress = _uploadProgress;
 @synthesize service = _service;
 @synthesize serviceValue = _serviceValue;

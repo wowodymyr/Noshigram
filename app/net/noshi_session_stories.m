@@ -169,8 +169,6 @@
 }
 
 - (void)markStoriesSeenOfDialog:(NoshiDialog *)dialog upTo:(int32_t)storyId {
-    /* ghost mode: the story is looked at and its owner is not told */
-    if (NoshiChatFlagGet(NoshiChatFlagGhostNoStories)) return;
     noshi_peer_ref peer = NoshiPeerRefOfDialog(dialog);
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
         return noshi_story_read_request(arena, &peer, storyId, request);

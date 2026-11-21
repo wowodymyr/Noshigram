@@ -7,12 +7,6 @@
 @class NoshiPerson;
 @class NoshiForumSummaries;
 
-/* the mask of what the settings of the person keep of deleted and edited messages */
-uint32_t NoshiSavingMask(void);
-
-/* worker only: the kept deleted messages of a chat with ids from low to high */
-NSMutableArray *NoshiSavedDeletedOfPeer(noshi_store *store, noshi_peer peer, int32_t low, int32_t high);
-
 /* how a request names a chat */
 noshi_peer_ref NoshiPeerRefOfDialog(NoshiDialog *dialog);
 
@@ -55,10 +49,6 @@ void NoshiApprovePaidMessages(NoshiSession *session, const noshi_peer_ref *chat,
 - (void)rememberFolderFloodError:(NSString *)error;
 /* worker only */
 - (noshi_store *)workerStore;
-/* worker only: what AyuMoments keeps of deleted and edited messages, a mask of NOSHI_KEEP_ bits that the part handling the updates reads */
-- (void)setKeepMask:(uint32_t)mask;
-/* worker only: stores the messages of a history answer when deleted messages are kept */
-- (void)keepMessagesOfAnswer:(const noshi_tl_value *)answer;
 /* worker only: the upload of a pending message was stopped by the person; the next step of the upload reads it and forgets it at the end */
 - (void)workerCancelSend:(long long)randomId;
 - (BOOL)workerSendIsCancelled:(long long)randomId;

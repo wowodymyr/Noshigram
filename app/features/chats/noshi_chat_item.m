@@ -39,7 +39,6 @@
 #define META_HEIGHT 14.0
 /* the eye before a view count, the gap after the count, the row of comments under a post, the round share button beside it and the
    room that button takes from the width of the bubble */
-#define DELETED_MARK 12.0
 #define VIEWS_EYE 13.0
 #define VIEWS_GAP 8.0
 #define AUTHOR_WIDTH_MAX 140.0
@@ -266,7 +265,6 @@ static void NoshiViewOnceCaptions(NoshiMessage *message, NSString **title, NSStr
     _builtRandomId = message.randomId;
     _builtState = message.state;
     _builtEdited = message.edited;
-    _builtDeleted = message.deletedLocally;
     _builtOnceExpired = NoshiMessageIsViewOnce(message) && NoshiViewOnceExpired(message);
     _builtMediaUnread = message.mediaUnread;
     _builtService = message.service;
@@ -309,7 +307,7 @@ static BOOL NoshiSameString(NSString *a, NSString *b) {
            _message.replyPeerKind == message.replyPeerKind && _message.replyPeerId == message.replyPeerId && NoshiSameString(_message.replyQuote, message.replyQuote) &&
            _message.senderKey == message.senderKey && NoshiSameString(_message.senderRank, message.senderRank) &&
            _builtMessageId == message.messageId && _builtRandomId == message.randomId &&
-           _builtState == message.state && _builtEdited == message.edited && _builtDeleted == message.deletedLocally && _builtService == message.service && _builtServiceValue == message.serviceValue &&
+           _builtState == message.state && _builtEdited == message.edited && _builtService == message.service && _builtServiceValue == message.serviceValue &&
            _builtOnceExpired == (NoshiMessageIsViewOnce(message) && NoshiViewOnceExpired(message)) &&
            _builtMediaUnread == message.mediaUnread &&
            NoshiSameString(_builtText, message.text) && NoshiSameString(_builtReactionKey, message.reactionKey) &&
@@ -519,7 +517,6 @@ static NSString *NoshiAlbumKey(NSArray *messages) {
     NSString *clock = message.edited ? [NSString stringWithFormat:@"%@ %@", editedMark, NoshiClockText(message.date)] : NoshiClockText(message.date);
     /* a message the other side deleted and the phone kept has a trash can before its time */
     item->_timeText = [clock copy];
-    if (message.deletedLocally) item->_deletedWidth = DELETED_MARK + 3;
     [item captureChannelPost:message people:people];
     NoshiMedia *media = message.media;
     BOOL sticker = media.kind == NOSHI_PREVIEW_STICKER && (media.file || media.previewFile);

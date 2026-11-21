@@ -1801,7 +1801,7 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
     [_item release];
     _item = item;
     /* a kept message the other side deleted is faded, if the person likes it so */
-    self.contentView.alpha = item.message.deletedLocally && NoshiChatFlagGet(NoshiChatFlagAyuTranslucent) ? 0.75f : 1.0f;
+    self.contentView.alpha = 1.0f;
     _body.alpha = 1;
     [_flash.layer removeAllAnimations];
     _flash.alpha = 0;

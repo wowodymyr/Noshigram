@@ -5,7 +5,6 @@
 #import "noshi_developers.h"
 #import "noshi_emoji_label.h"
 #import "noshi_name_badge.h"
-#import "noshi_ayu.h"
 #import "noshi_platform.h"
 #import "noshi_chat_item.h"
 #import "noshi_message_cell.h"
@@ -181,7 +180,6 @@ static NSArray *NoshiPeekOrdered(NSArray *messages) {
 - (NSArray *)itemsForMessages:(NSArray *)ordered people:(NSDictionary *)people {
     NSMutableArray *items = [NSMutableArray array];
     for (NoshiMessage *message in ordered) {
-        if (!message.outgoing && NoshiAyuHidesText(message.text)) continue;
         NoshiChatItem *item = [NoshiChatItem itemForMessage:message group:_dialog.kind == NOSHI_DIALOG_GROUP people:people];
         if (item) [items addObject:item];
     }

@@ -70,50 +70,6 @@ noshi_status noshi_updates_init(noshi_updates *u, noshi_store *store, int64_t ac
     return status == NOSHI_E_NOTFOUND ? NOSHI_OK : status;
 }
 
-/* the highest version the message has, found as the newest record below the next message's numbers */
-static noshi_status newest_version(void *ctx, int64_t id, const noshi_tl_value *value) {
-    (void)value;
-    *(int64_t *)ctx = id;
-    return NOSHI_OK;
-}
-
-/* the text of a message before an edit stays as a version of it: the stored object goes under the kind of the versions, numbered after the ones that are there */
-static noshi_status keep_edit(noshi_updates *u, const noshi_tl_value *m, noshi_peer peer, int32_t id) {
-    noshi_arena arena;
-    noshi_tl_value *previous = NULL;
-    const uint8_t *old_text = NULL, *new_text = NULL;
-    size_t old_len = 0, new_len = 0;
-    int32_t old_edit = 0, new_edit = 0;
-    int64_t base = (int64_t)id * NOSHI_EDIT_VERSIONS, top = 0;
-    noshi_status status;
-    /* only a message that carries an edit date was edited; the same message from a page of history does not */
-    if (!noshi_tl_has(m, "edit_date")) return NOSHI_OK;
-    noshi_arena_init(&arena, 4u * 1024u * 1024u);
-    status = noshi_store_get(u->store, NOSHI_RECORD_MESSAGE, peer, id, &arena, &previous);
-    if (status == NOSHI_E_NOTFOUND) {
-        noshi_arena_free(&arena);
-        return NOSHI_OK;
-    }
-    if (status == NOSHI_OK) {
-        noshi_tl_get_bytes(previous, "message", &old_text, &old_len);
-        noshi_tl_get_bytes(m, "message", &new_text, &new_len);
-        if (noshi_tl_has(previous, "edit_date")) noshi_tl_get_i32(previous, "edit_date", &old_edit);
-        noshi_tl_get_i32(m, "edit_date", &new_edit);
-        /* the same words, or an older copy, are not a new version */
-        if ((old_len == new_len && (!old_len || memcmp(old_text, new_text, old_len) == 0)) || new_edit < old_edit) {
-            noshi_arena_free(&arena);
-            return NOSHI_OK;
-        }
-        status = noshi_store_page(u->store, NOSHI_RECORD_MESSAGE_EDIT, peer, base + NOSHI_EDIT_VERSIONS, 1, newest_version, &top);
-    }
-    if (status == NOSHI_OK) {
-        int64_t version = top > base ? top - base + 1 : 1;
-        if (version < NOSHI_EDIT_VERSIONS) status = noshi_store_put(u->store, NOSHI_RECORD_MESSAGE_EDIT, peer, base + version, previous);
-    }
-    noshi_arena_free(&arena);
-    return status;
-}
-
 noshi_status noshi_updates_cache_message(noshi_updates *u, const noshi_tl_value *m) {
     noshi_peer peer;
     int32_t id;
@@ -122,10 +78,6 @@ noshi_status noshi_updates_cache_message(noshi_updates *u, const noshi_tl_value 
     if (noshi_tl_get_i32(m, "id", &id) != NOSHI_OK || id <= 0) return NOSHI_E_MALFORMED;
     status = noshi_peer_from_tl(noshi_tl_get(m, "peer_id"), &peer);
     if (status != NOSHI_OK) return status;
-    if (u->keep & NOSHI_KEEP_EDITS) {
-        status = keep_edit(u, m, peer, id);
-        if (status != NOSHI_OK) return status;
-    }
     if (noshi_tl_has(noshi_tl_get(m, "reactions"), "min")) {
         noshi_arena arena;
         noshi_writer encoded;
@@ -147,29 +99,7 @@ noshi_status noshi_updates_cache_message(noshi_updates *u, const noshi_tl_value 
     return noshi_store_put(u->store, NOSHI_RECORD_MESSAGE, peer, id, m);
 }
 
-/* whether AyuMoments keeps what is deleted in this chat: a private chat, a group, a channel, or a chat with a bot, each by its own switch */
-static int keeps_deleted_in(noshi_updates *u, noshi_peer peer) {
-    noshi_arena arena;
-    noshi_tl_value *record = NULL;
-    uint32_t wanted;
-    noshi_peer holder = {0, 0};
-    if (!(u->keep & NOSHI_KEEP_DELETED)) return 0;
-    if (peer.kind == 2) return (u->keep & NOSHI_KEEP_GROUPS) != 0;
-    noshi_arena_init(&arena, 1024u * 1024u);
-    if (peer.kind == 1) {
-        wanted = NOSHI_KEEP_PRIVATE;
-        if (noshi_store_get(u->store, NOSHI_RECORD_USER, holder, peer.id, &arena, &record) == NOSHI_OK && noshi_tl_has(record, "bot")) wanted = NOSHI_KEEP_BOTS;
-    } else {
-        /* a channel is a broadcast or a supergroup, and the chat record knows which */
-        wanted = NOSHI_KEEP_GROUPS;
-        if (noshi_store_get(u->store, NOSHI_RECORD_CHAT, peer, peer.id, &arena, &record) == NOSHI_OK && noshi_tl_has(record, "broadcast")) wanted = NOSHI_KEEP_CHANNELS;
-    }
-    noshi_arena_free(&arena);
-    return (u->keep & wanted) != 0;
-}
-
-/* a message the server says is gone: it is removed from the chat, or kept under the kind of the deleted ones when
-   the person asked for that */
+/* a message the server says is gone: it is removed from the chat */
 static noshi_status delete_message(noshi_updates *u, const noshi_peer *channel, int32_t id) {
     noshi_peer peer;
     noshi_status status;
@@ -178,10 +108,6 @@ static noshi_status delete_message(noshi_updates *u, const noshi_peer *channel, 
         status = noshi_store_find_common_message(u->store, id, &peer);
         if (status == NOSHI_E_NOTFOUND) return NOSHI_OK;
         if (status != NOSHI_OK) return status;
-    }
-    if (keeps_deleted_in(u, peer)) {
-        status = noshi_store_move(u->store, NOSHI_RECORD_MESSAGE, NOSHI_RECORD_DELETED_MESSAGE, peer, id);
-        return status == NOSHI_E_NOTFOUND ? NOSHI_OK : status;
     }
     return channel ? noshi_store_delete(u->store, NOSHI_RECORD_MESSAGE, peer, id) : noshi_store_delete_common_message(u->store, id);
 }

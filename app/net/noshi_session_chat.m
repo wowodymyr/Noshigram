@@ -968,7 +968,6 @@ static void NoshiKeepTopic(NSMutableArray *messages, int32_t topic, BOOL discuss
                 if (dropped.count) NSLog(@"noshigram: history of peer %d:%lld dropped %lu messages that did not read, the first is %d (%s)", peer.kind, (long long)peer.id,
                                          (unsigned long)dropped.count, dropped.first_id, noshi_status_name(dropped.first_status));
                 messages = [NSMutableArray arrayWithCapacity:count];
-                [self keepMessagesOfAnswer:result->value];
                 for (size_t i = 0; i < count; ++i) {
                     if (rows[i].reactions.min) {
                         /* the cached copy preserves our selection when history carries only min counts */
@@ -996,19 +995,6 @@ static void NoshiKeepTopic(NSMutableArray *messages, int32_t topic, BOOL discuss
             free(rows);
         }
         [self noteRpcError:error];
-        if (messages) {
-            /* what the person asked to keep joins the page; the kept deleted messages from the oldest of the page
-               up to where the page began, which holes in the ids of the page (what was deleted) would otherwise
-               leave out for good */
-            int32_t lowest = page.oldest_id, highest = page.newest_id;
-            noshi_peer storedPeer = {dialog.peerKind, dialog.peerId};
-            /* a page that reaches toward newer messages ends at its own newest one, not at the offset */
-            int32_t upper = addOffset < 0 ? (highest ? highest : INT32_MAX) : (beforeId > 0 ? beforeId - 1 : INT32_MAX);
-            int32_t lower = page.count && (addOffset < 0 || page.count >= (uint32_t)limit) ? lowest : 1;
-            NSMutableArray *kept = NoshiSavedDeletedOfPeer([self workerStore], storedPeer, lower, upper);
-            NoshiKeepTopic(kept, topic, discussion);
-            [messages addObjectsFromArray:kept];
-        }
         NSArray *deliveredMessages = [[messages copy] autorelease];
         NSDictionary *deliveredPeople = [[people copy] autorelease];
         NSString *deliveredError = [[error copy] autorelease];
@@ -1069,14 +1055,13 @@ static void NoshiKeepTopic(NSMutableArray *messages, int32_t topic, BOOL discuss
 
 - (BOOL)markReactionsReadOfDialog:(NoshiDialog *)dialog explicit:(BOOL)explicit {
     noshi_read_action action = explicit ? NOSHI_READ_EXPLICIT : NOSHI_READ_AUTOMATIC;
-    if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), action)) return NO;
+    if (!noshi_read_action_allowed(0, action)) return NO;
     noshi_peer_ref peer = NoshiPeerRefOfDialog(dialog);
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
-        if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), action)) return NOSHI_E_RETRY;
+        if (!noshi_read_action_allowed(0, action)) return NOSHI_E_RETRY;
         return noshi_read_reactions_request(arena, &peer, request);
     } handler:^(const noshi_mt_rpc_result *result) {
         if (result->status == NOSHI_OK) return;
-        if (result->status == NOSHI_E_RETRY && NoshiChatFlagGet(NoshiChatFlagGhostNoRead)) return;
         NSString *error = NoshiRpcErrorName(result);
         [self noteRpcError:error];
         NSLog(@"noshigram: marking reactions of chat %lld seen failed: %@", peer.id, error);
@@ -1223,13 +1208,6 @@ static void NoshiKeepTopic(NSMutableArray *messages, int32_t topic, BOOL discuss
                                                   NoshiCollectMessage, messages);
         if (status != NOSHI_OK) NSLog(@"noshigram: cannot read the kept chat %lld: %s", (long long)peer.id, noshi_status_name(status));
         NoshiKeepTopic(messages, topic, discussion);
-        if (messages.count) {
-            int32_t lowest = INT32_MAX;
-            for (NoshiMessage *message in messages) lowest = MIN(lowest, message.messageId);
-            NSMutableArray *kept = NoshiSavedDeletedOfPeer([self workerStore], peer, lowest, INT32_MAX);
-            NoshiKeepTopic(kept, topic, discussion);
-            [messages addObjectsFromArray:kept];
-        }
         [people addEntriesFromDictionary:[self storedPeopleForMessages:messages]];
         NSArray *deliveredMessages = status == NOSHI_OK && messages.count ? [[messages copy] autorelease] : nil;
         NSDictionary *deliveredPeople = [[people copy] autorelease];
@@ -1726,7 +1704,7 @@ NSMutableData *NoshiPackSendEntities(NSArray *entities, NSMutableData **strings,
 - (void)markDialogRead:(NoshiDialog *)dialog upTo:(int32_t)maxId toEnd:(BOOL)toEnd completion:(void (^)(NSString *))completion {
     void (^done)(NSString *) = [completion copy];
     noshi_peer_ref peer = NoshiPeerRefOfDialog(dialog);
-    if (maxId <= 0 || !noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_AUTOMATIC)) {
+    if (maxId <= 0 || !noshi_read_action_allowed(0, NOSHI_READ_AUTOMATIC)) {
         if (done) done(@"NOT_SENT");
         [done release];
         return;
@@ -1734,18 +1712,14 @@ NSMutableData *NoshiPackSendEntities(NSArray *entities, NSMutableData **strings,
     NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:dialog.peerKind], @"kind", [NSNumber numberWithLongLong:dialog.peerId], @"peer",
                           [NSNumber numberWithInt:dialog.topicId], @"topic", [NSNumber numberWithInt:maxId], @"maxId", [NSNumber numberWithBool:toEnd], @"toEnd", nil];
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
-        if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_AUTOMATIC)) return NOSHI_E_RETRY;
+        if (!noshi_read_action_allowed(0, NOSHI_READ_AUTOMATIC)) return NOSHI_E_RETRY;
         return noshi_read_history_request(arena, &peer, maxId, request);
     } handler:^(const noshi_mt_rpc_result *result) {
         NSString *error = nil;
         if (result->status != NOSHI_OK) {
-            if (result->status == NOSHI_E_RETRY && NoshiChatFlagGet(NoshiChatFlagGhostNoRead)) {
-                error = @"NOT_SENT";
-            } else {
-                error = NoshiRpcErrorName(result);
-                [self noteRpcError:error];
-                NSLog(@"noshigram: marking chat %lld read failed: %@", peer.id, error);
-            }
+            error = NoshiRpcErrorName(result);
+            [self noteRpcError:error];
+            NSLog(@"noshigram: marking chat %lld read failed: %@", peer.id, error);
         } else if (!noshi_read_history_answer_valid(&peer, result->value)) {
             error = @"MALFORMED";
             [self noteRpcError:error];
@@ -1762,19 +1736,19 @@ NSMutableData *NoshiPackSendEntities(NSArray *entities, NSMutableData **strings,
 }
 
 - (void)markMentionsRead:(NSArray *)ids dialog:(NoshiDialog *)dialog completion:(void (^)(NSString *))completion {
-    if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_AUTOMATIC)) { if (completion) completion(@"NOT_SENT"); return; }
+    if (!noshi_read_action_allowed(0, NOSHI_READ_AUTOMATIC)) { if (completion) completion(@"NOT_SENT"); return; }
     [self markContentsRead:ids dialog:dialog completion:completion];
 }
 
 /* one-time media cannot be consumed without telling the server, so ghost mode refuses the acknowledgement */
 - (void)markContentsRead:(NSArray *)ids dialog:(NoshiDialog *)dialog completion:(void (^)(NSString *))completion {
-    if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_ONCE)) { if (completion) completion(@"NOT_SENT"); return; }
+    if (!noshi_read_action_allowed(0, NOSHI_READ_ONCE)) { if (completion) completion(@"NOT_SENT"); return; }
     if (!ids.count || ids.count > NOSHI_MESSAGES_MAX) { if (completion) completion(@"NOT_SENT"); return; }
     noshi_peer_ref peer = NoshiPeerRefOfDialog(dialog);
     NSArray *messages = [ids copy];
     void (^done)(NSString *) = [completion copy];
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
-        if (!noshi_read_action_allowed(NoshiChatFlagGet(NoshiChatFlagGhostNoRead), NOSHI_READ_ONCE)) return NOSHI_E_RETRY;
+        if (!noshi_read_action_allowed(0, NOSHI_READ_ONCE)) return NOSHI_E_RETRY;
         noshi_tl_value *list = noshi_tl_new_vec(arena, (uint32_t)messages.count);
         *request = noshi_tl_new_obj(arena, peer.kind == 3 ? "channels.readMessageContents" : "messages.readMessageContents");
         if (!list || !*request) return NOSHI_E_NOMEM;
@@ -1915,18 +1889,12 @@ static noshi_status NoshiCollectMessage(void *ctx, int64_t id, const noshi_tl_va
                 return;
             }
             NoshiKeepTopic(messages, topic, discussion);
-            /* what the person asked to keep stays in the chat among the live messages: the kept ones that fall inside the page */
-            int32_t lowest = INT32_MAX;
-            for (NoshiMessage *message in messages) lowest = MIN(lowest, message.messageId);
-            NSMutableArray *deleted = NoshiSavedDeletedOfPeer(store, peer, messages.count ? lowest : 0, INT32_MAX);
-            NoshiKeepTopic(deleted, topic, discussion);
-            [messages addObjectsFromArray:deleted];
             NSMutableDictionary *now = [NSMutableDictionary dictionaryWithCapacity:messages.count];
             NSDictionary *people = [self storedPeopleForMessages:messages];
             int32_t pageLowest = INT32_MAX;
             for (NoshiMessage *message in messages) {
                 NoshiPerson *sender = [people objectForKey:[NSNumber numberWithLongLong:message.senderKey]];
-                NSString *one = [NSString stringWithFormat:@"%d:%d:%lu:%@:%@:%lld:%lu:%@:%@:%@:%d", message.edited, message.deletedLocally, (unsigned long)message.text.length,
+                NSString *one = [NSString stringWithFormat:@"%d:%lu:%@:%@:%lld:%lu:%@:%@:%@:%d", message.edited, (unsigned long)message.text.length,
                     message.reactionKey, message.markupKey, message.senderKey, (unsigned long)sender.name.length, sender.name, sender.photo.key,
                     message.senderRank, sender.bot];
                 [now setObject:one forKey:[NSNumber numberWithInt:message.messageId]];

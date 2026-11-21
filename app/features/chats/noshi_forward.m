@@ -196,12 +196,8 @@ void NoshiForwardMessages(NoshiSession *session, NoshiMediaCache *cache, NoshiDi
 
 static void NoshiForwardMessagesNow(NoshiSession *session, NoshiMediaCache *cache, NoshiDialog *from, BOOL chatRestricted, NSArray *messages, NoshiDialog *target, BOOL hideAuthor, void (^completion)(NSString *message)) {
     NSMutableArray *ids = [NSMutableArray arrayWithCapacity:messages.count];
-    BOOL restricted = chatRestricted;
-    for (NoshiMessage *message in messages) {
-        [ids addObject:[NSNumber numberWithInt:message.messageId]];
-        restricted = restricted || message.noForwards;
-    }
-    BOOL allowCopy = NoshiChatFlagGet(NoshiChatFlagAyuCopyProtected);
+    (void)chatRestricted;
+    for (NoshiMessage *message in messages) [ids addObject:[NSNumber numberWithInt:message.messageId]];
     __block NSDictionary *authorLines = nil;
     void (^copy)(void) = ^{
         /* a poll, a place or a contact in the pick cannot be sent again; the rest of a pick must still go, and the person is told how many stayed behind */
@@ -234,9 +230,7 @@ static void NoshiForwardMessagesNow(NoshiSession *session, NoshiMediaCache *cach
         }];
         return;
     }
-    if (allowCopy && restricted) { copy(); return; }
     [session forwardMessageIds:ids fromDialog:from toDialog:target hideAuthor:hideAuthor completion:^(NSString *error) {
-        if (allowCopy && ([error isEqualToString:@"CHAT_FORWARDS_RESTRICTED"] || [error isEqualToString:@"MESSAGE_COPYRIGHTED"])) copy();
-        else completion(error ? NoshiGiftErrorText(error) : nil);
+        completion(error ? NoshiGiftErrorText(error) : nil);
     }];
 }

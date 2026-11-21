@@ -224,18 +224,6 @@ typedef enum {
     NoshiChatFlagDeleteForMe,
     NoshiChatFlagReplyColors,                 /* the quote of a reply takes the color of the name of its author; default on */
     NoshiChatFlagReplyBackground,             /* the quote of a reply has a plate under it; default on */                 /* deleting a message in a private chat or a group leaves it with the others */
-    NoshiChatFlagGhostNoRead,                 /* viewing a chat leaves its messages unread locally and on Telegram */
-    NoshiChatFlagGhostNoStories,              /* and a story that is looked at is not marked as seen */
-    NoshiChatFlagGhostOffline,                /* and the account says it is offline while the app runs */
-    NoshiChatFlagAyuRegex,                    /* messages that match a filter of the person are not shown */
-    NoshiChatFlagAyuSaveDeleted,              /* a message deleted for everyone stays on the phone, marked as deleted */
-    NoshiChatFlagAyuSaveEdits,                /* the text a message had before it was edited stays on the phone */
-    NoshiChatFlagAyuDeletedPrivate,           /* which chats the deleted messages are kept in */
-    NoshiChatFlagAyuDeletedGroups,
-    NoshiChatFlagAyuDeletedChannels,
-    NoshiChatFlagAyuDeletedBots,
-    NoshiChatFlagAyuTranslucent,              /* a deleted message is drawn faded */
-    NoshiChatFlagAyuReplyQuote,               /* a reply to a deleted message keeps the text of it as a quote */
     NoshiChatFlagLocalPremium,                /* the client shows the Premium features that need no server (custom emoji and reactions, the full animations) */
     NoshiChatFlagCrashReports,                /* a crash or a failed call is told to the developer in a private message */
     NoshiChatFlagBoykisser,                   /* the waves in the corners of the screens give way to boykissers falling over them */
@@ -249,7 +237,6 @@ typedef enum {
     NoshiChatFlagHideWaves,                   /* the modern look draws no waves in the corners of the screens */
     NoshiChatFlagShowMessageEmojiStatus,
     NoshiChatFlagShowReplyCustomEmoji,
-    NoshiChatFlagAyuCopyProtected,
     NoshiChatFlagBlurWallpaper,               /* a photo set as the wallpaper of the chats is blurred until the person turns the blur off for that wallpaper; on by default, as in Telegram */
     NoshiChatFlagForwardAuthor,               /* a message forwarded without its author goes as a copy that opens with the name and @username of whoever wrote it */
     NoshiChatFlagCount

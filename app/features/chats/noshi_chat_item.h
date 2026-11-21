@@ -85,7 +85,6 @@ CGFloat NoshiPollVotersWidth(NSUInteger count);
     long long _builtRandomId;
     NoshiMessageState _builtState;
     BOOL _builtEdited;
-    BOOL _builtDeleted;
     /* what the row said about a one-time file: waiting, or gone */
     BOOL _builtOnceExpired;
     BOOL _builtMediaUnread;

@@ -69,7 +69,6 @@
     NSString *_pendingLink;
     /* the account that has the connection now; the first one is named "" */
     NSString *_activeAccount;
-    NSTimer *_ghostTimer;
     /* an account being added: its own session while the login runs, the name of its directory, and the screen the person returns to by going back */
     NoshiSession *_addSession;
     NSString *_addName;
@@ -364,7 +363,6 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
 
 - (void)dealloc {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
-    [_ghostTimer invalidate];
     [_callBarTimer invalidate];
     [_callBarTimer release];
     [_callBarSnapshot release];
@@ -412,15 +410,8 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
     return welcome;
 }
 
-/* ghost mode keeps the account offline: the server counts a connection in use as online, so the status is sent again every half minute */
-- (void)ghostTick {
-    if (!NoshiChatFlagGet(NoshiChatFlagGhostOffline) || ![NoshiSession hasAccountInDirectory:NoshiAccountDirectory(_activeAccount)]) return;
-    [_session sendOfflineStatus];
-}
-
 - (UIViewController *)makeMainController {
     NoshiThemeApplyStored();
-    if (!_ghostTimer) _ghostTimer = [[NSTimer scheduledTimerWithTimeInterval:30 target:self selector:@selector(ghostTick) userInfo:nil repeats:YES] retain];
     /* the question about the crash of the last run comes a little after the screens are up; the link has time to come while the person reads it */
     NoshiSession *reporting = [_session retain];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{

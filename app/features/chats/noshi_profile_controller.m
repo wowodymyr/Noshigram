@@ -531,7 +531,7 @@ static UILabel *NoshiProfileLabel(UIColor *color, UIFont *font, NSInteger alignm
 }
 
 - (void)refreshOwnStatus {
-    NSString *text = NSLocalizedString(NoshiChatFlagGet(NoshiChatFlagGhostOffline) ? @"profile.offline.question" : @"profile.online", nil);
+    NSString *text = NSLocalizedString(@"profile.online", nil);
     _status.text = text;
     _barStatus.text = text;
     [self layoutHead];
@@ -1054,7 +1054,6 @@ static UILabel *NoshiProfileLabel(UIColor *color, UIFont *font, NSInteger alignm
 - (void)showMenu {
     if (_working) return;
     BOOL hasLink = _person.username.length > 0;
-    BOOL ghost = NoshiChatFlagGet(NoshiChatFlagGhostOffline);
     BOOL hasPhoto = _person.photo != nil;
     NSMutableArray *titles = [NSMutableArray array];
     NoshiSymbol symbols[4];
@@ -1062,10 +1061,6 @@ static UILabel *NoshiProfileLabel(UIColor *color, UIFont *font, NSInteger alignm
     if (hasLink) {
         [titles addObject:NSLocalizedString(@"profile.qr.copy", nil)];
         symbols[count++] = NoshiSymbolLink;
-    }
-    if (ghost) {
-        [titles addObject:NSLocalizedString(@"profile.peek.online", nil)];
-        symbols[count++] = NoshiSymbolEye;
     }
     if (hasPhoto) {
         [titles addObject:NSLocalizedString(@"profile.photo.delete", nil)];
@@ -1079,7 +1074,6 @@ static UILabel *NoshiProfileLabel(UIColor *color, UIFont *font, NSInteger alignm
         NoshiProfileController *profile = me.target;
         NSUInteger at = 0;
         if (hasLink && index == at++) [profile copyLink];
-        else if (ghost && index == at++) [profile peekOnline];
         else if (hasPhoto && index == at++) [profile confirmDeletePhoto];
         else [profile confirmSignOut];
     }] autorelease];
@@ -1119,27 +1113,6 @@ static UILabel *NoshiProfileLabel(UIColor *color, UIFont *font, NSInteger alignm
             if (errorName) failed(errorName);
             else [self loadProfile];
         }];
-    }];
-}
-
-- (void)peekOnline {
-    [self toast:NSLocalizedString(@"profile.peek.loading", nil)];
-    NoshiWeakReference *weak = _weak;
-    [_session loadSelf:^(NSArray *items, NSString *errorName) {
-        NoshiProfileController *profile = weak.target;
-        if (!profile || !profile.view.window) return;
-        NoshiPerson *person = items.count ? [items objectAtIndex:0] : nil;
-        NSString *message;
-        if (errorName) {
-            message = [errorName isEqualToString:@"TIMEOUT"] || [errorName isEqualToString:@"OFFLINE"] ? NSLocalizedString(@"error.offline", nil) : [NSString stringWithFormat:NSLocalizedString(@"error.unknown", nil), errorName];
-        } else if (!person || person.presence == NOSHI_PRESENCE_UNKNOWN || (person.presence == NOSHI_PRESENCE_OFFLINE && person.seen <= 0)) {
-            message = NSLocalizedString(@"profile.peek.unavailable", nil);
-        } else if (person.presence == NOSHI_PRESENCE_OFFLINE) {
-            message = [NSString stringWithFormat:NSLocalizedString(@"profile.peek.lastseen", nil), NoshiMediaTimeText(person.seen)];
-        } else {
-            message = NoshiLastSeenText(person.presence, person.seen);
-        }
-        NoshiShowNotice(NSLocalizedString(@"profile.peek.online", nil), message);
     }];
 }
 

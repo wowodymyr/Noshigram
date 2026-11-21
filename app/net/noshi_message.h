@@ -221,7 +221,6 @@ typedef enum {
     BOOL _post;
     BOOL _forwarded;
     BOOL _edited;
-    BOOL _deletedLocally;
     int _service;
     int32_t _serviceValue;
     long long _serviceCommunity;
@@ -329,8 +328,6 @@ typedef enum {
 @property (nonatomic, assign) BOOL viewOnceOpened;
 @property (nonatomic, readonly) BOOL forwarded;
 @property (nonatomic, readonly) BOOL edited;
-/* the other side deleted it and the phone kept it, as AyuMoments asks; set by the session when it reads the kept ones */
-@property (nonatomic, assign) BOOL deletedLocally;
 /* an noshi_service_kind plus one, zero for an ordinary message */
 @property (nonatomic, readonly) int service;
 @property (nonatomic, assign) NoshiMessageState state;
