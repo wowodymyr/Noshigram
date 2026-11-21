@@ -1,6 +1,6 @@
 # contributing to noshigram
 
-how to build noshigram and how to work in it. user features are in [README.md](README.md), plugins in [docs/plugins.md](docs/plugins.md), languages in [docs/languages.md](docs/languages.md).
+how to build noshigram and how to work in it. user features are in [README.md](README.md), languages in [docs/languages.md](docs/languages.md).
 
 ## rules
 
@@ -21,25 +21,24 @@ how to build noshigram and how to work in it. user features are in [README.md](R
 ```
 app/        objective-c: controllers, views, platform glue
 core/       c99: protocol, state, layout rules, parsers, no uikit
-python/     the android and java shims that plugins import
 third_party vendored libraries, built from source
 resources/  icons, fonts, sounds, strings, pems
 schemas/    tl schemas the generator reads
 scripts/    builds and packaging
-tests/      host tests: c, python, video
+tests/      host tests: c, the strings, video
 tools/      asset generators and the tl generator
-docs/       languages, plugins, dex runtime, light mode
+docs/       languages
 local/      credentials.env, never committed
 ```
 
 in `app/`:
 
 - `lifecycle`: delegate, passcode lock, notifications, updater, crash log
-- `net`: the objective-c face of the core: `noshi_session*.m` (one file per area of the api), models, caches, call engines, shiro
+- `net`: the objective-c face of the core: `noshi_session*.m` (one file per area of the api), models, caches, call engines
 - `features`: screens, by area (`chats`, `auth`, `calls`, `stories`, `settings` and so on)
-- `ui/shared`, `ui/classic`: views, theme, symbols, text layout. classic is the ios 5 and 6 look
+- `ui/shared`, `ui/classic`: views, theme, symbols, text layout. classic is the glossy chrome of telegram for ios 6 and 7, the only look the app has
 - `media`: players, recorders, editors, viewers
-- `platform`: settings stores, audio session, keychain, plugin host services
+- `platform`: settings stores, audio session, keychain
 - `translate`: translator backends and language packs
 
 ## backend
@@ -56,8 +55,6 @@ the backend is the c core in `core/`. it is one static set of files, linked into
 - `layout`: pure layout and rules for lists, text, motion, qr, welcome screens
 - `calls`, `tgcalls`: voip: rtp, vp8, stun, turn, ice, srtp, sctp, group calls
 - `media`, `video`, `emoji`, `notify`: id3, lrc, geo, photo edit, flac, vp8, yuv, emoji data, notification rules
-- `shiro`: the vpn. wireguard to warp, a small tcp/ip stack, dns, https for the warp account
-- `pyhost`, `dexnative`: cpython host for plugins and the native part of the dex runtime
 - `base`: status codes, arena, byte buffers, release check, zip
 
 how a call goes: a screen asks `NoshiSession` (`app/net`), which calls the core client, which builds a tl request, sends it over mtproto and returns a status. the answer is parsed in the core into a plain struct, and the session turns it into a model for the screen. results come back on the main thread.
@@ -66,53 +63,39 @@ the core returns specific statuses (`noshi_status.h`), not booleans. a function 
 
 ## build
 
-needs a linux or macos host, the ios toolchain (clang with ldid), two sdks, openssl for both slices, and cpython for both slices.
-
-env, all overrideable, none has a default path:
-
-- `NOSHI_TC`: toolchain `bin` directory
-- `NOSHI_SDK_V7`: legacy sdk for the armv7 link (ios 6.1 works)
-- `NOSHI_SDK_V64`: current sdk for arm64
-- `NOSHI_OPENSSL_V7`, `NOSHI_OPENSSL_V64`: openssl prefixes
-- `NOSHI_VIDEO_V7`, `NOSHI_VIDEO_V64`: ffmpeg and libvpx prefixes (from `NOSHI_FFMPEG_SOURCE` and `NOSHI_LIBVPX_SOURCE`, see `resources/licenses/video_stickers.txt`)
-- `NOSHI_PYTHON_V7`, `NOSHI_PYTHON_V64`, `NOSHI_PYTHON_BUNDLE`: made by `scripts/build_python.sh`
-- `MEOW_LDID`: optional, meow takes the ldid of the toolchain when it is left out
-- `NOSHI_CRT_V7`: optional crt for the armv7 link
-- `NOSHI_API_ID`, `NOSHI_API_HASH`: from `local/credentials.env`, `source` it before `meow build`. they go into a generated header in `build/` and never into the repository
-
-order:
+needs a linux or macos host with [theos](https://theos.dev), its ios toolchain, the `iPhoneOS14.5.sdk` (the build) and the `iPhoneOS9.3.sdk` (the ios 5 start file `crt1.3.1.o`) in `$THEOS/sdks`.
 
 ```bash
-bash scripts/build_python.sh        # cpython, shim, sdk, ca bundle. again after a change in python/ or third_party/exteraless
-bash scripts/build_sticker_codecs.sh
+export THEOS=~/theos
+bash scripts/build_deps.sh           # openssl, libvpx and ffmpeg for armv7 and arm64, into deps/<slice>
 make test
-meow build                           # the ipa, its sha256 and the deb for /var/jb
+make -j16                            # both slices and the share extension
+make package                         # the deb
+make package PACKAGE_FORMAT=ipa      # the ipa
 ```
 
-the build is [meow](https://github.com/sqmrak/meow), `meow.toml` holds the compile graph, the ipa, the deb and their checks. `meow plan` shows what is stale, `meow why` says why, `meow build ipa` and `meow build deb` build one package. output: `build/ios/Noshigram-v<version>.ipa`, `build/ios/Noshigram-v<version>.ipa.sha256`, `build/ios/noshi_<version>.deb`. a full build takes about ten minutes, a header change rebuilds only the sources that include it.
+- `NOSHI_API_ID`, `NOSHI_API_HASH`: in the environment or in `local/credentials.env`. they go into a generated header in `build/` and never into the repository
+- `DEPS`, `CRT_V7`: override where the static libraries and the armv7 start file are taken from
+- `scripts/build_deps.sh` reads `NOSHI_TC`, `NOSHI_SDK`, `NOSHI_DEPS`, `NOSHI_SLICES` and `NOSHI_JOBS`
 
-after the build, check the artifact and not only the exit code. meow checks both slices, the deployment targets, the linked libraries and the signature of the binaries before it packs them, and the layout of the ipa and the deb after. also:
+after the build, check the artifact and not only the exit code:
 
-- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime (needs `NOSHI_SDK_V5`)
-- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers (needs `NOSHI_SDK_V6`)
-- `lipo -info build/fat/Noshigram` shows armv7 and arm64
+- `scripts/check_legacy_symbols.sh <executable>`: imports of the armv7 slice against the ios 5 runtime (needs `NOSHI_TC` and `NOSHI_SDK_V5`)
+- `lipo -info` on the executable shows armv7 and arm64
 - `unzip -l` on the ipa, `dpkg-deb -c` on the deb: layout, permissions, `Info.plist` version
-- the version in `packaging/deb/control` is the source, `meow build version` fails when `packaging/Info.plist` or the extension plist differ. the file names and the release tag agree with it. do not bump it outside a release
+- the version in `control` is the source, `packaging/Info.plist` and the extension plist follow it. do not bump it outside a release
 
 ## test
 
 ```bash
 make test
-make -C tests test \
-  NOSHI_PYTHON_HOST_PREFIX=<cpython 3.11 prefix> NOSHI_PYTHON_STDLIB=<its Lib directory> \
-  NOSHI_PYTHON_HOST=<python3.11>
 make sanitize        # the c tests under asan and ubsan
 make test-video      # decoders under sanitizers, needs ffmpeg libraries, pkg-config, libvpx
 make test-icons
 ```
 
 - c tests are `tests/core/test_*.c`, one binary each, built with `-Wall -Wextra -Werror -Wconversion`. they use fake servers (`fake_mt_server.c`, `fake_tcp_server.c`) on local sockets and byte vectors, never a public service
-- python tests are `tests/python`, run by cpython 3.11 against a stand-in for the app (`fakeapp.py`)
+- `tests/python` checks the `.strings` files with a plain python 3
 - the iphone toolchain on `PATH` breaks host builds (`gcc` becomes its clang, `--gdwarf-5` fails). run host tests with `PATH=/usr/local/bin:/usr/bin:/bin make CC=gcc -j8 test` from `tests/`
 - tests prove the host side. what needs a real device is said in the commit and in the docs, not assumed
 
@@ -131,19 +114,15 @@ make test-icons
 jailbroken devices only. the ipa is signed with ldid.
 
 ```bash
-meow install --host <device-ip> --legacy build/ios/noshi_<version>.deb
+make package install THEOS_DEVICE_IP=<device-ip>
 ```
 
 - the postinst makes `mobile:wheel` the owner of the bundle. a root-owned bundle breaks the icon change on ios 6, since the app rewrites its own `Info.plist` as `mobile`
 - on ios 5 and 6 the postinst runs `/Applications/Noshigram.app/Noshigram --system-notifications on` before `uicache` (see the install section of the readme)
-- old sshd needs `-o HostKeyAlgorithms=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1 -o Ciphers=+aes128-cbc,aes256-cbc` on the command line, and `scp -O`. keep these out of `~/.ssh/config`. `meow install --legacy` passes them for the deb install
+- old sshd needs `-o HostKeyAlgorithms=+ssh-rsa -o KexAlgorithms=+diffie-hellman-group1-sha1,diffie-hellman-group14-sha1 -o Ciphers=+aes128-cbc,aes256-cbc` on the command line, and `scp -O`. keep these out of `~/.ssh/config` and pass them by hand
 - crash log: `/var/mobile/Library/Caches/noshigram-crash.log`. system reports: `/var/mobile/Library/Logs/CrashReporter`
 - a tester's `build <hex>` line is the `LC_UUID` of the slice. match it with `llvm-dwarfdump --uuid` on the binary of that exact build, then `python3 scripts/symbolicate_crash.py crash.log /path/to/Noshigram --arch armv7`
 - keep the ipa or deb of every build you hand out, or the crash cannot be named later
-
-## plugins
-
-python and the shims live in `python/shim`, the sdk in `third_party/exteraless` (changes in its `PATCHES`), the host in `core/pyhost`, the services in `app/platform/noshi_plugin*.m`. [docs/plugins.md](docs/plugins.md) lists what works, what does not and what was never run on a phone. a new shim class comes with a test in `tests/python`, and its line in that file.
 
 ## do not
 

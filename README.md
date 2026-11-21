@@ -4,10 +4,12 @@
   <img src="docs/banner.png" alt="noshigram">
 </p>
 
-<p align="center"><b>native telegram for old iphones and ipads: ios 5 and up, calls with video, stories, folders, its own vpn</b></p>
+<p align="center"><b>native telegram for old iphones and ipads: ios 5 and up, calls with video, stories, folders, the look of telegram for ios 6 and 7</b></p>
 
 > [!NOTE]
 > the ipa is signed with ldid, so it installs on a jailbroken device.
+
+noshigram ("no shit telegram") is a fork of [exteria](https://github.com/sqmrak/exteria) with everything that is not telegram taken out: the material design look, the python plugins, the badges of the team, ayumoments, senko and the boykissers, the shiro vpn, and the meow build in favour of theos.
 
 ## devices
 
@@ -26,32 +28,11 @@
 - translator: telegram, services and ai
 - passcode lock, several accounts, login by phone or qr
 - session files (`session-N.bin`) are sealed with chacha20-poly1305 under a random device key, kept in the keychain (this device only, after first unlock) or, where the keychain refuses the app, in `Application Support/Noshigram/session-key`. files from older builds are sealed on first read. restoring a backup onto another device signs the account out, since the key does not travel
-- keeps deleted and edited messages on the phone, if you ask for it
-- ayumoments: copies of protected messages from chats the account can read
-- two looks: modern, and classic with the glossy ios 5 and 6 style and a hue of your own (ios 5 to 10)
-- `.tgios-theme` files in the modern look
+- the look of telegram for ios 6 and 7: glossy bars, the classic bubbles and the blue of telegram, by day and by night
 - in-app browser for web links, a sheet that slides up and is pulled down to close
 - a font file of your own (`.ttf` or `.otf`) or Rubik for the whole app, in chat settings
-- plugins, power saver, local notifications
+- power saver, local notifications
 - russian, english
-
-## themes
-
-open a `.tgios-theme` file in Noshigram, or copy it to Documents and choose it in chat settings. a `t.me/addtheme/<slug>` link works too. the preview shows both bubbles before applying.
-
-- limits: 256 KiB, 512 values, 16 nesting levels
-- colors reach the lists, bars, search, tabs, chat input and bubbles; missing values use the Noshigram palette
-- gradients of up to four colors are drawn static; wallpaper slugs, patterns and motion are not reproduced
-- classic has its own palette
-
-## shiro
-
-the vpn of the app and of no other app: a wireguard tunnel to cloudflare warp inside the process.
-
-- the button is in the chat list
-- only telegram links and the udp of calls go through it, ipv4 only
-- with the vpn on, connections wait for the tunnel and never fall back to the direct path
-- the warp account is made on the first start over tls checked against `resources/shiro/roots.pem`
 
 ## browser
 
@@ -63,47 +44,35 @@ add a `tg://proxy`, `tg://socks`, `t.me/proxy` or `t.me/socks` link on the welco
 
 - mtproto: plain, `dd` and `ee` secrets; socks5: username and password
 - up to 64 links, kept in the keychain or in `Application Support/Noshigram/proxy-link`
-- telegram connections use the proxy, through shiro when it is on; calls and web pages do not
-
-## plugins
-
-python plugins in the exteraGram format (`.plugin` or `.py`) in `Documents/Plugins`, listed in settings. the app runs cpython 3.11 and the sdk of [exteraless](https://github.com/exteraless/exteraless) over a small host. a plugin runs after the person turns it on and has seen the permissions it needs. the switch is tied to the sha-256 of the file, and three failed calls in a row switch it off. a tap on a running plugin opens the page of settings it builds.
-
-- works: `BasePlugin`, hooks for sent messages and for new ones, a page of settings from `create_settings()`, dialogs and notices, android views in an overlay, https, the standard library
-- does not work: request hooks of tl, `org.telegram.*` and `android.*` classes outside the shim, `fork`, `subprocess`. such a plugin is listed and fails on import with the class it lacks
-- a plugin runs inside the app with the rights of the app, a permission is shown to the person and is not a wall
-
-the host is `core/pyhost`, the python side is `python/shim` and `third_party/exteraless`, the hooks into the chat are `app/platform/noshi_plugins.m`.
+- telegram connections use the proxy; calls and web pages do not
 
 ## for developers
 
 - [CONTRIBUTORS.md](CONTRIBUTORS.md): build, test, layout, the c core, device install
 - [docs/languages.md](docs/languages.md): add a language, from a `.strings` file or built into the app
-- [docs/plugins.md](docs/plugins.md): write and port a python plugin
 
 ## build
 
 ```bash
-make test
-bash scripts/build_sticker_codecs.sh
-meow build
+export THEOS=~/theos                 # with the iPhoneOS14.5 and iPhoneOS9.3 sdks in $THEOS/sdks
+bash scripts/build_deps.sh           # openssl, libvpx and ffmpeg for both slices, into deps/
+make test                            # host tests of the c core
+make package                         # the deb
+make package PACKAGE_FORMAT=ipa      # the ipa
 ```
 
-built with [meow](https://github.com/sqmrak/meow), see `meow.toml`. needs `NOSHI_TC NOSHI_SDK_V7 NOSHI_SDK_V64 NOSHI_OPENSSL_V7 NOSHI_OPENSSL_V64 NOSHI_VIDEO_V7 NOSHI_VIDEO_V64 NOSHI_PYTHON_V7 NOSHI_PYTHON_V64 NOSHI_PYTHON_BUNDLE`, optional `NOSHI_CRT_V7` (the `crt1.3.1.o` of the armv7 sdk when left out) and `MEOW_LDID` (the ldid of the toolchain when left out). api id and hash come from `local/credentials.env` (`NOSHI_API_ID`, `NOSHI_API_HASH`). output: `build/ios/Noshigram-v<version>.ipa`, its `.sha256` and `build/ios/noshi_<version>.deb`.
+api id and hash come from the environment or `local/credentials.env` (`NOSHI_API_ID`, `NOSHI_API_HASH`). the packages land in `packages/`.
 
-- `meow doctor`: the toolchain and sdks meow found
-- `meow build check-symbols`: imports of the armv7 slice against the ios 5 runtime, needs `NOSHI_SDK_V5`
-- `meow build check-compat`: calls newer than ios 5.0 in the ios 6.1 headers, needs `NOSHI_SDK_V6`
 - `make test-video`: video decoders under asan and ubsan, needs ffmpeg libraries, pkg-config and libvpx
-- video stickers and calls link static ffmpeg and libvpx: set `NOSHI_FFMPEG_SOURCE`, `NOSHI_LIBVPX_SOURCE`, `NOSHI_VIDEO_V7` and `NOSHI_VIDEO_V64`, see `resources/licenses/video_stickers.txt`
+- `scripts/check_legacy_symbols.sh <executable>`: imports of the armv7 slice against the ios 5 runtime, needs `NOSHI_TC` and `NOSHI_SDK_V5`
 
 ## install
 
 ```bash
-meow install --host <device-ip> --legacy build/ios/noshi_<version>.deb
+make package install THEOS_DEVICE_IP=<device-ip>
 ```
 
-the postinst of the deb copies the bundle to `/Applications` on a rootful system, makes `mobile:wheel` the owner (or the app cannot change its own icon on ios 6) and runs `uicache`.
+the deb installs the bundle into `/Applications` on a rootful system (`/var/jb/Applications` on a rootless one); the postinst makes `mobile:wheel` the owner (or the app cannot change its own icon on ios 6) and runs `uicache`.
 
 on ios 5 and 6 an app in `/Applications` gets no banners, no notification center entry and no settings row, because springboard gives notification settings to user apps only. the postinst runs `/Applications/Noshigram.app/Noshigram --system-notifications on` for that, and the postrm takes it back with `off`. it adds the `SBInternalAppTag` to the bundle's `Info.plist` and sets `SBShowInternalApps` in the springboard preferences (without it the icon of an internal app is hidden). the in-app update runs it again after it replaces the files. an ipa installed as a user app (ipainstaller, appsync) and the rootless `/var/jb` install need nothing, and ios 7 and later are left alone by the command.
 
@@ -118,7 +87,6 @@ on start the app asks `api.github.com` for the latest release and shows a notice
 ## paths
 
 - accounts: `Library/Application Support/Noshigram/noshigram-<id>.db`
-- warp account: `Library/Application Support/Noshigram/shiro.account`
 - crash log: `/var/mobile/Library/Caches/noshigram-crash.log`
 - call trace: `/var/mobile/Documents/noshigram-call-trace.log`
 - frame log: `Library/Caches/noshigram-perf.log`, on with `defaults write com.noshigram.app noshigram.perf -bool YES`
