@@ -18,8 +18,6 @@
 #import "noshi_language_pack.h"
 #import "noshi_session_language.h"
 #import "noshi_session_theme.h"
-#import "noshi_imported_theme.h"
-#import "noshi_imported_theme_preview_controller.h"
 #import "noshi_translate_config.h"
 #import "noshi_theme.h"
 #import "noshi_proxy_settings.h"
@@ -27,7 +25,6 @@
 #import "noshi_user_profile_controller.h"
 
 #include "noshi_links.h"
-#include "noshi_tgios_theme.h"
 #include "noshi_bytes.h"
 
 /* the schemes an address in a message or a button may hand to the system; javascript:, file: and the rest are not links to follow */
@@ -236,11 +233,6 @@ BOOL NoshiIsTelegramLink(NSURL *url) {
 
 #pragma mark themes
 
-/* the preview reads its theme from disk and the apply reads it again, so the file stays under one fixed name that the next link replaces */
-static NSString *NoshiCloudThemePath(void) {
-    return [NSTemporaryDirectory() stringByAppendingPathComponent:@"noshigram-cloud-theme.tgios-theme"];
-}
-
 /* the accent goes to the color of one's own that the app keeps (hue, saturation and a brightness against the accent of the palette, whose value is 0.745), and the base look
    to the dark or light palette; the rest of a theme made elsewhere (message colors, wallpaper) has no place here */
 - (void)offerColorsOfTheme:(NoshiThemeLink *)theme {
@@ -254,7 +246,6 @@ static NSString *NoshiCloudThemePath(void) {
         if (index != 1) return;
         CGFloat hue, saturation, value;
         NoshiRGBToHSV(((accent >> 16) & 0xFF) / 255.0, ((accent >> 8) & 0xFF) / 255.0, (accent & 0xFF) / 255.0, &hue, &saturation, &value);
-        NoshiImportedThemeUseBuiltin(dark);
         NoshiThemeStoreDark(dark);
         NoshiThemeStoreCustomTint((float)hue, (float)saturation, (float)MIN(1, value / 0.745));
         [[NSNotificationCenter defaultCenter] postNotificationName:NoshiThemeDidChangeNotification object:nil];
@@ -272,34 +263,11 @@ static NSString *NoshiCloudThemePath(void) {
             [self autorelease];
             return;
         }
-        /* a theme made in another app has no .tgios-theme, and the server sends only its colors: the base look and the accent */
-        if (!theme.file) {
-            [self endBusy:token];
-            if (theme.hasColors) [self offerColorsOfTheme:theme];
-            else NoshiShowNotice(NSLocalizedString(@"theme.import.title", nil), NSLocalizedString(@"theme.link.unsupported", nil));
-            [self autorelease];
-            return;
-        }
-        if (theme.file.size <= 0 || theme.file.size > (long long)NOSHI_TGIOS_MAX_BYTES) {
-            [self endBusy:token];
-            NoshiShowNotice(NSLocalizedString(@"theme.import.title", nil), NSLocalizedString(@"theme.import.size", nil));
-            [self autorelease];
-            return;
-        }
-        [_media loadDataForFile:theme.file.file completion:^(NSData *data) {
-            [self endBusy:token];
-            NSString *path = NoshiCloudThemePath();
-            NSError *writeError = nil;
-            if (!data.length) {
-                NoshiShowNotice(NSLocalizedString(@"theme.import.title", nil), NSLocalizedString(@"theme.link.download", nil));
-            } else if (![data writeToFile:path options:NSDataWritingAtomic error:&writeError]) {
-                NSLog(@"noshigram: cloud theme did not save: %@", writeError);
-                NoshiShowNotice(NSLocalizedString(@"theme.import.title", nil), NSLocalizedString(@"theme.import.save", nil));
-            } else if (_anchor) {
-                [NoshiImportedThemePreviewController openURL:[NSURL fileURLWithPath:path] fromController:_anchor];
-            }
-            [self autorelease];
-        }];
+        /* only the colors of a theme reach this app: the base look and the accent */
+        [self endBusy:token];
+        if (theme.hasColors) [self offerColorsOfTheme:theme];
+        else NoshiShowNotice(NSLocalizedString(@"theme.import.title", nil), NSLocalizedString(@"theme.link.unsupported", nil));
+        [self autorelease];
     }];
 }
 

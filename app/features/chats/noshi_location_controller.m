@@ -113,11 +113,6 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     [button setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
     button.titleLabel.font=NoshiFontMedium(15); button.backgroundColor=NoshiColorCard();
     button.layer.cornerRadius=20; button.accessibilityLabel=title;
-    if (!NoshiThemeIsClassic()) {
-        /* a round button that floats over the map, as the buttons of the map in the original client do */
-        button.layer.cornerRadius=22; button.layer.shadowColor=[UIColor blackColor].CGColor; button.layer.shadowOpacity=0.28f;
-        button.layer.shadowRadius=4; button.layer.shadowOffset=CGSizeMake(0,2);
-    }
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     [_map addSubview:button];
     return button;
@@ -128,30 +123,9 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     root.backgroundColor=NoshiColorScreen(); self.view=root;
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(resignedActive) name:UIApplicationWillResignActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(becameActive) name:UIApplicationDidBecomeActiveNotification object:nil];
-    BOOL classic=NoshiThemeIsClassic();
-    if (classic) {
-        self.navigationItem.leftBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(close)] autorelease];
-        if (!_selection) self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(showActions)] autorelease];
-        else if (!_locationOnly) self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSearch target:self action:@selector(toggleSearch)] autorelease];
-    } else {
-        _header=[[UIView alloc] init]; _header.backgroundColor=NoshiColorBar();
-        _headerTitle=[[UILabel alloc] init]; _headerTitle.backgroundColor=[UIColor clearColor]; _headerTitle.font=NoshiFontSemibold(17);
-        _headerTitle.textColor=NoshiColorTitle(); _headerTitle.textAlignment=NoshiTextAlignmentCenter; _headerTitle.text=self.title;
-        [_header addSubview:_headerTitle];
-        _headerClose=[[NoshiBarButton alloc] init]; _headerClose.title=NSLocalizedString(@"attach.cancel",nil);
-        [_headerClose addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
-        [_header addSubview:_headerClose];
-        _headerAction=[[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        [_headerAction setImage:NoshiSymbolImage(_selection ? NoshiSymbolMagnifier : NoshiSymbolEllipsisVertical,22,NoshiColorAccent()) forState:UIControlStateNormal];
-        _headerAction.accessibilityLabel=NSLocalizedString(_selection ? @"map.search" : @"profile.more",nil);
-        [_headerAction addTarget:self action:_selection ? @selector(toggleSearch) : @selector(showActions) forControlEvents:UIControlEventTouchUpInside];
-        _headerAction.hidden=_selection && _locationOnly;
-        [_header addSubview:_headerAction];
-        _badgeSend=[NoshiLocationBadge(NoshiSymbolMapPin,NoshiColorAccent()) retain];
-        /* a place stands on a plain disc until its own picture comes; the pin is the sign of the chosen point alone */
-        _badgePlace=[NoshiLocationPlaceBadge(nil) retain];
-        _badgeIdle=[NoshiLocationBadge(NoshiSymbolMapPin,NoshiColorMuted()) retain];
-    }
+    self.navigationItem.leftBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCancel target:self action:@selector(close)] autorelease];
+    if (!_selection) self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(showActions)] autorelease];
+    else if (!_locationOnly) self.navigationItem.rightBarButtonItem=[[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemSearch target:self action:@selector(toggleSearch)] autorelease];
     _map=[[NoshiMapView alloc] initWithFrame:CGRectZero]; _map.picking=_selection!=nil; _map.delegate=self;
     if (_location.valid) [_map showLocation:_location zoom:15];
     [root addSubview:_map];
@@ -160,7 +134,7 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
     [_position setImage:NoshiSymbolImage(NoshiSymbolMapPin,24,NoshiColorAccent()) forState:UIControlStateNormal];
     _plus=[self button:@"+" action:@selector(zoomIn)]; _minus=[self button:@"−" action:@selector(zoomOut)];
     /* the map zooms by pinch and double tap in the modern style, as it does in the original client */
-    _plus.hidden=_minus.hidden=!classic;
+    _plus.hidden=_minus.hidden=NO;
     if (_selection) {
         _search=[[UISearchBar alloc] init]; _search.delegate=self;
         _search.placeholder=NSLocalizedString(@"map.search",nil);
@@ -169,13 +143,7 @@ static UIImage *NoshiLocationPlaceBadge(UIImage *icon) {
         [root addSubview:_search];
         _table=[[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
         _table.dataSource=self; _table.delegate=self;
-        _table.backgroundColor=classic ? NoshiColorScreen() : NoshiColorCard(); _table.separatorColor=NoshiColorHairline();
-        if (!classic) {
-            /* a card that rises over the foot of the map, with a spacer that keeps the first row under its round corners */
-            _table.layer.cornerRadius=16; _table.clipsToBounds=YES; _table.showsVerticalScrollIndicator=NO;
-            UIView *spacer=[[[UIView alloc] initWithFrame:CGRectMake(0,0,10,MODERN_CARD_RISE+4)] autorelease]; spacer.backgroundColor=NoshiColorCard();
-            _table.tableHeaderView=spacer;
-        }
+        _table.backgroundColor=NoshiColorScreen(); _table.separatorColor=NoshiColorHairline();
         [root addSubview:_table];
     } else {
         _details=[[UILabel alloc] init]; _details.font=NoshiFontRegular(15); _details.textColor=NoshiColorTitle();

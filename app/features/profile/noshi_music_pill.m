@@ -138,15 +138,13 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     self.backgroundColor = NoshiMusicTonalColor();
     self.layer.cornerRadius = CARD_RADIUS;
     self.clipsToBounds = YES;
-    if (NoshiThemeIsClassic()) {
-        /* the classic card is a plate that is lit at the top and shades down to the bottom with no edge between the two, a dark rim round it, and the cover in a white slide mount */
-        self.layer.cornerRadius = 10;
-        self.layer.borderWidth = 1;
-        self.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.4].CGColor;
-        _glass = [[CAGradientLayer layer] retain];
-        _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.14].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.16].CGColor, nil];
-        [self.layer insertSublayer:_glass atIndex:0];
-    }
+    /* the classic card is a plate that is lit at the top and shades down to the bottom with no edge between the two, a dark rim round it, and the cover in a white slide mount */
+    self.layer.cornerRadius = 10;
+    self.layer.borderWidth = 1;
+    self.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.4].CGColor;
+    _glass = [[CAGradientLayer layer] retain];
+    _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.14].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.16].CGColor, nil];
+    [self.layer insertSublayer:_glass atIndex:0];
     _pattern = [[NoshiMusicPatternView alloc] init];
     CAGradientLayer *fade = [CAGradientLayer layer];
     fade.startPoint = CGPointMake(0, 0.5f);
@@ -157,11 +155,9 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     _cover = [[UIImageView alloc] init];
     _cover.contentMode = UIViewContentModeScaleAspectFill;
     _cover.clipsToBounds = YES;
-    _cover.layer.cornerRadius = NoshiThemeIsClassic() ? 5 : COVER_RADIUS;
-    if (NoshiThemeIsClassic()) {
-        _cover.layer.borderWidth = 2;
-        _cover.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.92].CGColor;
-    }
+    _cover.layer.cornerRadius = 5;
+    _cover.layer.borderWidth = 2;
+    _cover.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.92].CGColor;
     _cover.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
     _cover.userInteractionEnabled = NO;
     [self addSubview:_cover];

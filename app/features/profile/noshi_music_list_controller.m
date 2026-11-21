@@ -51,7 +51,7 @@ static NSString *NoshiClock(NSTimeInterval seconds) {
     /* the press is a view of the cell's own: the classic theme drew the blue of the system under a selected background of the cell, so the color is laid by hand */
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     _press = [[UIView alloc] init];
-    _press.backgroundColor = NoshiThemeIsClassic() ? [NoshiColorAccent() colorWithAlphaComponent:0.35f] : NoshiColorField();
+    _press.backgroundColor = [NoshiColorAccent() colorWithAlphaComponent:0.35f];
     _press.alpha = 0;
     [self insertSubview:_press atIndex:0];
     _cover = [[UIImageView alloc] init];
@@ -326,13 +326,7 @@ static UIButton *NoshiPanelButton(NoshiSymbol symbol, CGFloat size, id target, S
     _message.numberOfLines = 0;
     [root addSubview:_message];
 
-    if (NoshiThemeIsClassic()) {
-        [self buildClassicPanelInView:root];
-    } else {
-        _card = [[NoshiMusicCard alloc] init];
-        _card.hidden = YES;
-        [root addSubview:_card];
-    }
+    [self buildClassicPanelInView:root];
     UITapGestureRecognizer *open = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openLyrics)];
     open.delegate = self;
     [(_card ? (UIView *)_card : _panel) addGestureRecognizer:open];

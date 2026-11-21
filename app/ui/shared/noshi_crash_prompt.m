@@ -64,18 +64,12 @@ static UIButton *NoshiPromptButton(NSString *title, BOOL primary, id target, SEL
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.titleLabel.font = NoshiFontSemibold(17);
     [button setTitle:title forState:UIControlStateNormal];
-    if (NoshiThemeIsClassic()) {
-        NoshiClassicGloss gloss = primary ? NoshiClassicGlossGreen : NoshiClassicGlossSlate;
-        [button setBackgroundImage:NoshiClassicGlossButtonImage(gloss, NO) forState:UIControlStateNormal];
-        [button setBackgroundImage:NoshiClassicGlossButtonImage(gloss, YES) forState:UIControlStateHighlighted];
-        [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        button.titleLabel.shadowOffset = CGSizeMake(0, -1);
-        [button setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.4] forState:UIControlStateNormal];
-    } else {
-        button.backgroundColor = primary ? NoshiColorAccent() : NoshiColorField();
-        button.layer.cornerRadius = BUTTON_HEIGHT / 2;
-        [button setTitleColor:primary ? [UIColor whiteColor] : NoshiColorTitle() forState:UIControlStateNormal];
-    }
+    NoshiClassicGloss gloss = primary ? NoshiClassicGlossGreen : NoshiClassicGlossSlate;
+    [button setBackgroundImage:NoshiClassicGlossButtonImage(gloss, NO) forState:UIControlStateNormal];
+    [button setBackgroundImage:NoshiClassicGlossButtonImage(gloss, YES) forState:UIControlStateHighlighted];
+    [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    button.titleLabel.shadowOffset = CGSizeMake(0, -1);
+    [button setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.4] forState:UIControlStateNormal];
     [button addTarget:target action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
@@ -97,24 +91,14 @@ BOOL NoshiAskCrashReport(void (^answer)(BOOL send)) {
     target->dim = dim;
 
     UIView *card = [[UIView alloc] init];
-    BOOL classic = NoshiThemeIsClassic();
-    CGFloat radius = classic ? 14 : 26;
-    if (classic) {
-        NoshiClassicApplyMenuPlate(card, radius);
-    } else {
-        card.backgroundColor = NoshiColorCard();
-        card.layer.cornerRadius = radius;
-        card.layer.shadowColor = [UIColor blackColor].CGColor;
-        card.layer.shadowOpacity = 0.3f;
-        card.layer.shadowRadius = 18;
-        card.layer.shadowOffset = CGSizeMake(0, 6);
-    }
+    CGFloat radius = 14;
+    NoshiClassicApplyMenuPlate(card, radius);
     target->card = card;
 
     UILabel *title = [[[UILabel alloc] init] autorelease];
     title.backgroundColor = [UIColor clearColor];
     title.font = NoshiFontBold(22);
-    title.textColor = classic ? NoshiClassicMenuTextColor() : NoshiColorTitle();
+    title.textColor = NoshiClassicMenuTextColor();
     title.textAlignment = NoshiTextAlignmentCenter;
     title.numberOfLines = 0;
     title.text = NSLocalizedString(@"crash.title", nil);
@@ -123,7 +107,7 @@ BOOL NoshiAskCrashReport(void (^answer)(BOOL send)) {
     UILabel *text = [[[UILabel alloc] init] autorelease];
     text.backgroundColor = [UIColor clearColor];
     text.font = NoshiFontRegular(15);
-    text.textColor = classic ? [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7] : NoshiColorSecondary();
+    text.textColor = [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7];
     text.textAlignment = NoshiTextAlignmentCenter;
     text.numberOfLines = 0;
     text.text = NSLocalizedString(@"crash.text", nil);
@@ -174,8 +158,7 @@ BOOL NoshiAskCrashReport(void (^answer)(BOOL send)) {
     card.center = CGPointMake(CGRectGetMidX(window.bounds), CGRectGetMidY(window.bounds));
     card.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
     /* the shadow follows a path and the card is drawn once into a picture that then moves, so the spring of its entry costs nothing on a slow phone */
-    if (classic) NoshiClassicFitPlate(card, 0);
-    else card.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:card.bounds cornerRadius:radius].CGPath;
+    NoshiClassicFitPlate(card, 0);
     card.layer.shouldRasterize = YES;
     card.layer.rasterizationScale = [UIScreen mainScreen].scale;
 

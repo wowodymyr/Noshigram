@@ -1,4 +1,3 @@
-#import "noshi_developers.h"
 #import "noshi_channel_members_controller.h"
 #import "noshi_centered_hint_field.h"
 
@@ -300,7 +299,6 @@ typedef enum {
         cell.trailingTint = NoshiColorAccent();
     }
     NoshiPerson *person = member.person;
-    cell.developer = NoshiPersonIsDeveloper(person);
     cell.premium = person.premium;
     [cell configureWithName:person.name initials:person.initials seed:(NSUInteger)(person.userId % 1000003) subtitle:subtitle subtitleColor:subtitleColor
                    trailing:trailing symbol:NoshiSymbolChevronRight showsSymbol:NO nameColor:nil photo:person.photo avatars:self.avatars];

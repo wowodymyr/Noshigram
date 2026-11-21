@@ -11,7 +11,6 @@
 #import "noshi_avatar_view.h"
 #import "noshi_avatar_viewer.h"
 #import "noshi_channel_card.h"
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 #import "noshi_chat_controller.h"
 #import "noshi_emoji_label.h"
@@ -199,7 +198,7 @@ static UILabel *NoshiUserLabel(UIColor *color, UIFont *font, NSInteger alignment
     _head = [[UIView alloc] init];
     _head.backgroundColor = [UIColor clearColor];
     _storyRing = [[NoshiStoryRing alloc] init];
-    _storyRing.followsAvatarShape = !NoshiThemeIsClassic();
+    _storyRing.followsAvatarShape = NO;
     _storyRing.hidden = YES;
     [_head addSubview:_storyRing];
     _avatar = [[NoshiAvatarView alloc] init];
@@ -366,7 +365,7 @@ static UILabel *NoshiUserLabel(UIColor *color, UIFont *font, NSInteger alignment
 /* the recognizer takes the touches over the name only: one that took every touch of the header cancelled the controls under it, the pill of the music among them */
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch {
     (void)recognizer;
-    return (NoshiDialogIsDeveloper(_dialog) || _backdropTitle.length) && CGRectContainsPoint(CGRectInset(_name.frame, 0, -8), [touch locationInView:_head]);
+    return _backdropTitle.length && CGRectContainsPoint(CGRectInset(_name.frame, 0, -8), [touch locationInView:_head]);
 }
 
 - (void)headTapped:(UITapGestureRecognizer *)tap {
@@ -375,12 +374,7 @@ static UILabel *NoshiUserLabel(UIColor *color, UIFont *font, NSInteger alignment
     long long document = [_name customEmojiAtPoint:point];
     if (_backdropTitle.length && document && document == _backdropStatusDocument && point.y >= -8 && point.y <= _name.bounds.size.height + 8) {
         [self toast:_backdropTitle];
-        return;
     }
-    if (!NoshiDialogIsDeveloper(_dialog)) return;
-    NSUInteger mark = NoshiMarkForDocument(document);
-    if (point.y < -8 || point.y > _name.bounds.size.height + 8 || !mark) return;
-    NoshiShowMarkNoticeForUser(_dialog.title, mark, _dialog.peerId);
 }
 
 - (void)load {
@@ -430,7 +424,7 @@ static UILabel *NoshiUserLabel(UIColor *color, UIFont *font, NSInteger alignment
 - (void)showName:(NSString *)name emojiStatus:(long long)emojiStatus premium:(BOOL)premium {
     NSArray *entities = nil;
     long long badge = _dialog.peerKind == 1 && _dialog.peerId == NOSHI_TELEGRAM_SERVICE_USER_ID ? NoshiDialogBadgeDocument(_dialog) : (_dialog.saved ? 0 : NoshiBadgeDocument(emojiStatus, premium));
-    _name.text = NoshiNameWithBadges(name, badge, NoshiDialogIsDeveloper(_dialog), &entities);
+    _name.text = NoshiNameWithBadge(name, badge, &entities);
     _name.entities = entities;
     [self setClassicTitleText:_name.text entities:entities];
     /* only a status that is the badge drawn after the name has a place to move in */
@@ -808,7 +802,7 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
 
 - (void)layoutBody:(CGRect)body {
     /* the list runs under the bar when the head has a ground of its own, which then shows through the clear bar; the bar's height is the list's top inset */
-    BOOL underBar = (_backdrop && !NoshiThemeIsClassic()) || _heroUnderBar;
+    BOOL underBar = _heroUnderBar;
     [_grid setFrame:underBar ? CGRectMake(body.origin.x, 0, body.size.width, CGRectGetMaxY(body)) : body topInset:underBar ? body.origin.y : 0];
     _toast.frame = CGRectMake(CGRectGetMidX(body) - 80, body.origin.y + 12, 160, 28);
     [self layoutHead];
@@ -819,8 +813,6 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     (void)grid;
     [_tabs hostDidScroll];
     [self heroFollowsPull:-(offset + _grid.topInset)];
-    if (!_backdrop || NoshiThemeIsClassic()) return;
-    [self setBarShaded:offset > -_grid.topInset + BAR_SHADE_AFTER animated:YES];
 }
 
 #pragma mark actions

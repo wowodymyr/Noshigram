@@ -156,7 +156,7 @@ void NoshiChoose(NSString *title, NSArray *choices, NSInteger destructiveIndex, 
 
 void NoshiChooseFromView(UIView *source, NSString *title, NSArray *choices, NSInteger destructiveIndex, void (^handler)(NSInteger index)) {
     /* the modern style lists the choices on the sheet of the application, from the bottom on a phone and an ipad alike; the classic style keeps the system sheet */
-    UIView *overlay = NoshiThemeIsClassic() ? nil : NoshiOverlayHost();
+    UIView *overlay = nil;
     if (overlay) {
         NSIndexSet *destructive = destructiveIndex >= 0 && destructiveIndex < (NSInteger)choices.count ? [NSIndexSet indexSetWithIndex:(NSUInteger)destructiveIndex] : nil;
         [NoshiSheet presentInView:overlay title:title message:nil options:choices destructive:destructive cancelTitle:NSLocalizedString(@"picker.cancel", nil)

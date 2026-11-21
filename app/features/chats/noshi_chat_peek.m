@@ -2,7 +2,6 @@
 #import <QuartzCore/QuartzCore.h>
 #import "noshi_animation.h"
 #import "noshi_avatar_view.h"
-#import "noshi_developers.h"
 #import "noshi_emoji_label.h"
 #import "noshi_name_badge.h"
 #import "noshi_platform.h"
@@ -84,7 +83,7 @@
     _title.backgroundColor = [UIColor clearColor]; _title.textColor = NoshiColorTitle();
     _title.font = NoshiFontSemibold(16); _title.dropsUndrawable = YES;
     NSArray *titleBadges = nil;
-    _title.text = NoshiNameWithBadges(dialog.title, NoshiDialogBadgeDocument(dialog), NoshiDialogIsDeveloper(dialog), &titleBadges);
+    _title.text = NoshiNameWithBadge(dialog.title, NoshiDialogBadgeDocument(dialog), &titleBadges);
     _title.entities = titleBadges;
     [_header addSubview:_title];
     _status = [[UILabel alloc] init];

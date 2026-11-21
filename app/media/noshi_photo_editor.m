@@ -535,7 +535,7 @@ enum { NoshiPhotoEnterNone, NoshiPhotoEnterRotate, NoshiPhotoEnterFlip, NoshiPho
     [_drawPan release]; [_pinch release]; [_zoomPan release];
     [super dealloc];
 }
-- (BOOL)classic { return NoshiThemeIsClassic(); }
+- (BOOL)classic { return YES; }
 - (NoshiEditorButton *)iconButton:(NoshiEditorButtonStyle)style symbol:(NoshiSymbol)symbol title:(NSString *)key action:(SEL)action host:(UIView *)host {
     NSString *title = key ? NSLocalizedString(key, nil) : nil;
     NoshiEditorButton *button = [[[NoshiEditorButton alloc] initWithStyle:style symbol:symbol title:title] autorelease];

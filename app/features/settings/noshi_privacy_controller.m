@@ -5,7 +5,6 @@
 #import "noshi_user_profile_controller.h"
 #import "noshi_classic_devices_controller.h"
 #import "noshi_contact_picker_controller.h"
-#import "noshi_devices_controller.h"
 #import "noshi_dialog_picker_controller.h"
 #import "noshi_gift_screen.h"
 #import "noshi_people_avatars.h"
@@ -228,8 +227,7 @@ static void NoshiPrivacyFail(NSString *errorName) {
 }
 
 - (void)openDevices {
-    [self open:NoshiThemeIsClassic() ? (UIViewController *)[[[NoshiClassicDevicesController alloc] initWithSession:_session media:_media] autorelease]
-                                       : (UIViewController *)[[[NoshiDevicesController alloc] initWithSession:_session media:_media] autorelease]];
+    [self open:(UIViewController *)[[[NoshiClassicDevicesController alloc] initWithSession:_session media:_media] autorelease]];
 }
 
 - (void)chooseHistoryTTL {

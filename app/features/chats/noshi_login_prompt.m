@@ -21,7 +21,6 @@
     NSMutableArray *_logins;
     UIView *_view;
     UIImageView *_plate;
-    BOOL _classic;
     UILabel *_title;
     UILabel *_message;
     UIButton *_yes;
@@ -43,18 +42,12 @@
     _changed = [changed copy];
     _weak = [[NoshiWeakReference referenceTo:self] retain];
     _logins = [[NSMutableArray alloc] init];
-    _classic = NoshiThemeIsClassic();
     _view = [[UIView alloc] init];
     _view.hidden = YES;
-    if (_classic) {
-        /* the image supplies the rim and the card color of the classic theme */
-        _view.backgroundColor = [UIColor clearColor];
-        _plate = [[UIImageView alloc] initWithImage:NoshiClassicPlateImage()];
-        [_view addSubview:_plate];
-    } else {
-        _view.backgroundColor = NoshiColorCard();
-        _view.layer.cornerRadius = 14;
-    }
+    /* the image supplies the rim and the card color of the classic theme */
+    _view.backgroundColor = [UIColor clearColor];
+    _plate = [[UIImageView alloc] initWithImage:NoshiClassicPlateImage()];
+    [_view addSubview:_plate];
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
     _title.textColor = NoshiColorTitle();
@@ -84,7 +77,7 @@
     _no.titleLabel.font = NoshiFontSemibold(15);
     [_no addTarget:self action:@selector(terminate) forControlEvents:UIControlEventTouchUpInside];
     [_view addSubview:_no];
-    if (_classic) [self styleClassic];
+    [self styleClassic];
     return self;
 }
 
@@ -176,9 +169,9 @@
     _message.frame = CGRectMake(CARD_PAD, 10 + title.height + 4, inner, message.height);
     CGFloat buttonsY = height - BUTTON_HEIGHT - 4;
     /* glossy buttons are separate pills with a gap, the flat ones are two halves of one row */
-    CGFloat gap = _classic ? 8 : 0;
-    CGFloat buttonHeight = _classic ? BUTTON_HEIGHT - 6 : BUTTON_HEIGHT;
-    CGFloat buttonY = _classic ? buttonsY + 3 : buttonsY;
+    CGFloat gap = 8;
+    CGFloat buttonHeight = BUTTON_HEIGHT - 6;
+    CGFloat buttonY = buttonsY + 3;
     _yes.frame = CGRectMake(CARD_PAD, buttonY, (inner - gap) / 2, buttonHeight);
     _no.frame = CGRectMake(CARD_PAD + (inner + gap) / 2, buttonY, (inner - gap) / 2, buttonHeight);
 }

@@ -136,11 +136,9 @@
 
 - (UINavigationController *)presentableNavigation {
     UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:self] autorelease];
-    navigation.navigationBarHidden = !NoshiThemeIsClassic();
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
-            style:UIBarButtonItemStyleDone target:self action:@selector(goBack)] autorelease];
-    }
+    navigation.navigationBarHidden = NO;
+    self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
+        style:UIBarButtonItemStyleDone target:self action:@selector(goBack)] autorelease];
     return navigation;
 }
 

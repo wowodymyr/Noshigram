@@ -1,7 +1,6 @@
 #import "noshi_name_badge.h"
 
 #import "noshi_custom_emoji.h"
-#import "noshi_developers.h"
 #import "noshi_custom_emoji_loader.h"
 #import "noshi_message.h"
 #import "noshi_person.h"
@@ -28,29 +27,14 @@ long long NoshiPersonBadgeDocument(NoshiPerson *person) {
 }
 
 NSString *NoshiNameWithBadge(NSString *name, long long document, NSArray **entities) {
-    return NoshiNameWithBadges(name, document, NO, entities);
-}
-
-NSString *NoshiNameWithBadges(NSString *name, long long document, NSUInteger marks, NSArray **entities) {
     if (entities) *entities = nil;
-    if ((!document && !marks) || !name.length) return name;
-    NSMutableString *text = [NSMutableString stringWithString:name];
-    NSMutableArray *list = [NSMutableArray array];
-    long long documents[11] = {document, marks & NoshiMarkDeveloper ? NOSHI_DEVELOPER_DOCUMENT : 0, marks & NoshiMarkLead ? NOSHI_LEAD_DOCUMENT : 0,
-                              marks & NoshiMarkSenko ? NOSHI_SENKO_DOCUMENT : 0, marks & NoshiMarkTester ? NOSHI_TESTER_DOCUMENT : 0,
-                              marks & NoshiMarkPromotion ? NOSHI_PROMOTION_DOCUMENT : 0,
-                              marks & NoshiMarkBugHunter ? NOSHI_BUG_HUNTER_DOCUMENT : 0, marks & NoshiMarkOfficialTester ? NOSHI_OFFICIAL_TESTER_DOCUMENT : 0,
-                               marks & NoshiMarkManager ? NOSHI_MANAGER_DOCUMENT : 0, marks & NoshiMarkVideoFix ? NOSHI_VIDEO_FIX_DOCUMENT : 0, marks & NoshiMarkFlawSeer ? NOSHI_FLAW_SEER_DOCUMENT : 0};
-    for (int i = 0; i < 11; ++i) {
-        if (!documents[i]) continue;
-        [text appendString:@" "];
-        NoshiTextEntity *entity = [[[NoshiTextEntity alloc] initWithStyle:NoshiTextStyleCustomEmoji
-            range:NSMakeRange(text.length, NoshiBadgePlaceholder.length) url:nil] autorelease];
-        entity.documentId = documents[i];
-        [list addObject:entity];
-        [text appendString:NoshiBadgePlaceholder];
-    }
-    if (entities) *entities = list;
+    if (!document || !name.length) return name;
+    NSMutableString *text = [NSMutableString stringWithFormat:@"%@ ", name];
+    NoshiTextEntity *entity = [[[NoshiTextEntity alloc] initWithStyle:NoshiTextStyleCustomEmoji
+        range:NSMakeRange(text.length, NoshiBadgePlaceholder.length) url:nil] autorelease];
+    entity.documentId = document;
+    [text appendString:NoshiBadgePlaceholder];
+    if (entities) *entities = [NSArray arrayWithObject:entity];
     return text;
 }
 
@@ -73,11 +57,9 @@ void NoshiRedrawVisibleRows(UITableView *table) {
 }
 
 void NoshiShowNameWithBadges(NoshiEmojiLabel *label, NSString *name, long long userId, NoshiSession *session, NoshiMediaCache *media) {
-    NSUInteger marks = NoshiMarksOfId(userId);
-    NSArray *entities = nil;
     label.dropsUndrawable = YES;
-    label.text = NoshiNameWithBadges(name, 0, marks, &entities);
-    label.entities = entities;
+    label.text = name;
+    label.entities = nil;
     if (!session || userId <= 0 || !name.length) return;
     NSString *shown = [[name copy] autorelease];
     NoshiWeakReference *weak = [NoshiWeakReference referenceTo:label];
@@ -86,10 +68,9 @@ void NoshiShowNameWithBadges(NoshiEmojiLabel *label, NSString *name, long long u
         /* the label may be showing another name by now, as the cells of a list are used again */
         if (!target || !person || ![target.text hasPrefix:shown]) return;
         long long document = NoshiPersonBadgeDocument(person);
-        NSUInteger known = marks | NoshiPersonIsDeveloper(person);
-        if (!document && known == marks) return;
+        if (!document) return;
         NSArray *more = nil;
-        target.text = NoshiNameWithBadges(shown, document, known, &more);
+        target.text = NoshiNameWithBadge(shown, document, &more);
         target.entities = more;
         if (person.emojiStatus) {
             NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:person.emojiStatus]], session, media, ^{

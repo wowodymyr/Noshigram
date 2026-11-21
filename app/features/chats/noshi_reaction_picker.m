@@ -64,10 +64,9 @@
     _dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
     [_dim addTarget:self action:@selector(cancel) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_dim];
-    BOOL classic = NoshiThemeIsClassic();
     _card = [[UIView alloc] init];
-    _card.backgroundColor = classic ? NoshiColorBar() : NoshiColorCard();
-    _card.layer.cornerRadius = classic ? 12 : 18;
+    _card.backgroundColor = NoshiColorBar();
+    _card.layer.cornerRadius = 12;
     _card.layer.shadowColor = [UIColor blackColor].CGColor;
     _card.layer.shadowOpacity = 0.3f;
     _card.layer.shadowRadius = 12;

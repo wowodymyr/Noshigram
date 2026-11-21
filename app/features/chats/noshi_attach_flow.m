@@ -729,7 +729,7 @@ NSString *NoshiMimeOfPath(NSString *path) {
         [self deliver:outgoing];
     } cancel:nil] autorelease];
     UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:picker] autorelease];
-    if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+    NoshiClassicStyleNavigationBar(navigation.navigationBar);
     [_host presentViewController:navigation animated:YES completion:nil];
 }
 
@@ -757,7 +757,7 @@ NSString *NoshiMimeOfPath(NSString *path) {
         [flow->_locationPicker release]; flow->_locationPicker=nil;
     };
     UINavigationController *navigation=[[[UINavigationController alloc] initWithRootViewController:_locationPicker] autorelease];
-    if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+    NoshiClassicStyleNavigationBar(navigation.navigationBar);
     [_host presentViewController:navigation animated:YES completion:nil];
 }
 

@@ -909,7 +909,7 @@ static BOOL NoshiInlineParse(NSString *text, NSString **name, NSString **query) 
             if (again->_mode == NoshiPanelInline) [again showInlineLocationNeeded];
         };
         UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:picker] autorelease];
-        if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+        NoshiClassicStyleNavigationBar(navigation.navigationBar);
         [anchor presentViewController:navigation animated:YES completion:nil];
     });
 }

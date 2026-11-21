@@ -49,15 +49,6 @@ static const CGPoint NoshiGiftSlots[SLOT_COUNT] = {
     [self setNeedsDisplay];
 }
 
-static void NoshiDrawSparkle(CGContextRef context, CGPoint center, CGFloat radius) {
-    CGContextMoveToPoint(context, center.x, center.y - radius);
-    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x + radius, center.y);
-    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x, center.y + radius);
-    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x - radius, center.y);
-    CGContextAddQuadCurveToPoint(context, center.x, center.y, center.x, center.y - radius);
-    CGContextFillPath(context);
-}
-
 /* the classic gift stands on a glass medallion: the color of its backdrop lit from above, a dark rim over a lit one, a gloss on the upper half and a shadow under the disc */
 - (void)drawMedallion {
     CGFloat red = 0.45, green = 0.40, blue = 0.62, alpha = 0;
@@ -99,27 +90,7 @@ static void NoshiDrawSparkle(CGContextRef context, CGPoint center, CGFloat radiu
 
 - (void)drawRect:(CGRect)rect {
     (void)rect;
-    if (NoshiThemeIsClassic()) {
-        [self drawMedallion];
-        return;
-    }
-    if (!_color) return;
-    CGFloat red = 0, green = 0, blue = 0, alpha = 0;
-    [_color getRed:&red green:&green blue:&blue alpha:&alpha];
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGFloat components[8] = {red, green, blue, 0.62, red, green, blue, 0};
-    CGFloat locations[2] = {0, 1};
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, components, locations, 2);
-    CGPoint middle = CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
-    CGContextDrawRadialGradient(context, gradient, middle, 0, middle, self.bounds.size.width / 2, 0);
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    CGContextSetRGBFillColor(context, 1, 1, 1, 0.8);
-    CGFloat unit = self.bounds.size.width / 66.0;
-    NoshiDrawSparkle(context, CGPointMake(middle.x + 22 * unit, middle.y - 24 * unit), 3.2 * unit);
-    NoshiDrawSparkle(context, CGPointMake(middle.x - 24 * unit, middle.y + 18 * unit), 2.6 * unit);
-    NoshiDrawSparkle(context, CGPointMake(middle.x - 16 * unit, middle.y - 26 * unit), 1.8 * unit);
+    [self drawMedallion];
 }
 
 @end
@@ -189,7 +160,6 @@ static void NoshiDrawSparkle(CGContextRef context, CGPoint center, CGFloat radiu
     _glows[slot].hidden = YES;
     _glows[slot].color = gift.hasBackdropColors ? NoshiGiftRgb(gift.backdropCenter) : nil;
     /* the classic gift always stands on its medallion, in the slate of the app when it has no backdrop */
-    BOOL medallion = NoshiThemeIsClassic();
     _pictures[slot].hidden = NO;
     _pictures[slot].image = nil;
     NoshiMedia *sticker = gift.sticker;
@@ -202,7 +172,7 @@ static void NoshiDrawSparkle(CGContextRef context, CGPoint center, CGFloat radiu
     }
     CGFloat pixels = GIFT_SIDE * NoshiScreenScale();
     UIImage *ready = [_media cachedImageForFile:file maxSide:pixels];
-    BOOL glows = gift.hasBackdropColors || medallion;
+    BOOL glows = YES;
     if (ready) {
         _pictures[slot].image = ready;
         _glows[slot].hidden = !glows;

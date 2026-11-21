@@ -3,18 +3,16 @@
 #import <objc/message.h>
 
 #import "noshi_font_choice.h"
-#import "noshi_imported_theme.h"
 
 #include <math.h>
 
-/* the palette is purple, and a color of your own can turn every hue of it: the turn in degrees, zero for the purple of the app */
+/* the palette is the blue of Telegram, and a color of your own can turn every hue of it: the turn in degrees, zero for the blue of the app */
 static CGFloat NoshiTintShift = 0;
 static BOOL NoshiDark = NO;
 /* grows with every change of the palette, so what was made in the colors of an earlier one can be told from what was made in these */
 static NSUInteger NoshiRevision = 1;
 
 NSUInteger NoshiThemeRevision(void) { return NoshiRevision; }
-static BOOL NoshiClassic = NO;
 /* how many times the saturation of the palette is multiplied; a color of your own sets it */
 static CGFloat NoshiTintScale = 1;
 /* a color of your own is stored: palettes with a seed of their own follow it even when it lands on the hue of the app */
@@ -22,8 +20,8 @@ static BOOL NoshiCustomTint = NO;
 /* how much of the value of the colors of your own a palette keeps: 1 is the palette, 0 is black. The accents, the screens, the bars, the cards and the bubbles take it (see NoshiDimRGB); the text colors never do, so the words stay readable */
 static CGFloat NoshiTintBrightness = 1;
 /* the hue and the saturation of the light accent in the palette below, which a hue and a saturation of your own are measured from */
-#define NOSHI_PALETTE_HUE 286.0
-#define NOSHI_PALETTE_SATURATION 0.6
+#define NOSHI_PALETTE_HUE 207.0
+#define NOSHI_PALETTE_SATURATION 1.0
 
 void NoshiRGBToHSV(CGFloat red, CGFloat green, CGFloat blue, CGFloat *hue, CGFloat *saturation, CGFloat *value) {
     CGFloat high = MAX(red, MAX(green, blue)), low = MIN(red, MIN(green, blue));
@@ -100,43 +98,6 @@ UIColor *NoshiThemeTinted(UIColor *color) {
     return color;
 }
 
-/* a palette with a seed hue of its own (the Shiro screens) moved to the accent of the app: the seed hue goes to the hue the accent has now, saturation follows a color
-   of your own, and a grey accent makes the palette grey. The palette keeps its own colors when no color of your own is stored */
-UIColor *NoshiThemeFollowAccent(UIColor *color, CGFloat seedHue) {
-    CGColorRef ref = color.CGColor;
-    const CGFloat *c = CGColorGetComponents(ref);
-    if (CGColorGetNumberOfComponents(ref) != 4) return color;
-    CGFloat red = c[0], green = c[1], blue = c[2];
-    CGFloat target = 0, scale = 1;
-    BOOL grey = NO, follow = NO;
-    UIColor *imported = !NoshiClassic ? NoshiImportedThemeColor("list.accent") : nil;
-    if (imported) {
-        const CGFloat *a = CGColorGetComponents(imported.CGColor);
-        if (CGColorGetNumberOfComponents(imported.CGColor) == 4) {
-            CGFloat s = 0;
-            NoshiRGBToHSV(a[0], a[1], a[2], &target, &s, NULL);
-            grey = s < 0.08;
-            follow = YES;
-        }
-    } else if (NoshiCustomTint) {
-        target = fmod(NOSHI_PALETTE_HUE + NoshiTintShift + 720, 360);
-        scale = NoshiTintScale;
-        follow = YES;
-    }
-    if (!follow) return color;
-    if (grey) {
-        CGFloat luma = 0.299f * red + 0.587f * green + 0.114f * blue;
-        return [UIColor colorWithRed:luma green:luma blue:luma alpha:c[3]];
-    }
-    CGFloat h, s, v;
-    NoshiRGBToHSV(red, green, blue, &h, &s, &v);
-    if (s <= 0) return color;
-    NoshiHSVToRGB(fmod(h + target - seedHue + 720, 360), MIN(1, s * scale), v, &red, &green, &blue);
-    /* a palette that follows a color of your own follows its brightness as well, but not that of an imported theme, which has its own */
-    if (!imported) NoshiDimRGB(&red, &green, &blue);
-    return [UIColor colorWithRed:red green:green blue:blue alpha:c[3]];
-}
-
 static UIColor *NoshiRGB(CGFloat red, CGFloat green, CGFloat blue) {
     return NoshiTurnedColor(red / 255.0, green / 255.0, blue / 255.0, 1.0);
 }
@@ -146,7 +107,6 @@ static UIColor *NoshiSurfaceRGB(CGFloat red, CGFloat green, CGFloat blue) {
     return NoshiSurface(red / 255.0, green / 255.0, blue / 255.0, 1.0);
 }
 
-static NSString *const NoshiClassicThemeKey = @"NoshiClassicTheme";
 static NSString *const NoshiDarkThemeKey = @"NoshiDarkTheme";
 static NSString *const NoshiCustomTintOnKey = @"NoshiThemeCustomTintOn";
 static NSString *const NoshiCustomTintHueKey = @"NoshiThemeCustomTintHue";
@@ -154,28 +114,6 @@ static NSString *const NoshiCustomTintSaturationKey = @"NoshiThemeCustomTintSatu
 static NSString *const NoshiCustomTintBrightnessKey = @"NoshiThemeCustomTintBrightness";
 NSString *const NoshiThemeDidChangeNotification = @"NoshiThemeDidChangeNotification";
 NSString *const NoshiThemeOriginKey = @"origin";
-
-NSString *const NoshiClassicAnywhereKey = @"noshigram.developer.classicAnywhere";
-
-BOOL NoshiClassicThemeAvailable(void) {
-    if ([[NSUserDefaults standardUserDefaults] boolForKey:NoshiClassicAnywhereKey]) return YES;
-    return [[[UIDevice currentDevice] systemVersion] integerValue] <= 10;
-}
-
-/* ios 5 and 6 have no flat ui, so the modern style looks foreign there; until the person picks a style, 6 and older get the classic one */
-BOOL NoshiThemeStoredClassic(void) {
-    if (!NoshiClassicThemeAvailable()) return NO;
-    id stored = [[NSUserDefaults standardUserDefaults] objectForKey:NoshiClassicThemeKey];
-    if (!stored) return [[[UIDevice currentDevice] systemVersion] integerValue] <= 6;
-    return [stored boolValue];
-}
-
-void NoshiThemeStoreClassic(BOOL classic) {
-    [[NSUserDefaults standardUserDefaults] setBool:classic && NoshiClassicThemeAvailable() forKey:NoshiClassicThemeKey];
-    if (![[NSUserDefaults standardUserDefaults] synchronize]) NSLog(@"noshigram: theme style was not saved");
-}
-
-BOOL NoshiThemeIsClassic(void) { return NoshiClassic; }
 
 BOOL NoshiThemeStoredDark(void) {
     return [[NSUserDefaults standardUserDefaults] boolForKey:NoshiDarkThemeKey];
@@ -228,8 +166,6 @@ void NoshiThemeApply(BOOL dark) {
     NoshiTintScale = 1;
     NoshiCustomTint = NO;
     NoshiTintBrightness = 1;
-    /* the login keeps its light waves, the signed in root restores the stored style */
-    NoshiClassic = NO;
     UIApplication *application = [UIApplication sharedApplication];
     if ([application respondsToSelector:@selector(setStatusBarStyle:animated:)]) {
         [application setStatusBarStyle:NoshiStatusBarStyle(dark) animated:NO];
@@ -239,8 +175,6 @@ void NoshiThemeApply(BOOL dark) {
 void NoshiThemeApplyStored(void) {
     ++NoshiRevision;
     NoshiThemeApply(NoshiThemeStoredDark());
-    NoshiImportedThemeReload(NoshiThemeStoredDark());
-    NoshiClassic = NoshiThemeStoredClassic();
     NoshiTintScale = 1;
     float customHue = 0, customSaturation = 0, customBrightness = 1;
     NoshiCustomTint = NoshiThemeStoredCustomTint(&customHue, &customSaturation, &customBrightness);
@@ -249,18 +183,18 @@ void NoshiThemeApplyStored(void) {
         NoshiTintShift = (CGFloat)customHue - NOSHI_PALETTE_HUE;
         NoshiTintScale = (CGFloat)customSaturation / NOSHI_PALETTE_SATURATION;
     }
-    if (!NoshiClassic && NoshiImportedThemeSelected(NoshiDark)) {
-        NoshiTintShift = 0;
-        NoshiTintScale = 1;
-        NoshiTintBrightness = 1;
-    }
-    /* the classic bars are dark purple whatever the theme, so the status bar over them is light */
+    /* the bars of ios 6 are tinted in the blue of the app whatever the theme, so the status bar over them is the black one of that system; the flat bars of ios 7 and later
+       are light in the light theme */
     UIApplication *application = [UIApplication sharedApplication];
-    if (NoshiClassic && [application respondsToSelector:@selector(setStatusBarStyle:animated:)]) [application setStatusBarStyle:(UIStatusBarStyle)1 animated:NO];
-    else if ([application respondsToSelector:@selector(setStatusBarStyle:animated:)]) {
-        NSString *status = NoshiImportedThemeStatusBar();
-        if (status) [application setStatusBarStyle:NoshiStatusBarStyle([status isEqualToString:@"white"]) animated:NO];
-    }
+    if (![application respondsToSelector:@selector(setStatusBarStyle:animated:)]) return;
+    if (!NoshiThemeFlatSystem()) [application setStatusBarStyle:(UIStatusBarStyle)1 animated:NO];
+    else [application setStatusBarStyle:NoshiStatusBarStyle(NoshiDark) animated:NO];
+}
+
+BOOL NoshiThemeFlatSystem(void) {
+    static int flat = -1;
+    if (flat < 0) flat = [[[UIDevice currentDevice] systemVersion] integerValue] >= 7;
+    return flat == 1;
 }
 
 /* an accent color of the palette: turned to the color of your own, then dimmed by its brightness */
@@ -275,91 +209,83 @@ static UIColor *NoshiAccentRGB(CGFloat red, CGFloat green, CGFloat blue) {
     return [UIColor colorWithRed:r green:g blue:b alpha:c[3]];
 }
 
-UIColor *NoshiColorBackdrop(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("list.blocksBg"); if (color) return color; } if (NoshiClassic || NoshiDark) return NoshiColorScreen(); return NoshiSurfaceRGB(242, 232, 249); }
-UIColor *NoshiColorScreen(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("list.plainBg"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(24, 21, 32) : NoshiSurfaceRGB(247, 245, 251); return NoshiDark ? NoshiSurfaceRGB(21, 18, 31) : NoshiSurfaceRGB(251, 250, 254); }
-UIColor *NoshiColorField(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("list.itemInputField.bg"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(46, 41, 59) : NoshiSurfaceRGB(236, 232, 245); return NoshiDark ? NoshiSurfaceRGB(43, 39, 62) : NoshiSurfaceRGB(237, 234, 248); }
-UIColor *NoshiColorCard(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("list.itemBlocksBg"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(34, 30, 44) : NoshiSurfaceRGB(255, 255, 255); return NoshiDark ? NoshiSurfaceRGB(34, 30, 49) : NoshiSurfaceRGB(255, 255, 255); }
-UIColor *NoshiColorBar(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("root.navBar.background"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(38, 32, 52) : NoshiSurfaceRGB(253, 252, 254); return NoshiDark ? NoshiSurfaceRGB(27, 23, 40) : NoshiSurfaceRGB(255, 255, 255); }
-UIColor *NoshiColorHairline(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("list.plainSeparator") : nil; if (color) return color; return NoshiDark ? [UIColor colorWithWhite:1 alpha:0.09] : [UIColor colorWithWhite:0 alpha:0.1]; }
-UIColor *NoshiColorAccent(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("list.accent") : nil; if (color) return color; return NoshiDark ? NoshiAccentRGB(172, 98, 222) : NoshiAccentRGB(164, 75, 190); }
-UIColor *NoshiColorAccentDark(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("root.navBar.button") : nil; return color ? color : NoshiAccentRGB(132, 44, 160); }
-UIColor *NoshiColorTitle(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("list.primaryText") : nil; if (color) return color; return NoshiDark ? NoshiRGB(240, 238, 248) : NoshiRGB(34, 34, 38); }
-UIColor *NoshiColorMessage(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("chatList.messageText") : nil; if (color) return color; return NoshiDark ? NoshiRGB(176, 170, 196) : NoshiRGB(86, 86, 92); }
-UIColor *NoshiColorDotOff(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("list.placeholderText") : nil; return color ? color : (NoshiDark ? NoshiRGB(84, 78, 104) : NoshiRGB(208, 204, 212)); }
-UIColor *NoshiColorSecondary(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("list.secondaryText"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiRGB(172, 164, 190) : NoshiRGB(116, 108, 132); return NoshiDark ? NoshiRGB(151, 143, 178) : NoshiRGB(128, 112, 140); }
-UIColor *NoshiColorMuted(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("chatList.muteIcon"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiRGB(130, 122, 150) : NoshiRGB(156, 148, 172); return NoshiDark ? NoshiRGB(108, 101, 134) : NoshiRGB(176, 166, 186); }
-/* badgeBackground is the accent in most imported themes, so a red theme turned every destructive control yellow; list.destructive stays red. the fallback is not turned with the
-   accent either, or a green accent made reset and delete buttons green-opposite */
-UIColor *NoshiColorBadgeRed(void) { UIColor *color = !NoshiClassic ? NoshiImportedThemeColor("list.destructive") : nil; return color ? color : [UIColor colorWithRed:230 / 255.0 green:62 / 255.0 blue:72 / 255.0 alpha:1]; }
-UIColor *NoshiColorQrPaper(void) { return NoshiRGB(244, 236, 251); }
-UIColor *NoshiColorBubbleOut(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("chat.message.outgoing.bubble.withWp.bg"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(65, 51, 84) : NoshiSurfaceRGB(235, 225, 249); return NoshiDark ? NoshiAccentRGB(124, 70, 196) : NoshiAccentRGB(139, 80, 214); }
-UIColor *NoshiColorBubbleIn(void) { if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor("chat.message.incoming.bubble.withWp.bg"); if (color) return color; } if (NoshiClassic) return NoshiDark ? NoshiSurfaceRGB(54, 47, 68) : NoshiSurfaceRGB(255, 255, 255); return NoshiDark ? NoshiSurface(0.14, 0.125, 0.2, 0.94) : NoshiSurface(1, 1, 1, 0.96); }
-UIColor *NoshiColorBubbleCapsule(void) { return NoshiSurface(0.12, 0.1, 0.18, 0.5); }
+/* the colors of Telegram for iOS of the ios 6 and 7 years: the grouped grey of the system, white cells, the blue accent, and the green and white bubbles */
+UIColor *NoshiColorBackdrop(void) { return NoshiColorScreen(); }
+UIColor *NoshiColorScreen(void) { return NoshiDark ? NoshiSurfaceRGB(18, 18, 20) : NoshiSurfaceRGB(239, 239, 244); }
+UIColor *NoshiColorField(void) { return NoshiDark ? NoshiSurfaceRGB(44, 44, 48) : NoshiSurfaceRGB(229, 229, 234); }
+UIColor *NoshiColorCard(void) { return NoshiDark ? NoshiSurfaceRGB(30, 30, 33) : NoshiSurfaceRGB(255, 255, 255); }
+UIColor *NoshiColorBar(void) { return NoshiDark ? NoshiSurfaceRGB(26, 26, 29) : NoshiSurfaceRGB(247, 247, 247); }
+UIColor *NoshiColorHairline(void) { return NoshiDark ? [UIColor colorWithWhite:1 alpha:0.12] : NoshiRGB(200, 199, 204); }
+UIColor *NoshiColorAccent(void) { return NoshiDark ? NoshiAccentRGB(62, 152, 240) : NoshiAccentRGB(0, 126, 229); }
+UIColor *NoshiColorAccentDark(void) { return NoshiAccentRGB(0, 94, 176); }
+UIColor *NoshiColorTitle(void) { return NoshiDark ? NoshiRGB(242, 242, 247) : [UIColor blackColor]; }
+UIColor *NoshiColorMessage(void) { return NoshiDark ? NoshiRGB(152, 152, 158) : NoshiRGB(142, 142, 147); }
+UIColor *NoshiColorDotOff(void) { return NoshiDark ? NoshiRGB(72, 72, 76) : NoshiRGB(199, 199, 204); }
+UIColor *NoshiColorSecondary(void) { return NoshiDark ? NoshiRGB(152, 152, 158) : NoshiRGB(142, 142, 147); }
+UIColor *NoshiColorMuted(void) { return NoshiDark ? NoshiRGB(100, 100, 106) : NoshiRGB(178, 178, 178); }
+UIColor *NoshiColorBadgeRed(void) { return [UIColor colorWithRed:255 / 255.0 green:59 / 255.0 blue:48 / 255.0 alpha:1]; }
+UIColor *NoshiColorQrPaper(void) { return NoshiRGB(234, 244, 253); }
+UIColor *NoshiColorBubbleOut(void) { return NoshiDark ? NoshiSurfaceRGB(43, 82, 120) : NoshiSurfaceRGB(225, 255, 199); }
+UIColor *NoshiColorBubbleIn(void) { return NoshiDark ? NoshiSurfaceRGB(44, 44, 48) : NoshiSurfaceRGB(255, 255, 255); }
+UIColor *NoshiColorBubbleCapsule(void) { return NoshiDark ? [UIColor colorWithWhite:0 alpha:0.45] : [UIColor colorWithRed:0.32 green:0.42 blue:0.52 alpha:0.42]; }
 
-void NoshiThemePreviewColors(BOOL classic, BOOL dark, UIColor **incoming, UIColor **outgoing, UIColor **incomingText, UIColor **outgoingText) {
-    BOOL wasClassic = NoshiClassic, wasDark = NoshiDark;
-    NoshiClassic = classic;
+void NoshiThemePreviewColors(BOOL dark, UIColor **incoming, UIColor **outgoing, UIColor **incomingText, UIColor **outgoingText) {
+    BOOL wasDark = NoshiDark;
     NoshiDark = dark;
     if (incoming) *incoming = NoshiColorBubbleIn();
     if (outgoing) *outgoing = NoshiColorBubbleOut();
     if (incomingText) *incomingText = NoshiColorBubbleText(NO);
     if (outgoingText) *outgoingText = NoshiColorBubbleText(YES);
-    NoshiClassic = wasClassic;
     NoshiDark = wasDark;
 }
 
 UIColor *NoshiColorChatBackground(void) {
-    UIColor *imported = !NoshiClassic ? NoshiImportedThemeColor("chat.defaultWallpaper") : nil;
-    if (imported) return imported;
-    return NoshiDark ? NoshiRGB(25, 29, 36) : NoshiRGB(218, 225, 233);
+    return NoshiDark ? NoshiRGB(16, 20, 26) : NoshiRGB(210, 222, 233);
 }
 
 UIColor *NoshiColorBubbleText(BOOL outgoing) {
-    if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.primaryText" : "chat.message.incoming.primaryText"); if (color) return color; }
-    return outgoing && !NoshiClassic ? [UIColor whiteColor] : NoshiColorTitle();
+    (void)outgoing;
+    return NoshiColorTitle();
 }
 
 UIColor *NoshiColorBubbleLink(BOOL outgoing) {
-    if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.linkText" : "chat.message.incoming.linkText"); if (color) return color; }
-    return outgoing && !NoshiClassic ? [UIColor colorWithWhite:1 alpha:0.92] : NoshiColorAccent();
+    if (NoshiDark) return outgoing ? NoshiRGB(160, 206, 255) : NoshiColorAccent();
+    return NoshiRGB(0, 75, 173);
 }
 
-/* the links in the words of a message: the classic outgoing bubble is lit in the accent, so a link in the accent itself vanished into it. half way to white keeps the hue of the
-   theme and reads on the bubble, where the quote bars and names above keep the plain accent */
 UIColor *NoshiColorBubbleLinkText(BOOL outgoing) {
-    if (outgoing && NoshiClassic) return NoshiMixedColor(NoshiColorAccent(), [UIColor whiteColor], 0.5);
     return NoshiColorBubbleLink(outgoing);
 }
 
+/* the time and the checks: green on the outgoing bubble, grey on the other, as Telegram had them */
 UIColor *NoshiColorBubbleMeta(BOOL outgoing) {
-    if (!NoshiClassic) { UIColor *color = NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.secondaryText" : "chat.message.incoming.secondaryText"); if (color) return color; }
-    return outgoing && !NoshiClassic ? [UIColor colorWithWhite:1 alpha:0.78] : NoshiColorSecondary();
+    if (NoshiDark) return outgoing ? NoshiRGB(140, 180, 220) : NoshiColorSecondary();
+    return outgoing ? NoshiRGB(89, 168, 55) : NoshiRGB(167, 167, 167);
 }
 
-/* the bubbles are lit from above in the accent of the theme: top is the lit edge, bottom the color the picture is filled with and the light that bounces up from the lower
-   edge, outline the dark rim. the colors follow the accent, so a color of the person's own reaches the bubbles */
+/* the bubbles of Telegram: ios 7 and later draw them flat in one color with a faint rim, ios 6 lights them from above with a gloss and a darker rim, as the
+   bubbles of that system were. top is the lit edge, bottom the fill, outline the rim */
 void NoshiClassicBubbleColors(BOOL outgoing, UIColor **top, UIColor **bottom, UIColor **outline) {
-    UIColor *accent = NoshiColorAccent();
+    UIColor *fill = outgoing ? NoshiColorBubbleOut() : NoshiColorBubbleIn();
     UIColor *white = [UIColor whiteColor], *black = [UIColor blackColor];
+    if (NoshiThemeFlatSystem()) {
+        *top = fill;
+        *bottom = fill;
+        *outline = NoshiDark ? NoshiMixedColor(fill, black, 0.3) : (outgoing ? NoshiRGB(178, 222, 153) : NoshiRGB(206, 214, 222));
+        return;
+    }
     if (NoshiDark) {
-        if (outgoing) {
-            *top = NoshiMixedColor(accent, black, 0.12);
-            *bottom = NoshiMixedColor(accent, black, 0.34);
-            *outline = NoshiMixedColor(accent, black, 0.68);
-        } else {
-            UIColor *grey = [UIColor colorWithWhite:0.3 alpha:1];
-            *top = NoshiMixedColor(grey, accent, 0.16);
-            *bottom = NoshiMixedColor([UIColor colorWithWhite:0.2 alpha:1], accent, 0.14);
-            *outline = NoshiMixedColor([UIColor colorWithWhite:0.06 alpha:1], accent, 0.12);
-        }
+        *top = NoshiMixedColor(fill, white, 0.12);
+        *bottom = fill;
+        *outline = NoshiMixedColor(fill, black, 0.5);
     } else if (outgoing) {
-        *top = NoshiMixedColor(accent, white, 0.56);
-        *bottom = NoshiMixedColor(accent, white, 0.36);
-        *outline = NoshiMixedColor(accent, black, 0.45);
+        *top = NoshiMixedColor(fill, white, 0.55);
+        *bottom = NoshiMixedColor(fill, NoshiRGB(160, 224, 120), 0.35);
+        *outline = NoshiRGB(124, 178, 96);
     } else {
         *top = white;
-        *bottom = NoshiMixedColor([UIColor colorWithWhite:0.9 alpha:1], accent, 0.07);
-        *outline = NoshiMixedColor([UIColor colorWithWhite:0.52 alpha:1], accent, 0.28);
+        *bottom = NoshiRGB(238, 241, 245);
+        *outline = NoshiRGB(160, 170, 182);
     }
 }
 
@@ -409,7 +335,8 @@ CGFloat NoshiInterfaceScale(void) {
 }
 
 static UIFont *NoshiFont(NoshiWeight weight, CGFloat size) {
-    static NSString *const names[] = {@"Inter-Regular", @"Inter-Medium", @"Inter-SemiBold", @"Inter-Bold"};
+    /* Helvetica Neue, the face of Telegram on ios 6 and 7; every system from ios 5 has these four */
+    static NSString *const names[] = {@"HelveticaNeue", @"HelveticaNeue-Medium", @"HelveticaNeue-Medium", @"HelveticaNeue-Bold"};
     size *= NoshiInterfaceScale();
     NSCache *cache = NoshiFontCache();
     NSNumber *key = [NSNumber numberWithUnsignedLongLong:(unsigned long long)(size * 100 + 0.5) * 4 + (unsigned long long)weight];

@@ -1,6 +1,5 @@
 #import "noshi_classic_chrome.h"
 #import "noshi_profile_qr_controller.h"
-#import "noshi_developers.h"
 #import "noshi_folders_controller.h"
 #import "noshi_settings_controller.h"
 #import "noshi_text_filter.h"
@@ -23,7 +22,6 @@
 #import "noshi_passcode_store.h"
 #import "noshi_privacy_controller.h"
 #import "noshi_classic_devices_controller.h"
-#import "noshi_devices_controller.h"
 #import "noshi_dialog.h"
 #import "noshi_emoji_label.h"
 #import "noshi_language.h"
@@ -149,45 +147,27 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)viewDidLoad {
     [super viewDidLoad];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(chatSettingsChanged) name:NoshiChatSettingsDidChangeNotification object:nil];
-    BOOL classic = NoshiThemeIsClassic();
-    _header = [[NoshiSettingsHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, classic ? CLASSIC_HEADER_HEIGHT : HEADER_HEIGHT)
-                                                   identityTop:classic ? NOSHI_IDENTITY_TOP : NOSHI_IDENTITY_BAR + NOSHI_IDENTITY_TOP];
+    _header = [[NoshiSettingsHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, CLASSIC_HEADER_HEIGHT)
+                                                   identityTop:NOSHI_IDENTITY_TOP];
     _header.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     /* the grouped table of the light classic style keeps the system's own background, which the modern ring color is not */
-    if (classic && !NoshiThemeIsDark()) [_header.identity setBadgeRingColor:[UIColor clearColor]];
+    if (!NoshiThemeIsDark()) [_header.identity setBadgeRingColor:[UIColor clearColor]];
     [_header.identity.avatarHit addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
     [_header.identity.badge addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
     self.headerView = _header;
-    if (classic) {
-        /* the same one-row menu as the dots of the modern bar, on the system bar, and the magnifier of its search
+    /* the same one-row menu as the dots of the modern bar, on the system bar, and the magnifier of its search
            in the corner at the left; the bars of this style are dark, so the pictures are drawn white */
-        UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
-                                                                  style:UIBarButtonItemStyleBordered target:self action:@selector(showMenu)] autorelease];
-        dots.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
-        /* the username of the account stands in the middle of the bar; the code of the profile is one tap away in the modern look and in the profile */
-        self.navigationItem.titleView = NoshiClassicTitleView(@"", nil);
-        UIBarButtonItem *search = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolMagnifier, 22, [UIColor whiteColor])
-                                                                    style:UIBarButtonItemStyleBordered target:self action:@selector(focusSearch)] autorelease];
-        search.accessibilityLabel = NSLocalizedString(@"settings.search", nil);
-        /* the magnifier takes the corner on the left, and the dots stay alone on the right */
-        self.navigationItem.leftBarButtonItem = search;
-        self.navigationItem.rightBarButtonItem = dots;
-    } else {
-        _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        _more.frame = CGRectMake(0, 0, 44, 44);
-        [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, NoshiColorTitle()) forState:UIControlStateNormal];
-        _more.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
-        [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
-        self.barViews = [NSArray arrayWithObject:_more];
-        /* the word "Settings" gives its place to the code of the profile, one tap from here */
-        self.pageTitle = @"";
-        _qr = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        _qr.frame = CGRectMake(0, 0, 44, 44);
-        [_qr setImage:NoshiSymbolImage(NoshiSymbolQr, 26, NoshiColorTitle()) forState:UIControlStateNormal];
-        _qr.accessibilityLabel = NSLocalizedString(@"profile.qr", nil);
-        [_qr addTarget:self action:@selector(openQr) forControlEvents:UIControlEventTouchUpInside];
-        self.leadingView = _qr;
-    }
+    UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
+                                                              style:UIBarButtonItemStyleBordered target:self action:@selector(showMenu)] autorelease];
+    dots.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
+    /* the username of the account stands in the middle of the bar; the code of the profile is one tap away in the modern look and in the profile */
+    self.navigationItem.titleView = NoshiClassicTitleView(@"", nil);
+    UIBarButtonItem *search = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolMagnifier, 22, [UIColor whiteColor])
+                                                                style:UIBarButtonItemStyleBordered target:self action:@selector(focusSearch)] autorelease];
+    search.accessibilityLabel = NSLocalizedString(@"settings.search", nil);
+    /* the magnifier takes the corner on the left, and the dots stay alone on the right */
+    self.navigationItem.leftBarButtonItem = search;
+    self.navigationItem.rightBarButtonItem = dots;
     [self rebuildRows];
     [self loadPerson];
 }
@@ -235,16 +215,14 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)showPerson {
     NoshiProfileIdentityView *identity = _header.identity;
     identity.userId = _person.userId;
-    [identity setName:_person.name developer:NoshiPersonIsDeveloper(_person)];
+    [identity setName:_person.name];
     identity.line.text = _person.username.length ? [@"@" stringByAppendingString:_person.username] : NoshiOwnPhoneText(_person.phone);
-    if (NoshiThemeIsClassic()) {
-        NSString *handle = _person.username.length ? [@"@" stringByAppendingString:_person.username] : _person.name;
-        /* every return to this page asks the profile again, and a title view swapped while the page slides back jumps on the bar */
-        if (![handle isEqualToString:_barHandle]) {
-            [_barHandle release];
-            _barHandle = [handle copy];
-            self.navigationItem.titleView = NoshiClassicTitleView(handle, nil);
-        }
+    NSString *handle = _person.username.length ? [@"@" stringByAppendingString:_person.username] : _person.name;
+    /* every return to this page asks the profile again, and a title view swapped while the page slides back jumps on the bar */
+    if (![handle isEqualToString:_barHandle]) {
+        [_barHandle release];
+        _barHandle = [handle copy];
+        self.navigationItem.titleView = NoshiClassicTitleView(handle, nil);
     }
     identity.avatar.initials = _person.initials;
     identity.avatar.seed = (NSUInteger)(_person.userId % 1000003);
@@ -254,7 +232,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     if (extra != _headerExtra) {
         _headerExtra = extra;
         CGRect frame = _header.frame;
-        frame.size.height = (NoshiThemeIsClassic() ? CLASSIC_HEADER_HEIGHT : HEADER_HEIGHT) + extra;
+        frame.size.height = (CLASSIC_HEADER_HEIGHT) + extra;
         _header.frame = frame;
         self.headerView = _header;
         [_header setNeedsLayout];
@@ -321,8 +299,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
 /* the sessions list has rows with a picture and three lines, which only the classic screen of its own draws in a grouped table */
 - (void)openDevices {
-    [self push:NoshiThemeIsClassic() ? (UIViewController *)[[[NoshiClassicDevicesController alloc] initWithSession:_session media:_media] autorelease]
-                                       : (UIViewController *)[[[NoshiDevicesController alloc] initWithSession:_session media:_media] autorelease]];
+    [self push:(UIViewController *)[[[NoshiClassicDevicesController alloc] initWithSession:_session media:_media] autorelease]];
 }
 
 /* the accounts of this phone other than the one in use, as a section above the settings of Noshigram; a phone with one account has none. an account that is not
@@ -354,7 +331,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)rebuildRows {
     NoshiWeakReference *weak = _weak;
     /* the classic cell draws a tile at 29 points, the modern row at 36 */
-    UIImage *logo = NoshiSettingsMarkTile(NoshiThemeIsClassic() ? 29 : 36);
+    UIImage *logo = NoshiSettingsMarkTile(29);
     NoshiSettingsRow *look = [NoshiSettingsRow rowWithTileImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
                                                            subtitle:NSLocalizedString(@"settings.noshigram.info", nil)
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
@@ -436,13 +413,6 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
 /* the title stands in the bar all the time */
 - (void)updateBarFill {
-    if (NoshiThemeIsClassic()) return;
-    CGFloat offset = self.table.contentOffset.y;
-    BOOL filled = HEADER_HEIGHT + _headerExtra - offset < 56 + [self statusInset];
-    if (filled == _barFilled) return;
-    _barFilled = filled;
-    [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : TITLE_FADE_SECONDS delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{ self.barFill = filled ? 1 : 0; } completion:nil];
 }
 
 - (CGFloat)statusInset {
@@ -459,21 +429,11 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 /* the dots in the bar open a card with one row do */
 - (void)showMenu {
     NoshiWeakReference *weak = _weak;
-    if (NoshiThemeIsClassic()) {
-        /* from the dots that were tapped: the sheet of an ipad is a popover, and without a place to point at it came up in the middle of the screen over the chat */
-        NoshiChooseFromView(_more, nil, [NSArray arrayWithObject:NSLocalizedString(@"settings.signout", nil)], 0, ^(NSInteger index) {
-            if (index < 0) return;
-            [(NoshiSettingsController *)weak.target confirmSignOut];
-        });
-        return;
-    }
-    NoshiSymbol symbols[] = {NoshiSymbolLogout};
-    NoshiPopupMenu *menu = [[[NoshiPopupMenu alloc] initWithTitles:[NSArray arrayWithObject:NSLocalizedString(@"settings.signout", nil)] symbols:symbols
-                                                               handler:^(NSUInteger index) {
-        (void)index;
+    /* from the dots that were tapped: the sheet of an ipad is a popover, and without a place to point at it came up in the middle of the screen over the chat */
+    NoshiChooseFromView(_more, nil, [NSArray arrayWithObject:NSLocalizedString(@"settings.signout", nil)], 0, ^(NSInteger index) {
+        if (index < 0) return;
         [(NoshiSettingsController *)weak.target confirmSignOut];
-    }] autorelease];
-    [menu showInView:self.view anchor:CGPointMake(CGRectGetMaxX(_more.frame) - 6, CGRectGetMaxY(_more.frame) - 8)];
+    });
 }
 
 - (void)confirmSignOut {

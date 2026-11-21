@@ -3,7 +3,7 @@
 #import <objc/message.h>
 
 #import "noshi_background_keeper.h"
-#import "noshi_chats_controller.h"
+#import "noshi_chat_list.h"
 #import "noshi_app_sounds.h"
 #import "noshi_inapp_banner.h"
 #import "noshi_lite_mode.h"

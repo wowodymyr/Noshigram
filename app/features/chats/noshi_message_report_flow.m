@@ -72,13 +72,6 @@ enum { NoshiAlertStylePlainTextInput = 2 };
     case NoshiMessageReportChoose:
         break;
     }
-    if (!NoshiThemeIsClassic() && _host.view) {
-        [NoshiSheet presentInView:_host.view title:step.title message:nil options:step.options destructive:nil
-                        cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:^(NSUInteger index) {
-            [self choose:(NSInteger)index];
-        }];
-        return;
-    }
     UIActionSheet *sheet = [[UIActionSheet alloc] initWithTitle:step.title delegate:self cancelButtonTitle:nil destructiveButtonTitle:nil otherButtonTitles:nil];
     for (NSString *option in step.options) [sheet addButtonWithTitle:option];
     sheet.cancelButtonIndex = [sheet addButtonWithTitle:NSLocalizedString(@"picker.cancel", nil)];

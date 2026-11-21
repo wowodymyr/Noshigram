@@ -99,9 +99,8 @@
     return button;
 }
 - (NoshiEditorButton *)barButton:(NSString *)key symbol:(NoshiSymbol)symbol style:(NoshiEditorButtonStyle)style action:(SEL)action {
-    BOOL classic = NoshiThemeIsClassic();
     /* the old system keeps words on its bars, except for the check that finishes the work; the modern look keeps icons */
-    BOOL word = classic && style != NoshiEditorButtonAccent;
+    BOOL word = style != NoshiEditorButtonAccent;
     NoshiEditorButton *button = word ? [[NoshiEditorButton alloc] initWithStyle:style title:NSLocalizedString(key, nil)]
                                        : [[NoshiEditorButton alloc] initWithStyle:style symbol:symbol title:nil];
     button.accessibilityLabel = NSLocalizedString(key, nil);
@@ -110,7 +109,6 @@
     return button;
 }
 - (void)loadView {
-    BOOL classic = NoshiThemeIsClassic();
     self.view = [[[UIView alloc] initWithFrame:[UIScreen mainScreen].bounds] autorelease];
     self.view.backgroundColor = [UIColor blackColor];
     _preview = [[NoshiVideoPreview alloc] init];
@@ -137,7 +135,7 @@
     [self.view addSubview:_playBadge];
 
     _top = [[NoshiEditorPanel alloc] init]; [self.view addSubview:_top];
-    _cancel = [self barButton:@"attach.cancel" symbol:NoshiSymbolCross style:classic ? NoshiEditorButtonPill : NoshiEditorButtonRound action:@selector(cancel)];
+    _cancel = [self barButton:@"attach.cancel" symbol:NoshiSymbolCross style:NoshiEditorButtonPill action:@selector(cancel)];
     _done = [self barButton:@"media.done" symbol:NoshiSymbolCheck style:NoshiEditorButtonAccent action:@selector(done)]; _done.enabled = NO;
     _length = [[UILabel alloc] init]; _length.backgroundColor = [UIColor clearColor]; _length.textColor = [UIColor colorWithWhite:1 alpha:0.92];
     _length.font = NoshiFontSemibold(15); _length.textAlignment = (NSTextAlignment)NoshiTextAlignmentCenter;
@@ -180,7 +178,7 @@
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)orientation { (void)orientation; return YES; }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    BOOL classic = NoshiThemeIsClassic(), floating = !classic;
+    BOOL classic = YES, floating = !classic;
     CGSize size = self.view.bounds.size;
     UIEdgeInsets safe = NoshiSafeInsets(self.view);
     CGFloat k = NoshiEditorScale();

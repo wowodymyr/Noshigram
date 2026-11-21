@@ -97,7 +97,7 @@ NSString *NoshiVideoTimeText(double seconds) {
     _dimLeft.backgroundColor = _dimRight.backgroundColor = [UIColor colorWithWhite:0 alpha:0.62];
     _dimLeft.userInteractionEnabled = _dimRight.userInteractionEnabled = NO;
     [self addSubview:_dimLeft]; [self addSubview:_dimRight];
-    UIColor *tint = NoshiThemeIsClassic() ? [UIColor colorWithRed:0.35 green:0.65 blue:1 alpha:1] : NoshiMixedColor(NoshiColorAccent(), [UIColor whiteColor], 0.3);
+    UIColor *tint = [UIColor colorWithRed:0.35 green:0.65 blue:1 alpha:1];
     _range = [[UIView alloc] init]; _range.userInteractionEnabled = NO;
     _range.layer.borderWidth = 3; _range.layer.borderColor = tint.CGColor;
     [self addSubview:_range];

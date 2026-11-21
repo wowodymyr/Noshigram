@@ -1,5 +1,4 @@
 #import <QuartzCore/QuartzCore.h>
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 #import "noshi_emoji_label.h"
 #import "noshi_person_cell.h"
@@ -24,7 +23,6 @@
     UIButton *_mutualButton;
     BOOL _mutual;
     UIView *_line;
-    NSUInteger _developer;
     BOOL _premium;
     UIColor *_trailingTint;
 }
@@ -36,7 +34,6 @@ UIColor *NoshiMemberTagColor(BOOL owner) {
 
 @implementation NoshiPersonCell
 
-@synthesize developer = _developer;
 @synthesize premium = _premium;
 @synthesize mutual = _mutual;
 @synthesize trailingTint = _trailingTint;
@@ -128,10 +125,9 @@ static UILabel *NoshiPersonLabel(UIFont *font, NSInteger alignment) {
     _avatar.showsSymbol = NO;
     [_avatar setPhoto:photo cache:avatars];
     NSArray *badges = nil;
-    _name.text = NoshiNameWithBadges(name, NoshiBadgeDocument(0, _premium), _developer, &badges);
+    _name.text = NoshiNameWithBadge(name, NoshiBadgeDocument(0, _premium), &badges);
     _name.entities = badges;
     _name.dropsUndrawable = YES;
-    _developer = 0;
     _premium = NO;
     _name.textColor = nameColor ? nameColor : NoshiColorTitle();
     _subtitle.text = subtitle;

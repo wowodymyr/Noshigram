@@ -97,7 +97,7 @@
     picture.contentMode = UIViewContentModeScaleAspectFill;
     picture.clipsToBounds = YES;
     picture.userInteractionEnabled = NO;
-    NoshiApplyWallpaperStyle(picture, NoshiThemeIsClassic(), NoshiThemeIsDark());
+    NoshiApplyWallpaperStyle(picture, NoshiThemeIsDark());
     [standard insertSubview:picture atIndex:0];
     standard.accessibilityLabel = NSLocalizedString(@"chatset.wallpaper.reset", nil);
 

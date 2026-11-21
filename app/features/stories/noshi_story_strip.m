@@ -287,7 +287,7 @@ static UIColor *NoshiStoryShelfColor(CGFloat height) {
     _weak = [[NoshiWeakReference referenceTo:self] retain];
     _scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 320, 0)];
     _scroll.showsHorizontalScrollIndicator = NO;
-    _classic = NoshiThemeIsClassic();
+    _classic = YES;
     _scroll.backgroundColor = _classic ? NoshiStoryShelfColor(CLASSIC_STRIP_HEIGHT) : [UIColor clearColor];
     _scroll.clipsToBounds = YES;
     _peers = [[NSArray alloc] init];

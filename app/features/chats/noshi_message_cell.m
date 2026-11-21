@@ -8,7 +8,6 @@
 #import "noshi_animation.h"
 #import "noshi_alert.h"
 #import "noshi_avatar_view.h"
-#import "noshi_developers.h"
 #import "noshi_emoji_store.h"
 #import "noshi_sticker_library.h"
 #import "noshi_slots_view.h"
@@ -36,7 +35,6 @@
 #import "noshi_theme.h"
 #import "noshi_blur.h"
 #import "noshi_classic_bubble.h"
-#import "noshi_imported_theme.h"
 #import "noshi_burn_effect.h"
 #include "noshi_message_actions.h"
 
@@ -45,7 +43,7 @@
 static CGFloat NoshiBubbleRadius(void) {
     /* the picture of a classic bubble has the corners of that picture, not the radius the modern bubbles are set to, or a photo cut to the wrong curve shows its own corner
        against the rim of the bubble */
-    return NoshiThemeIsClassic() ? NOSHI_CLASSIC_BUBBLE_CORNER : (CGFloat)NoshiChatBubbleRadius();
+    return NOSHI_CLASSIC_BUBBLE_CORNER;
 }
 #define MEDIA_BUTTON 48.0
 #define VOICE_BUTTON 44.0
@@ -203,11 +201,6 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
     if (!message.outgoing) return;
     CGFloat markX = origin.x + ceil(textWidth) + 3;
     CGFloat markY = origin.y + 1;
-    if (message.state == NoshiMessageStateFailed && !NoshiThemeIsClassic()) {
-        UIImage *failed = NoshiFailedImage(14, NoshiColorBadgeRed());
-        [failed drawAtPoint:CGPointMake(markX - 1, markY - 1)];
-        return;
-    }
     if (message.state == NoshiMessageStateFailed) {
         CGRect badge = CGRectMake(markX - 1, markY - 1, 14, 14);
         [NoshiColorBadgeRed() setFill];
@@ -221,7 +214,7 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
     if (message.state == NoshiMessageStateSending) mark = NoshiSendingImage(11, color);
     else {
         /* a read mark is lit: the accent control of an imported theme, else the full ink of the line, while a delivered one stays dimmer beside the time */
-        UIColor *lit = NoshiThemeIsClassic() ? nil : NoshiImportedThemeColor("chat.message.outgoing.accentControl");
+        UIColor *lit = nil;
         UIColor *markColor = _item.read ? (lit ? lit : color) : [color colorWithAlphaComponent:0.6f];
         mark = NoshiCheckImage(_item.read, 11, markColor);
     }
@@ -234,7 +227,7 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
     CGRect rect = self.bounds;
     NoshiTextLayout *text = _item.pillLayout;
     /* the classic capsule is a plain grey wash, lighter than the modern one so it does not read as a stain on the linen */
-    NoshiFillCapsule(context, rect, NoshiThemeIsClassic() ? [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.42 : 0.3] : NoshiColorBubbleCapsule());
+    NoshiFillCapsule(context, rect, [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.42 : 0.3]);
     [text drawAtPoint:CGPointMake(11 - _item.pillShift, (rect.size.height - text.size.height) / 2)];
 }
 
@@ -264,7 +257,7 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
     CGRect wave = [self waveRect];
     NSData *bars = message.media.waveformBars;
     NSUInteger count = (NSUInteger)MAX(1, floor((wave.size.width + WAVE_GAP) / (WAVE_BAR + WAVE_GAP)));
-    UIColor *strong = message.outgoing && !NoshiThemeIsClassic() ? [UIColor whiteColor] : NoshiColorAccent();
+    UIColor *strong = NoshiColorAccent();
     UIColor *quiet = NoshiColorBubbleMeta(message.outgoing);
     /* a note nobody has played has a ring round its button in the strong color, which fades to a faint one once it is played, so what is new reads at a glance */
     CGRect ring = CGRectInset(CGRectMake(_item.fileFrame.origin.x, _item.fileFrame.origin.y, 44, 44), -3, -3);
@@ -298,7 +291,7 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
         [strong setFill];
         NoshiAddCorners(context, chip, 8, 8, 8, 8);
         CGContextFillPath(context);
-        [(message.outgoing && !NoshiThemeIsClassic() ? NoshiColorBubbleOut() : NoshiColorBubbleIn()) set];
+        [(NoshiColorBubbleIn()) set];
         NoshiDrawStringIn(NoshiSpeedText(player.speed), NoshiFontSemibold(11), CGRectInset(chip, 0, 1), NoshiStringClip, NoshiTextAlignmentCenter);
     }
 }
@@ -348,7 +341,7 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     if (NoshiMessageIsViewOnce(message)) {
         BOOL expired = NoshiViewOnceExpired(message);
         UIColor *ink = [UIColor whiteColor];
-        [(message.outgoing && !NoshiThemeIsClassic() ? [UIColor colorWithWhite:1 alpha:0.22] : NoshiColorAccent()) setFill];
+        [(NoshiColorAccent()) setFill];
         CGContextFillEllipseInRect(context, icon);
         CGContextSaveGState(context);
         CGContextSetStrokeColorWithColor(context, [ink colorWithAlphaComponent:expired ? 0.45 : 0.95].CGColor);
@@ -359,7 +352,7 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
         CGContextRestoreGState(context);
         [ink set];
         NoshiDrawStringIn(@"1", NoshiFontBold(17), CGRectMake(icon.origin.x, icon.origin.y + 11, 44, 22), NoshiStringClip, NoshiTextAlignmentCenter);
-        UIColor *quiet = NoshiImportedThemeColor(message.outgoing ? "chat.message.outgoing.fileDescription" : "chat.message.incoming.fileDescription") ?: NoshiColorBubbleMeta(message.outgoing);
+        UIColor *quiet = NoshiColorBubbleMeta(message.outgoing);
         CGFloat textX = icon.origin.x + 44 + 10, textWidth = frame.size.width - 44 - 10;
         [_item.fileTitleLayout drawAtPoint:CGPointMake(textX, frame.origin.y + 6)];
         [quiet set];
@@ -369,7 +362,7 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     /* the button of a voice note, a song or a document is a view of its own over this corner of the row, which animates between its glyphs */
     BOOL ownButton = message.media.kind == NOSHI_PREVIEW_VOICE || message.media.kind == NOSHI_PREVIEW_AUDIO || message.media.kind == NOSHI_PREVIEW_FILE;
     if (!ownButton) {
-        [(message.outgoing && !NoshiThemeIsClassic() ? [UIColor colorWithWhite:1 alpha:0.22] : NoshiColorAccent()) setFill];
+        [(NoshiColorAccent()) setFill];
         CGContextFillEllipseInRect(context, icon);
         NoshiSymbol glyph = NoshiSymbolDocument;
         switch (message.media.kind) {
@@ -386,7 +379,7 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
         [self drawVoiceRow:context];
         return;
     }
-    UIColor *quiet = NoshiImportedThemeColor(message.outgoing ? "chat.message.outgoing.fileDescription" : "chat.message.incoming.fileDescription") ?: NoshiColorBubbleMeta(message.outgoing);
+    UIColor *quiet = NoshiColorBubbleMeta(message.outgoing);
     CGFloat textX = icon.origin.x + 44 + 10, textWidth = frame.size.width - 44 - 10;
     [_item.fileTitleLayout drawAtPoint:CGPointMake(textX, frame.origin.y + 6)];
     [quiet set];
@@ -407,7 +400,7 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     }
     if (NoshiChatFlagGet(NoshiChatFlagReplyBackground)) {
         /* the plate of a quote in our own classic bubble carries more of the accent, so it does not fade into the bubble */
-        [NoshiMixedColor(bubbleColor, _item.replyColor, NoshiThemeIsClassic() && _item.message.outgoing ? 0.42 : 0.3) setFill];
+        [NoshiMixedColor(bubbleColor, _item.replyColor, _item.message.outgoing ? 0.42 : 0.3) setFill];
         UIRectFill(frame);
     }
     CGContextRestoreGState(context);
@@ -428,31 +421,12 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     }
     NoshiMessage *message = _item.message;
     BOOL outgoing = message.outgoing;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the picture holds the tail, so it takes the whole bounds, which are as wide as the bubble and its tail */
-        UIImage *bubble = NoshiClassicBubbleImage(outgoing, _tailWidth > 0);
-        [bubble drawInRect:self.bounds];
-        if (bubble) NoshiClassicBubbleGloss(context, self.bounds, outgoing, _tailWidth > 0);
-        /* the content is laid out from the bubble's own corner, so a bubble with its tail on the left slides over by the tail */
-        if (_tailWidth > 0 && !outgoing) CGContextTranslateCTM(context, _tailWidth, 0);
-    } else {
-        CGRect rect = self.bounds;
-        CGFloat inner = NoshiBubbleRadius();
-        CGFloat join = MIN(JOIN_RADIUS, inner);
-        CGFloat joinTop = _item.joinsPrevious ? join : inner, joinBottom = _item.joinsNext ? join : inner;
-        /* the corner on the side the bubble leans towards is the one that tucks in against its neighbour */
-        NoshiAddCorners(context, rect, outgoing ? inner : joinTop, outgoing ? joinTop : inner, outgoing ? joinBottom : inner, outgoing ? inner : joinBottom);
-        [(outgoing ? NoshiColorBubbleOut() : NoshiColorBubbleIn()) setFill];
-        CGContextFillPath(context);
-        /* a near white bubble melts into the light wallpaper, so the ones that came in get a thin outline, drawn half a point in so the view does not clip it */
-        if (!outgoing && !NoshiThemeIsDark()) {
-            NoshiAddCorners(context, CGRectInset(rect, 0.5, 0.5), joinTop, inner, inner, joinBottom);
-            [[NoshiColorAccent() colorWithAlphaComponent:0.3f] setStroke];
-            CGContextSetLineWidth(context, 1);
-            CGContextStrokePath(context);
-        }
-    }
+    /* the picture holds the tail, so it takes the whole bounds, which are as wide as the bubble and its tail */
+    UIImage *bubble = NoshiClassicBubbleImage(outgoing, _tailWidth > 0);
+    [bubble drawInRect:self.bounds];
+    if (bubble) NoshiClassicBubbleGloss(context, self.bounds, outgoing, _tailWidth > 0);
+    /* the content is laid out from the bubble's own corner, so a bubble with its tail on the left slides over by the tail */
+    if (_tailWidth > 0 && !outgoing) CGContextTranslateCTM(context, _tailWidth, 0);
     if (_item.senderName.length) {
         [_item.senderLayout drawAtPoint:_item.senderOrigin];
         [_item.senderTagLayout drawAtPoint:_item.senderTagOrigin];
@@ -471,13 +445,6 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     }
     if (_item.textLayout) {
         CGContextSaveGState(context);
-        if (!classic) {
-            /* the plate of a quote runs to the edge of the bubble, and its square corner stuck out past the round corner of the bubble */
-            CGFloat inner = NoshiBubbleRadius(), join = MIN(JOIN_RADIUS, inner);
-            CGFloat joinTop = _item.joinsPrevious ? join : inner, joinBottom = _item.joinsNext ? join : inner;
-            NoshiAddCorners(context, self.bounds, outgoing ? inner : joinTop, outgoing ? joinTop : inner, outgoing ? joinBottom : inner, outgoing ? inner : joinBottom);
-            CGContextClip(context);
-        }
         [_item.textLayout drawAtPoint:_item.textOrigin];
         CGContextRestoreGState(context);
     }
@@ -1632,16 +1599,6 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
 }
 
 - (void)senderTapped:(UIControl *)control event:(UIEvent *)event {
-    /* the marks are the last of the name, and a tap on one says why it is there instead of opening the profile */
-    if (_item.senderDeveloper && control == _senderButton) {
-        CGPoint point = [[[event touchesForView:control] anyObject] locationInView:control];
-        point.y -= 3;
-        NSUInteger mark = NoshiMarkForDocument([_item.senderLayout customEmojiAtPoint:point]);
-        if (mark) {
-            NoshiShowMarkNoticeForUser(_item.senderName, mark, _item.message.fromId);
-            return;
-        }
-    }
     [_delegate messageCellDidTapSender:self];
 }
 
@@ -1818,7 +1775,7 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
     [_replyPreview setNeedsDisplay];
     /* a classic bubble ends its run with a tail, which takes a few points beside it. a picture without words is a frame around the picture, and a tail on it points at nothing */
     BOOL pictureAlone = item.content == NoshiChatItemContentPicture && !item.textLayout;
-    CGFloat tail = NoshiThemeIsClassic() && item.kind == NoshiChatItemBubble && !item.bare && !pictureAlone && !item.joinsNext && !NoshiChatFlagGet(NoshiChatFlagRemoveTail) ? NOSHI_CLASSIC_BUBBLE_TAIL : 0;
+    CGFloat tail = item.kind == NoshiChatItemBubble && !item.bare && !pictureAlone && !item.joinsNext && !NoshiChatFlagGet(NoshiChatFlagRemoveTail) ? NOSHI_CLASSIC_BUBBLE_TAIL : 0;
     _body.tailWidth = tail;
     CGRect bodyFrame = bubble;
     if (item.kind != NoshiChatItemBubble && !CGRectIsEmpty(item.commentsFrame)) {
@@ -2328,7 +2285,7 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
     if (item.call || item.content != NoshiChatItemContentFile || NoshiMessageIsViewOnce(item.message) || (kind != NOSHI_PREVIEW_VOICE && kind != NOSHI_PREVIEW_AUDIO && kind != NOSHI_PREVIEW_FILE)) return;
     CGRect icon = item.fileFrame;
     _voiceAction.frame = CGRectMake(bubble.origin.x + icon.origin.x, bubble.origin.y + icon.origin.y, VOICE_BUTTON, VOICE_BUTTON);
-    _voiceAction.discColor = item.message.outgoing && !NoshiThemeIsClassic() ? [UIColor colorWithWhite:1 alpha:0.22] : NoshiColorAccent();
+    _voiceAction.discColor = NoshiColorAccent();
     _voiceAction.hidden = NO;
     /* a voice note comes by itself, a song waits to be played, and a document waits to be asked for: the arrow, then the page once it is here */
     [self prepareMediaButtonLoading:kind == NOSHI_PREVIEW_VOICE];

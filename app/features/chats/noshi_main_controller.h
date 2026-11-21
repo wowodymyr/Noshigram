@@ -1,9 +1,6 @@
 #import <UIKit/UIKit.h>
 
-#import "noshi_chats_controller.h"
 #import "noshi_session.h"
-#import "noshi_profile_controller.h"
-#import "noshi_tab_bar.h"
 
 @class NoshiMainController;
 @class NoshiDetailHost;
@@ -12,9 +9,8 @@
 - (void)mainController:(NoshiMainController *)controller requestsSignOut:(void (^)(NSString *errorName))completion;
 @end
 
-/* the signed in app: one screen at a time over a tab bar */
-@interface NoshiMainController : UIViewController <NoshiTabBarDelegate, NoshiChatsControllerDelegate,
-                                                     NoshiProfileControllerDelegate> {
+/* the signed in app: the screens of the system tab bar */
+@interface NoshiMainController : UIViewController <UITabBarControllerDelegate, UINavigationControllerDelegate> {
     id<NoshiMainControllerDelegate> _delegate;
     NoshiDetailHost *_detailHost;
 }

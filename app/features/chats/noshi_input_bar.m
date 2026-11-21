@@ -14,7 +14,6 @@
 #import "noshi_symbol.h"
 #import "noshi_shape.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 
 #define MARGIN 8.0
 #define FIELD_MIN 36.0
@@ -28,7 +27,7 @@
    changes its height with the os, our own bar of the modern theme is 49 points */
 static CGFloat NoshiInputIdleHeight(void) {
     if (!NoshiIsPad()) return 48;
-    return NoshiThemeIsClassic() ? NoshiClassicTabBarHeight() : [NoshiTabBar barHeight];
+    return NoshiClassicTabBarHeight();
 }
 
 static CGFloat NoshiInputVerticalMargin(void) {
@@ -137,47 +136,42 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
-    self.backgroundColor = classic ? [UIColor clearColor] : (NoshiImportedThemeColor("chat.inputPanel.panelBg") ?: NoshiColorBar());
-    if (classic) {
-        /* the bar's surface is the system's own toolbar, whatever the system draws a toolbar as */
-        if (NoshiIsPad()) {
-            /* beside the tab bar of the list the bar of the chat has to be one with it, and a toolbar draws its own gradient, lit edge and height: the tab bar is drawn by the same
+    self.backgroundColor = [UIColor clearColor];
+    /* the bar's surface is the system's own toolbar, whatever the system draws a toolbar as */
+    if (NoshiIsPad()) {
+        /* beside the tab bar of the list the bar of the chat has to be one with it, and a toolbar draws its own gradient, lit edge and height: the tab bar is drawn by the same
                system and styled the same way, with no items in it */
-            UITabBar *tabs = [[UITabBar alloc] init];
-            NoshiClassicStyleTabBar(tabs);
-            tabs.userInteractionEnabled = NO;
-            _toolbar = tabs;
-        } else {
-            UIToolbar *toolbar = [[UIToolbar alloc] init];
-            NoshiClassicStyleToolbar(toolbar);
-            _toolbar = toolbar;
-        }
-        _toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        [self addSubview:_toolbar];
+        UITabBar *tabs = [[UITabBar alloc] init];
+        NoshiClassicStyleTabBar(tabs);
+        tabs.userInteractionEnabled = NO;
+        _toolbar = tabs;
+    } else {
+        UIToolbar *toolbar = [[UIToolbar alloc] init];
+        NoshiClassicStyleToolbar(toolbar);
+        _toolbar = toolbar;
     }
+    _toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self addSubview:_toolbar];
     _writable = YES;
     _fieldHeight = FIELD_MIN;
     _hairline = [[UIView alloc] init];
-    _hairline.backgroundColor = classic ? NoshiColorHairline() : (NoshiImportedThemeColor("chat.inputPanel.panelSeparator") ?: NoshiColorHairline());
-    _hairline.hidden = classic;
+    _hairline.backgroundColor = NoshiColorHairline();
+    _hairline.hidden = YES;
     [self addSubview:_hairline];
 
     _field = [[UIView alloc] init];
-    _field.backgroundColor = classic ? NoshiClassicInputFill() : (NoshiImportedThemeColor("chat.inputPanel.inputBg") ?: NoshiColorField());
+    _field.backgroundColor = NoshiClassicInputFill();
     _field.layer.cornerRadius = FIELD_MIN / 2;
-    if (classic) {
-        /* the thin edge of the text box of the old messaging bars: the fill a little darker, not the accent */
-        _field.layer.borderWidth = 1;
-        _field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
-    }
+    /* the thin edge of the text box of the old messaging bars: the fill a little darker, not the accent */
+    _field.layer.borderWidth = 1;
+    _field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
     [self addSubview:_field];
 
     _text = [[NoshiEmojiTextView alloc] initWithFrame:CGRectZero];
     _text.emojiBackgroundColor = _field.backgroundColor;
     _text.backgroundColor = [UIColor clearColor];
     _text.font = NoshiFontRegular(16);
-    _text.textColor = classic ? NoshiColorTitle() : (NoshiImportedThemeColor("chat.inputPanel.inputText_v2") ?: NoshiColorTitle());
+    _text.textColor = NoshiColorTitle();
     _text.delegate = self;
     _text.scrollsToTop = NO;
     _text.scrollEnabled = NO;
@@ -201,7 +195,7 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _placeholder = [[UILabel alloc] init];
     _placeholder.backgroundColor = [UIColor clearColor];
     _placeholder.font = NoshiFontRegular(16);
-    _placeholder.textColor = classic ? NoshiColorMuted() : (NoshiImportedThemeColor("chat.inputPanel.inputPlaceholder_v2") ?: NoshiColorMuted());
+    _placeholder.textColor = NoshiColorMuted();
     _placeholder.text = NSLocalizedString(@"chat.placeholder", nil);
     _placeholder.userInteractionEnabled = NO;
     [_field addSubview:_placeholder];
@@ -225,14 +219,9 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     /* the bot's menu stands outside the field, as a pill on the bar */
     _menuPill = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _menuPill.titleLabel.font = NoshiFontSemibold(15);
-    if (classic) {
-        /* a flat fill sits beside the glossy send key and breaks the skeuomorphic bar */
-        [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, NO) forState:UIControlStateNormal];
-        [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, YES) forState:UIControlStateHighlighted];
-    } else {
-        _menuPill.backgroundColor = NoshiColorAccent();
-        _menuPill.layer.cornerRadius = FIELD_MIN / 2;
-    }
+    /* a flat fill sits beside the glossy send key and breaks the skeuomorphic bar */
+    [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, NO) forState:UIControlStateNormal];
+    [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, YES) forState:UIControlStateHighlighted];
     [_menuPill setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_menuPill addTarget:self action:@selector(menuTapped) forControlEvents:UIControlEventTouchUpInside];
     _menuPill.hidden = YES;
@@ -260,10 +249,6 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _send = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _send.frame = CGRectMake(0, 0, BUTTON, BUTTON);
     /* the classic button is a bitmap of its own, see refreshControls */
-    if (!classic) {
-        _send.backgroundColor = NoshiColorAccent();
-        [self applySendShape];
-    }
     [_send addTarget:self action:@selector(sendTapped) forControlEvents:UIControlEventTouchUpInside];
     _onceChip = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _onceChip.titleLabel.font = NoshiFontBold(12);
@@ -285,13 +270,13 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _recording.layer.cornerRadius = FIELD_MIN / 2;
     _recording.hidden = YES;
     _dot = [[UIView alloc] init];
-    _dot.backgroundColor = NoshiImportedThemeColor("chat.inputPanel.mediaRecordDot") ?: [UIColor colorWithRed:0.92 green:0.22 blue:0.22 alpha:1];
+    _dot.backgroundColor = [UIColor colorWithRed:0.92 green:0.22 blue:0.22 alpha:1];
     _dot.layer.cornerRadius = 5;
     [_recording addSubview:_dot];
     _timer = [[UILabel alloc] init];
     _timer.backgroundColor = [UIColor clearColor];
     _timer.font = NoshiFontMedium(16);
-    _timer.textColor = NoshiThemeIsClassic() && !NoshiThemeIsDark() ? [UIColor blackColor] : NoshiColorTitle();
+    _timer.textColor = !NoshiThemeIsDark() ? [UIColor blackColor] : NoshiColorTitle();
     [_recording addSubview:_timer];
     _slide = [[UILabel alloc] init];
     _slide.backgroundColor = [UIColor clearColor];
@@ -490,14 +475,10 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _hold.enabled = empty && !_lockedRecording;
     BOOL plane = !empty || _lockedRecording;
     NoshiSymbol symbol = plane ? NoshiSymbolSendArrow : (_mode == NoshiRecordRound ? NoshiSymbolVideoCamera : NoshiSymbolMicrophone);
-    if (NoshiThemeIsClassic()) {
-        NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, NO)), UIControlStateNormal);
-        NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, YES)), UIControlStateHighlighted);
-        _send.clipsToBounds = NO;
-        _send.imageView.clipsToBounds = NO;
-    } else {
-        NoshiInputSetImage(_send, NoshiSymbolImage(symbol, !empty ? 18 : 20, [UIColor whiteColor]), UIControlStateNormal);
-    }
+    NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, NO)), UIControlStateNormal);
+    NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, YES)), UIControlStateHighlighted);
+    _send.clipsToBounds = NO;
+    _send.imageView.clipsToBounds = NO;
     /* the glyph pops in when the field gains its first character or loses its last, never during a recording whose gesture owns the button */
     if (plane != _sendShowsPlane) {
         _sendShowsPlane = plane;
@@ -509,7 +490,7 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _send.accessibilityLabel = !empty ? NSLocalizedString(@"chat.send", nil)
         : NSLocalizedString(_mode == NoshiRecordRound ? @"chat.record.round" : @"chat.record.voice", nil);
     /* setting the text view color again removes range styles */
-    UIColor *ink = NoshiThemeIsClassic() && !NoshiThemeIsDark() ? [UIColor blackColor] : NoshiColorTitle();
+    UIColor *ink = !NoshiThemeIsDark() ? [UIColor blackColor] : NoshiColorTitle();
     if (![_text.textColor isEqual:ink]) {
         _text.textColor = ink;
         [_format refreshAppearance];

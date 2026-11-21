@@ -2,8 +2,6 @@
 
 #import "noshi_chat_controller.h"
 #import "noshi_classic_topics_controller.h"
-#import "noshi_forum_controller.h"
-#import "noshi_topics_controller.h"
 #import "noshi_topics_screen.h"
 
 void NoshiProfileShowChat(UIViewController *profile, NoshiSession *session, NoshiDialog *dialog, NoshiAvatarCache *avatars,
@@ -15,8 +13,7 @@ void NoshiProfileShowChat(UIViewController *profile, NoshiSession *session, Nosh
     BOOL forum = dialog.forum && !dialog.topicId;
     if (at != NSNotFound && at > 0) {
         UIViewController *below = [stack objectAtIndex:at - 1];
-        if (forum && ([below isKindOfClass:[NoshiForumController class]] || [below isKindOfClass:[NoshiTopicsController class]] ||
-                      [below isKindOfClass:[NoshiClassicTopicsController class]]) && [(id)below showsForum:dialog]) {
+        if (forum && [below isKindOfClass:[NoshiClassicTopicsController class]] && [(id)below showsForum:dialog]) {
             [navigation popViewControllerAnimated:YES];
             return;
         }

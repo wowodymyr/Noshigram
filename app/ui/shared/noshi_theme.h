@@ -8,12 +8,8 @@ extern NSString *const NoshiThemeDidChangeNotification;
 /* the optional key of its userInfo: an NSValue with the point in window coordinates the change of colors spreads from, which the screens that ask for a change give
    as the spot that was touched */
 extern NSString *const NoshiThemeOriginKey;
-BOOL NoshiClassicThemeAvailable(void);
-/* developer switch that offers the classic theme on every ios, not only on 10 and older */
-extern NSString *const NoshiClassicAnywhereKey;
-BOOL NoshiThemeStoredClassic(void);
-void NoshiThemeStoreClassic(BOOL classic);
-BOOL NoshiThemeIsClassic(void);
+/* ios 7 and later: UIKit draws flat bars for the app (it is linked against a current sdk), and the look follows them; ios 5 and 6 keep their glossy bars */
+BOOL NoshiThemeFlatSystem(void);
 BOOL NoshiThemeStoredDark(void);
 void NoshiThemeStoreDark(BOOL dark);
 BOOL NoshiThemeIsDark(void);
@@ -25,7 +21,7 @@ void NoshiThemeApplyStored(void);
    keeps it in its key, or compares it, so nothing made before the change is shown after it */
 NSUInteger NoshiThemeRevision(void);
 
-/* a hue (degrees), a saturation and a brightness (0 to 1, of the accent; 1 is the accent of the palette, 0 is black) chosen by the person; while none is stored the palette is the purple of the app.
+/* a hue (degrees), a saturation and a brightness (0 to 1, of the accent; 1 is the accent of the palette, 0 is black) chosen by the person; while none is stored the palette is the blue of the app.
    Storing is silent: the caller posts NoshiThemeDidChangeNotification */
 /* a color stored before the brightness existed reads as brightness 1 */
 BOOL NoshiThemeStoredCustomTint(float *hue, float *saturation, float *brightness);
@@ -34,9 +30,6 @@ void NoshiThemeStoreCustomTint(float hue, float saturation, float brightness);
 UIColor *NoshiThemeCustomTintColor(float hue, float saturation, float brightness);
 /* a color of the palette of the app, or any other color built from fixed numbers, turned the same way; other colors than RGB come back as they are */
 UIColor *NoshiThemeTinted(UIColor *color);
-/* a color of a palette with a seed hue of its own (the Shiro screens), moved to the accent of the app: the seed hue goes to the hue of the accent, the saturation
-   follows a color of your own, a grey accent makes the palette grey. With no color of your own stored the color comes back as it is */
-UIColor *NoshiThemeFollowAccent(UIColor *color, CGFloat seedHue);
 /* hue in degrees, saturation and value from 0 to 1 */
 void NoshiRGBToHSV(CGFloat red, CGFloat green, CGFloat blue, CGFloat *hue, CGFloat *saturation, CGFloat *value);
 void NoshiHSVToRGB(CGFloat hue, CGFloat saturation, CGFloat value, CGFloat *red, CGFloat *green, CGFloat *blue);
@@ -54,30 +47,28 @@ UIColor *NoshiColorAccentDark(void);
 UIColor *NoshiColorTitle(void);
 UIColor *NoshiColorMessage(void);
 UIColor *NoshiColorDotOff(void);
-/* secondary text on the lilac screens, and the quieter shade of it for muted chats and idle tabs */
+/* secondary text, and the quieter shade of it for muted chats and idle tabs */
 UIColor *NoshiColorSecondary(void);
 UIColor *NoshiColorMuted(void);
 UIColor *NoshiColorBadgeRed(void);
 /* the pale paper behind a QR code, white turned toward the hue of the chat color; dark modules still read on it */
 UIColor *NoshiColorQrPaper(void);
-/* chat bubbles: ours in the accent family, theirs on the card color, and the capsule behind dates and times */
+/* chat bubbles: ours green, theirs white, and the capsule behind dates and times */
 UIColor *NoshiColorChatBackground(void);
 UIColor *NoshiColorBubbleText(BOOL outgoing);
 UIColor *NoshiColorBubbleLink(BOOL outgoing);
 UIColor *NoshiColorBubbleLinkText(BOOL outgoing);
 UIColor *NoshiColorBubbleMeta(BOOL outgoing);
-/* the classic bubble as the old Messages drew it: a vertical gradient from top to bottom and an outline, none of them
-   transparent so the wallpaper never shows through */
+/* the bubble: a vertical gradient from top to bottom and an outline (flat on ios 7 and later), none of them transparent so the wallpaper never shows through */
 void NoshiClassicBubbleColors(BOOL outgoing, UIColor **top, UIColor **bottom, UIColor **outline);
-/* the colors a theme gives a chat, for the preview of a theme that is not on screen; the style and the tone are
-   switched for the moment of the call and put back, so the colors come from the same code that paints the real
-   chat */
-void NoshiThemePreviewColors(BOOL classic, BOOL dark, UIColor **incoming, UIColor **outgoing, UIColor **incomingText, UIColor **outgoingText);
+/* the colors a theme gives a chat, for the preview of a theme that is not on screen; the tone is switched for the moment of the call and put back, so the
+   colors come from the same code that paints the real chat */
+void NoshiThemePreviewColors(BOOL dark, UIColor **incoming, UIColor **outgoing, UIColor **incomingText, UIColor **outgoingText);
 UIColor *NoshiColorBubbleOut(void);
 UIColor *NoshiColorBubbleIn(void);
 UIColor *NoshiColorBubbleCapsule(void);
 
-/* san Francisco on ios 9 and later; before that the bundled Inter, which sets the same way */
+/* san Francisco on ios 9 and later; before that Helvetica Neue, as Telegram had it */
 UIFont *NoshiFontRegular(CGFloat size);
 UIFont *NoshiFontMedium(CGFloat size);
 UIFont *NoshiFontSemibold(CGFloat size);

@@ -1,7 +1,6 @@
 #import "noshi_profile_feed.h"
 
 #import "noshi_gift_folders.h"
-#import "noshi_custom_gift.h"
 #import "noshi_gift_tiles.h"
 #import "noshi_story.h"
 
@@ -72,13 +71,6 @@
     if (replacing) {
         [_items removeAllObjects];
         [_tiles removeAllObjects];
-        /* the gifts of the app stand before every gift of the profile, and not in a folder of them */
-        if (_kind == NoshiFeedGifts && !_folderId) {
-            for (NoshiSavedGift *custom in NoshiCustomGiftsForDialog(_owner)) {
-                [_items addObject:custom];
-                [_tiles addObject:NoshiTileForSavedGift(custom, _owner.saved)];
-            }
-        }
     }
     for (id item in page) {
         [_items addObject:item];
@@ -113,17 +105,6 @@
     } else if (_kind == NoshiFeedArchivedStories) {
         int32_t before = replacing ? 0 : [(NoshiStory *)[_items lastObject] storyId];
         [_session loadStoryArchiveBefore:before completion:storyPageCopy];
-    } else if (replacing && !_folderId && NoshiCustomGiftNeedsSender(_owner)) {
-        /* the gift of the app names @sqmrak with his picture, so the first page waits for him, once per run */
-        [storyPageCopy release];
-        NoshiCustomGiftLoadSender(_session, ^{
-            if (generation != _generation) { [self autorelease]; [notify release]; return; }
-            _loading = NO;
-            [self loadPageReplacing:replacing changed:notify];
-            [notify release];
-            [self autorelease];
-        });
-        return;
     } else {
         [_session loadSavedGiftsOfDialog:_owner folder:_folderId offset:replacing ? nil : _nextOffset completion:^(NSArray *gifts, NSInteger total, NSString *next, NSString *errorName) {
             (void)total;

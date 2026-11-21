@@ -158,31 +158,16 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
     if (tint == _barTint || (tint && [tint isEqual:_barTint])) return;
     [_barTint release];
     _barTint = [tint retain];
-    if (NoshiThemeIsClassic()) return;
-    [self refreshBarLook];
-    [self refreshActionIcon];
-    if (self.isViewLoaded) [self.view setNeedsLayout];
 }
 
 - (void)setBarOverPhoto:(BOOL)over {
     if (over == _barOverPhoto) return;
     _barOverPhoto = over;
-    if (NoshiThemeIsClassic()) return;
-    [self refreshActionIcon];
-    [self refreshBarLook];
 }
 
 - (void)setBarShaded:(BOOL)shaded animated:(BOOL)animated {
     if (shaded == _barShaded) return;
     _barShaded = shaded;
-    if (NoshiThemeIsClassic() || !_barTint) return;
-    [self refreshActionIcon];
-    if (!animated || NoshiReduceMotionEnabled()) {
-        [self refreshBarLook];
-        return;
-    }
-    [UIView animateWithDuration:0.42 delay:0 options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{ [self refreshBarLook]; } completion:nil];
 }
 
 - (void)setScreenTitle:(NSString *)title {
@@ -197,7 +182,7 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
 /* the name in the classic bar is drawn by the app's own label: the system title shows boxes for the letters of a styled nick and has no emoji of the app. the bar centers the view
    between its buttons, so on a phone it is as wide as what is left beside them */
 - (void)showClassicTitle {
-    if (!NoshiThemeIsClassic() || !self.isViewLoaded) return;
+    if (!self.isViewLoaded) return;
     NSString *text = _classicTitleText.length ? _classicTitleText : _screenTitle;
     UIView *title = nil;
     if (text.length) {
@@ -238,15 +223,8 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
     [_actionHandler release];
     _actionHandler = copiedHandler;
     _symbolAction = NO;
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.rightBarButtonItem = title ? [[[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleBordered
-                                                                                          target:self action:@selector(actionTapped)] autorelease] : nil;
-        return;
-    }
-    _action.title = title ? title : @"";
-    _action.hidden = title == nil;
-    [self refreshActionIcon];
-    if (self.isViewLoaded) [self.view setNeedsLayout];
+    self.navigationItem.rightBarButtonItem = title ? [[[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleBordered
+                                                                                      target:self action:@selector(actionTapped)] autorelease] : nil;
 }
 
 - (void)setActionSymbol:(NoshiSymbol)symbol label:(NSString *)label handler:(void (^)(void))handler {
@@ -260,14 +238,10 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
     [_actionLabel release];
     _actionLabel = copiedLabel;
     _actionSymbol = symbol;
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.rightBarButtonItem = handler ? [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(symbol, 22, [UIColor whiteColor])
-                                                                                              style:UIBarButtonItemStyleBordered target:self
-                                                                                             action:@selector(actionTapped)] autorelease] : nil;
-        self.navigationItem.rightBarButtonItem.accessibilityLabel = label;
-        return;
-    }
-    [self refreshActionIcon];
+    self.navigationItem.rightBarButtonItem = handler ? [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(symbol, 22, [UIColor whiteColor])
+                                                                                          style:UIBarButtonItemStyleBordered target:self
+                                                                                         action:@selector(actionTapped)] autorelease] : nil;
+    self.navigationItem.rightBarButtonItem.accessibilityLabel = label;
 }
 
 /* the bar is built in loadView, so a symbol set before it waits there */
@@ -293,7 +267,7 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
 - (CGPoint)actionSymbolAnchor {
     UIEdgeInsets insets = NoshiLayoutInsets(self);
     /* the classic style has its bar above the screen, so its insets already end under it; the modern bar is drawn inside */
-    return CGPointMake(self.view.bounds.size.width - insets.right - 8, NoshiThemeIsClassic() ? insets.top + 4 : insets.top + BAR_HEIGHT);
+    return CGPointMake(self.view.bounds.size.width - insets.right - 8, insets.top + 4);
 }
 
 - (void)actionTapped {
@@ -310,41 +284,9 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
     root.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.view = root;
     [self buildBodyInView:root];
-    if (NoshiThemeIsClassic()) {
-        self.title = _screenTitle;
-        [self showClassicTitle];
-        if (_actionTitle) [self setActionTitle:_actionTitle handler:_actionHandler];
-        return;
-    }
-    _header = [[UIView alloc] init];
-    _header.backgroundColor = _clearBar ? [UIColor clearColor] : NoshiColorBar();
-    [root addSubview:_header];
-    _headerLine = [[UIView alloc] init];
-    _headerLine.backgroundColor = NoshiColorHairline();
-    _headerLine.hidden = _clearBar;
-    [_header addSubview:_headerLine];
-    _back = [[NoshiBarButton alloc] init];
-    _back.chevron = YES;
-    _back.title = @"";
-    [_back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
-    [_header addSubview:_back];
-    /* the title may be the name of a person, with emoji, which a plain label draws as boxes */
-    _titleLabel = [[NoshiEmojiLabel alloc] init];
-    _titleLabel.dropsUndrawable = YES;
-    _titleLabel.textColor = NoshiColorTitle();
-    _titleLabel.textAlignment = NoshiTextAlignmentCenter;
-    _titleLabel.font = NoshiFontSemibold(17);
-    _titleLabel.text = _screenTitle;
-    _titleLabel.hidden = _clearBar;
-    [_header addSubview:_titleLabel];
-    [self refreshBarLook];
-    _action = [[NoshiBarButton alloc] init];
-    _action.bold = YES;
-    _action.title = _actionTitle ? _actionTitle : @"";
-    _action.hidden = _actionTitle == nil;
-    [_action addTarget:self action:@selector(actionTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_header addSubview:_action];
-    [self refreshActionIcon];
+    self.title = _screenTitle;
+    [self showClassicTitle];
+    if (_actionTitle) [self setActionTitle:_actionTitle handler:_actionHandler];
 }
 
 - (void)buildBodyInView:(UIView *)root {
@@ -358,7 +300,7 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
 - (CGRect)bodyFrame {
     CGSize size = self.view.bounds.size;
     UIEdgeInsets insets = NoshiLayoutInsets(self);
-    CGFloat top = NoshiThemeIsClassic() ? insets.top : insets.top + BAR_HEIGHT;
+    CGFloat top = insets.top;
     /* the body stands in one column; a layoutBody: places what is not inside its own scroll view or grid from the body's origin, not from zero */
     CGRect column = NoshiContentColumn(size, insets, NOSHI_COLUMN_PAGE);
     return CGRectMake(column.origin.x, top, column.size.width, size.height - top);
@@ -366,29 +308,6 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    CGSize size = self.view.bounds.size;
-    UIEdgeInsets insets = NoshiLayoutInsets(self);
-    if (!NoshiThemeIsClassic()) {
-        CGFloat height = insets.top + BAR_HEIGHT;
-        _header.frame = CGRectMake(0, 0, size.width, height);
-        _headerLine.frame = CGRectMake(0, height - 1.0 / NoshiScreenScale(), size.width, 1.0 / NoshiScreenScale());
-        CGRect column = NoshiContentColumn(size, insets, NOSHI_COLUMN_PAGE);
-        CGFloat left = column.origin.x, edge = CGRectGetMaxX(column);
-        BOOL alone = NoshiIsDetailRoot(self);
-        _back.hidden = alone;
-        _back.frame = CGRectMake(left, insets.top, 52, BAR_HEIGHT);
-        CGFloat actionWidth = _action.hidden ? 0 : MIN(column.size.width * 0.42, ceil([_action.title sizeWithFont:NoshiFontSemibold(17)].width) + 28);
-        CGFloat rightSpace = MAX(_actionIcon ? 56 : 0, actionWidth) + 8;
-        CGFloat leftSpace = alone ? 8 : 56;
-        CGFloat side = MAX(leftSpace, rightSpace);
-        CGFloat centeredWidth = MAX(0, column.size.width - 2 * side);
-        CGFloat titleWidth = ceil([_screenTitle sizeWithFont:NoshiFontSemibold(17)].width);
-        CGFloat titleLeft = left + (titleWidth <= centeredWidth ? side : leftSpace);
-        CGFloat titleRight = edge - (titleWidth <= centeredWidth ? side : rightSpace);
-        _titleLabel.frame = CGRectMake(titleLeft, insets.top, MAX(0, titleRight - titleLeft), BAR_HEIGHT);
-        _action.frame = CGRectMake(edge - actionWidth, insets.top, actionWidth, BAR_HEIGHT);
-        _actionIcon.frame = CGRectMake(edge - 56, insets.top, 52, BAR_HEIGHT);
-    }
     [self layoutBody:[self bodyFrame]];
 }
 

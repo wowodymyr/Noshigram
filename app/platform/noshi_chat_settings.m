@@ -180,7 +180,7 @@ NSInteger NoshiAvatarCornerPercent(void) {
         NSNumber *stored = NoshiStoredNumber(NoshiAvatarCornerKey);
         NoshiAvatarCornerCurrent = stored && stored.integerValue >= 0 && stored.integerValue <= 100 ? stored.integerValue : -2;
     }
-    return NoshiAvatarCornerCurrent == -2 ? (NoshiThemeIsClassic() ? NOSHI_AVATAR_CORNER_DEFAULT : 84) : NoshiAvatarCornerCurrent;
+    return NoshiAvatarCornerCurrent == -2 ? (NOSHI_AVATAR_CORNER_DEFAULT) : NoshiAvatarCornerCurrent;
 }
 void NoshiAvatarCornerStore(NSInteger percent) {
     NoshiAvatarCornerCurrent = MAX(0, MIN(100, percent));
@@ -367,9 +367,6 @@ static const struct { NSString *key; BOOL fallback; } NoshiChatFlagTable[NoshiCh
     [NoshiChatFlagReplyBackground] = {@"noshigram.chat.replybackground", YES},
     [NoshiChatFlagLocalPremium] = {@"noshigram.chat.localpremium", NO},
     [NoshiChatFlagCrashReports] = {@"noshigram.chat.crashreports", YES},
-    [NoshiChatFlagBoykisser] = {@"noshigram.chat.boykisser", NO},
-    [NoshiChatFlagSnow] = {@"noshigram.chat.snow", NO},
-    [NoshiChatFlagFoxes] = {@"noshigram.chat.foxes", NO},
     [NoshiChatFlagHideWaves] = {@"noshigram.chat.hidewaves", NO},
     [NoshiChatFlagShowMessageEmojiStatus] = {@"noshigram.chat.messageemojistatus", YES},
     [NoshiChatFlagShowReplyCustomEmoji] = {@"noshigram.chat.replycustomemoji", YES},

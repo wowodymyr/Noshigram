@@ -112,7 +112,6 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL skeuomorphic = NoshiThemeIsClassic();
     self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _dim = [[UIView alloc] initWithFrame:self.bounds];
     _dim.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -122,26 +121,17 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
     [self addSubview:_dim];
     _panel = [[UIView alloc] init];
     _panel.clipsToBounds = YES;
-    _panel.layer.cornerRadius = skeuomorphic ? PANEL_RADIUS_SKEUOMORPHIC : PANEL_RADIUS;
-    if (skeuomorphic) {
-        _panel.backgroundColor = [UIColor blackColor];
-        _ground = [[CAGradientLayer layer] retain];
-        [_panel.layer insertSublayer:_ground atIndex:0];
-    } else {
-        _panel.backgroundColor = NoshiColorScreen();
-        _ground = [[CAGradientLayer layer] retain];
-        [_panel.layer insertSublayer:_ground atIndex:0];
-        _handle = [[UIView alloc] init];
-        _handle.backgroundColor = [NoshiColorSecondary() colorWithAlphaComponent:0.4];
-        _handle.layer.cornerRadius = HANDLE_HEIGHT / 2;
-    }
+    _panel.layer.cornerRadius = PANEL_RADIUS_SKEUOMORPHIC;
+    _panel.backgroundColor = [UIColor blackColor];
+    _ground = [[CAGradientLayer layer] retain];
+    [_panel.layer insertSublayer:_ground atIndex:0];
     [self addSubview:_panel];
     if (_handle) {
         [_panel addSubview:_handle];
         NoshiAddDismissPan(_panel, self, @selector(dismiss));
     }
     _lyricsView = [[NoshiLyricsView alloc] init];
-    _lyricsView.skeuomorphic = skeuomorphic;
+    _lyricsView.skeuomorphic = YES;
     _lyricsView.onSeek = ^(NSTimeInterval seconds) {
         NoshiMusicPlayer *player = [NoshiMusicPlayer sharedPlayer];
         if (player.duration > 0) [player seekToFraction:(float)MIN(1.0, seconds / player.duration)];
@@ -174,13 +164,7 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
     [_cover release];
     _cover = [cover retain];
     UIColor *top, *bottom, *tint = nil;
-    if (NoshiThemeIsClassic()) {
-        NoshiLyricsGround(cover, &top, &bottom);
-    } else {
-        tint = NoshiLyricsCoverTint(cover);
-        top = NoshiMixedColor(NoshiColorScreen(), tint, NoshiLyricsTintShare(YES));
-        bottom = NoshiMixedColor(NoshiColorScreen(), tint, NoshiLyricsTintShare(NO));
-    }
+    NoshiLyricsGround(cover, &top, &bottom);
     NSArray *colors = [NSArray arrayWithObjects:(id)top.CGColor, (id)bottom.CGColor, nil];
     /* the first cover is laid down at once, the next songs fade the ground and the card to their colors together */
     BOOL fade = _grounded && self.window != nil;
@@ -195,7 +179,6 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
     [CATransaction setDisableActions:YES];
     _ground.colors = colors;
     [CATransaction commit];
-    if (!NoshiThemeIsClassic()) [_player setTone:tint surface:top animated:fade];
     _grounded = YES;
 }
 
@@ -244,7 +227,7 @@ static CGFloat NoshiLyricsTintShare(BOOL top) {
     CGFloat strip = [NoshiMiniPlayer height];
     _player.frame = CGRectMake(0, playerTop, width, strip);
     /* the lines start below a gap under the card, or the first of them touches it */
-    CGFloat lyricsTop = playerTop + strip + (NoshiThemeIsClassic() ? 0 : LYRICS_GAP);
+    CGFloat lyricsTop = playerTop + strip + (0);
     _lyricsView.frame = CGRectMake(0, lyricsTop, width, MAX(0, visible - lyricsTop - safe.bottom));
 }
 

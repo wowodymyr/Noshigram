@@ -329,5 +329,5 @@
 @end
 
 Class NoshiAlertClass(void) {
-    return NoshiThemeIsClassic() ? NSClassFromString(@"UIAlertView") : [NoshiAlertView class];
+    return NSClassFromString(@"UIAlertView");
 }

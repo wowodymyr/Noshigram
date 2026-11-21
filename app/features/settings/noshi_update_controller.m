@@ -108,7 +108,7 @@
     _wave = [[NoshiWaveProgress alloc] initWithFrame:CGRectMake(10, 36, 260, NoshiWaveProgressHeight)];
     _wave.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     _wave.userInteractionEnabled = NO;
-    _wave.waving = !NoshiThemeIsClassic();
+    _wave.waving = NO;
     [_progressCard addSubview:_wave];
     return _progressCard;
 }

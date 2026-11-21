@@ -1,6 +1,6 @@
 #import "noshi_status_label.h"
 #import "noshi_classic_chats_controller.h"
-#import "noshi_chats_controller.h"
+#import "noshi_chat_list.h"
 #import "noshi_chats_menu.h"
 #import "noshi_main_controller.h"
 #import "noshi_split_controller.h"
@@ -12,8 +12,6 @@
 #import "noshi_chat_peek.h"
 #import "noshi_force_touch.h"
 #import "noshi_quick_actions.h"
-#import "noshi_dialog_cell.h"
-#import "noshi_developers.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_draft.h"
 #import "noshi_dust_effect.h"
@@ -22,7 +20,6 @@
 #import "noshi_classic_dialog_cell.h"
 #import "noshi_classic_search_controller.h"
 #import "noshi_login_prompt.h"
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 #import "noshi_perf_probe.h"
 #import "noshi_table_update.h"
@@ -34,7 +31,6 @@
 #import "noshi_community_screen.h"
 #import "noshi_topics_screen.h"
 #import "noshi_weak_reference.h"
-#import "noshi_falling_view.h"
 #import "noshi_mini_player.h"
 #include "noshi_list_state.h"
 #include "noshi_clock.h"
@@ -47,9 +43,6 @@
 
 @interface NoshiClassicChatsController () <UIActionSheetDelegate> {
     NoshiWeakReference *_badgeWeak;
-    NoshiFallingView *_snow;
-    NoshiFallingView *_foxes;
-    NoshiFallingView *_boys;
     NoshiSession *_session;
     NoshiChatListStyle _listStyle;
     NoshiChatSwipe _swipe;
@@ -112,7 +105,6 @@
     _dialogs = [[NSArray alloc] init];
     _shown = [[NSArray alloc] init];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(timesChanged) name:NoshiTimeDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(localMarksChanged) name:NoshiLocalMarksDidChangeNotification object:nil];
     self.navigationItem.title = folderId > 0 ? NSLocalizedString(@"chats.archive", nil) : NSLocalizedString(@"chats.title", nil);
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(archiveSummaryChanged:)
         name:NoshiArchiveSummaryDidChangeNotification object:_session];
@@ -178,12 +170,6 @@
 }
 
 - (void)dealloc {
-    [_snow stop];
-    [_foxes stop];
-    [_boys stop];
-    [_snow release];
-    [_foxes release];
-    [_boys release];
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(refreshLiveDialogs) object:nil];
     [_badgeWeak clear];
     [_badgeWeak release];
@@ -549,6 +535,7 @@
     if (!_folderId) NoshiSetMainDialogsSnapshot(_dialogs);
     NSInteger total = 0;
     for (NoshiDialog *dialog in _dialogs) if (dialog.unread && !dialog.folder && !dialog.muted && !(dialog.peerKind == 3 && dialog.left)) total += dialog.unreadCount;
+    if (!_folderId) NoshiSetUnreadTotal(total);
     if (_unreadHandler) _unreadHandler(total);
 }
 
@@ -669,66 +656,7 @@
     }];
 }
 
-/* the classic rows are opaque, so snow and foxes fall over them: a layer on the table that does not take touches and is moved with the offset, so it stays on the screen */
-- (NoshiFallingView *)fallingViewNamed:(NSString *)sprite {
-    NoshiFallingView *view = sprite ? [[NoshiFallingView alloc] initWithFrame:self.tableView.bounds spriteNamed:sprite] : [[NoshiFallingView alloc] initWithFrame:self.tableView.bounds];
-    view.userInteractionEnabled = NO;
-    [self.tableView addSubview:view];
-    return view;
-}
-
-- (void)syncFallingEffects {
-    if (_folderId != 0 || ![self isViewLoaded] || !self.view.window) return;
-    BOOL snow = NoshiChatFlagGet(NoshiChatFlagSnow), foxes = NoshiChatFlagGet(NoshiChatFlagFoxes), boys = NoshiChatFlagGet(NoshiChatFlagBoykisser);
-    if (boys && !_boys) _boys = [self fallingViewNamed:@"boykisser"];
-    if (!boys && _boys) {
-        [_boys stop];
-        [_boys removeFromSuperview];
-        [_boys release];
-        _boys = nil;
-    }
-    if (snow && !_snow) _snow = [self fallingViewNamed:nil];
-    if (foxes && !_foxes) _foxes = [self fallingViewNamed:@"senko-fall"];
-    if (!snow && _snow) {
-        [_snow stop];
-        [_snow removeFromSuperview];
-        [_snow release];
-        _snow = nil;
-    }
-    if (!foxes && _foxes) {
-        [_foxes stop];
-        [_foxes removeFromSuperview];
-        [_foxes release];
-        _foxes = nil;
-    }
-    [self pinFallingEffects];
-    [_snow start];
-    [_foxes start];
-    [_boys start];
-}
-
-- (void)pinFallingEffects {
-    CGRect bounds = self.tableView.bounds;
-    if (_snow && !CGRectEqualToRect(_snow.frame, bounds)) _snow.frame = bounds;
-    if (_foxes && !CGRectEqualToRect(_foxes.frame, bounds)) _foxes.frame = bounds;
-    if (_boys && !CGRectEqualToRect(_boys.frame, bounds)) _boys.frame = bounds;
-    if (_boys) [self.tableView bringSubviewToFront:_boys];
-    if (_snow) [self.tableView bringSubviewToFront:_snow];
-    if (_foxes) [self.tableView bringSubviewToFront:_foxes];
-}
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-    (void)scrollView;
-    if (_snow || _foxes || _boys) [self pinFallingEffects];
-}
-
-- (void)viewDidAppear:(BOOL)animated {
-    [super viewDidAppear:animated];
-    [self syncFallingEffects];
-}
-
 - (void)chatSettingsChanged {
-    [self syncFallingEffects];
     [self syncChromeWithSettings];
     [self syncStoriesWithSettings];
     BOOL hidden = NoshiArchiveHidden();
@@ -777,11 +705,6 @@
 }
 
 /* the edit button of the list shows the plate of the official client with "read all" while the rows are open for editing */
-/* the badges a developer gave himself on this phone: the names in the rows are drawn again */
-- (void)localMarksChanged {
-    if (self.isViewLoaded) [self.tableView reloadData];
-}
-
 - (void)setEditing:(BOOL)editing animated:(BOOL)animated {
     [super setEditing:editing animated:animated];
     if (_folderId) return;
@@ -814,9 +737,6 @@
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    [_snow stop];
-    [_foxes stop];
-    [_boys stop];
     if (self.editing) [self setEditing:NO animated:animated];
     /* a selection begun by the button of the bar is left with the screen, so the toolbar does not stay over the next one */
     if (_selectionPersistent) [self endSelection];

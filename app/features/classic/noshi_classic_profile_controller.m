@@ -1,5 +1,4 @@
 #import <QuartzCore/QuartzCore.h>
-#import "noshi_developers.h"
 #import "noshi_classic_profile_controller.h"
 #import "noshi_text_filter.h"
 
@@ -653,7 +652,7 @@ static UIFont *NoshiClassicInfoCaptionFont(void) { return [UIFont systemFontOfSi
     NSArray *hammer = nil;
     /* the mark after the name is the one the lists and the chat show: the status the person chose, or the Premium star */
     long long badge = NoshiPersonBadgeDocument(_person);
-    _name.text = NoshiNameWithBadges(_person.name, badge, NoshiPersonIsDeveloper(_person), &hammer);
+    _name.text = NoshiNameWithBadge(_person.name, badge, &hammer);
     _name.entities = hammer;
     NoshiWeakReference *weak = _weak;
     NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:badge]], _session, _media, ^{

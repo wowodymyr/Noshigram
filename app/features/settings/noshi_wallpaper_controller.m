@@ -5,7 +5,6 @@
 #import "noshi_chat_preview_view.h"
 #import "noshi_chat_settings.h"
 #import "noshi_customization_views.h"
-#import "noshi_developers.h"
 #import "noshi_person.h"
 #import "noshi_pill_tabs_view.h"
 #import "noshi_shape.h"
@@ -14,7 +13,6 @@
 #import "noshi_session.h"
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
-#import "noshi_tint_editor.h"
 #import "noshi_tint_picker.h"
 #import "noshi_wallpaper.h"
 #import "noshi_wallpaper_grid_view.h"
@@ -29,8 +27,6 @@
     /* the modern page has two tabs, the wallpapers and the customization of the look of the app; the second is not offered for the wallpaper of one chat */
     NSUInteger _tab;
     NoshiPillTabsView *_tabs;
-    NoshiShapeGridView *_shapes;
-    NoshiCustomPreviewView *_customPreview;
     NoshiClassicPreviewView *_classicPreview;
     /* the classic style makes every page again after a change of the color, and the new table starts at the top; the offset of the old one is brought back */
     CGFloat _restoreOffset;
@@ -84,8 +80,6 @@
     [_grid release];
     [_picker release];
     [_tabs release];
-    [_shapes release];
-    [_customPreview release];
     [_classicPreview release];
     [_session release];
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
@@ -148,7 +142,7 @@
     _preview.heightHandler = ^{ [(NoshiWallpaperController *)previewWeak.target updateRowHeights]; };
     [_picker release];
     /* the classic look keeps the square with metal discs; the modern one has the expressive editor */
-    _picker = NoshiThemeIsClassic() ? (UIControl<NoshiTintControl> *)[[NoshiTintPicker alloc] init] : (UIControl<NoshiTintControl> *)[[NoshiTintEditor alloc] init];
+    _picker = (UIControl<NoshiTintControl> *)[[NoshiTintPicker alloc] init];
     [_picker addTarget:self action:@selector(tintCommitted:) forControlEvents:UIControlEventTouchUpInside];
     [_grid release];
     _grid = [[NoshiWallpaperGridView alloc] init];
@@ -181,7 +175,7 @@
     if (previous == _tab || !self.isViewLoaded) return;
     [self.table layoutIfNeeded];
     CGFloat direction = _tab > previous ? 1 : -1;
-    BOOL modern = !NoshiThemeIsClassic();
+    BOOL modern = NO;
     for (UITableViewCell *cell in self.table.visibleCells) {
         if ([_tabs isDescendantOfView:cell]) continue;
         if (modern) NoshiAnimateEnter(cell, CGAffineTransformConcat(CGAffineTransformMakeScale(0.94f, 0.94f), CGAffineTransformMakeTranslation(direction * 56, 0)), 0, NOSHI_MOTION_WOBBLE);
@@ -203,41 +197,15 @@
         [me rebuild];
         [me animateTabChangeFrom:previous];
     };
-    [_shapes release];
-    _shapes = [[NoshiShapeGridView alloc] init];
-    _shapes.chooseHandler = ^(NSInteger shape) {
-        NoshiWallpaperController *me = weak.target;
-        if (!me) return;
-        NoshiAvatarShapeStore(shape);
-        [me applyLook];
-        [me applyLookNow];
-    };
-    [_customPreview release];
-    _customPreview = [[NoshiCustomPreviewView alloc] init];
     [_classicPreview release];
     _classicPreview = [[NoshiClassicPreviewView alloc] init];
-    [self showLeadPicture];
-}
-
-/* the previews show the lead developer, sqmrak, with the picture that ships in the bundle, so the row looks the same before the network is up */
-- (void)showLeadPicture {
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"app_sqmrak" ofType:@"png"];
-    UIImage *picture = path ? [UIImage imageWithContentsOfFile:path] : nil;
-    if (!picture) {
-        NSLog(@"noshigram: the picture of the lead is missing from the bundle");
-        return;
-    }
-    [_customPreview setPicture:picture];
-    [_classicPreview setPicture:picture];
 }
 
 /* every screen reads its settings when it is built, so the main controller builds them again on this notification; this page stays and is made again */
 - (void)applyLook {
     [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(applyLookNow) object:nil];
     [self performSelector:@selector(applyLookNow) withObject:nil afterDelay:0.5];
-    [_customPreview refresh];
     [_classicPreview refresh];
-    _shapes.selectedShape = NoshiAvatarShapeStored();
 }
 
 /* a tap on a choice starts the duck at once, from the point that was touched; a slider waits until it rests */
@@ -320,76 +288,7 @@
 }
 
 - (NSArray *)customizationSections {
-    if (NoshiThemeIsClassic()) return [self classicCustomizationSections];
-    NoshiWeakReference *weak = _weak;
-    NSMutableArray *sections = [NSMutableArray array];
-    [sections addObject:[self tabsSection]];
-    NoshiCustomPreviewView *preview = _customPreview;
-    [preview refresh];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:
-        [NoshiSettingsRow viewRowWithView:preview height:^CGFloat(CGFloat width) { (void)width; return [NoshiCustomPreviewView height]; }]]]];
-
-    NoshiShapeGridView *shapes = _shapes;
-    shapes.selectedShape = NoshiAvatarShapeStored();
-    NSMutableArray *avatarRows = [NSMutableArray array];
-    [avatarRows addObject:[NoshiSettingsRow viewRowWithView:shapes height:^CGFloat(CGFloat width) { return [NoshiShapeGridView heightForWidth:width]; }]];
-    if (NoshiAvatarShapeStored() == NoshiShapeRounded) {
-        [avatarRows addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.avatar.corners", nil) format:@"%.0f%%" value:(float)NoshiAvatarCornerPercent()
-                                                             minimum:0 maximum:100 change:^(float value) {
-            NoshiAvatarCornerStore((NSInteger)(value + 0.5f));
-            [(NoshiWallpaperController *)weak.target applyLook];
-        }]];
-    }
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.avatars.header", nil) footer:NSLocalizedString(@"custom.avatars.info", nil) rows:avatarRows]];
-
-    NSMutableArray *sendRows = [NSMutableArray array];
-    NSArray *sendKeys = [NSArray arrayWithObjects:@"custom.send.circle", @"custom.send.rounded", @"custom.send.avatar", nil];
-    for (NSUInteger i = 0; i < sendKeys.count; ++i) {
-        [sendRows addObject:[NoshiSettingsRow checkRowWithTitle:NSLocalizedString([sendKeys objectAtIndex:i], nil) subtitle:nil checked:(NSUInteger)NoshiSendShapeStored() == i tap:^{
-            NoshiWallpaperController *me = weak.target;
-            if (!me || (NSUInteger)NoshiSendShapeStored() == i) return;
-            NoshiSendShapeStore((NSInteger)i);
-            [me applyLook];
-            [me applyLookNow];
-        }]];
-    }
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.send.header", nil) footer:nil rows:sendRows]];
-
-    NoshiSettingsRow *bubbles = [NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"chatset.corners.row", nil) format:@"%.0f" value:(float)NoshiChatBubbleRadius()
-                                                                 minimum:NOSHI_CHAT_BUBBLE_RADIUS_MIN maximum:NOSHI_CHAT_BUBBLE_RADIUS_MAX change:^(float value) {
-        NoshiChatSetBubbleRadius((NSInteger)(value + 0.5f));
-        [[(NoshiWallpaperController *)weak.target customPreviewView] refresh];
-    }];
-    NoshiSettingsRow *cards = [NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.cards.radius", nil) format:@"%.0f" value:(float)NoshiSectionRadius()
-                                                               minimum:0 maximum:NOSHI_SECTION_RADIUS_MAX change:^(float value) {
-        NoshiSectionRadiusStore((NSInteger)(value + 0.5f));
-        [(NoshiWallpaperController *)weak.target applyLook];
-    }];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.corners.header", nil) footer:nil rows:[NSArray arrayWithObjects:bubbles, cards, nil]]];
-
-    NSMutableArray *density = [NSMutableArray array];
-    NSArray *densityKeys = [NSArray arrayWithObjects:@"custom.density.regular", @"custom.density.compact", nil];
-    for (NSUInteger i = 0; i < densityKeys.count; ++i) {
-        [density addObject:[NoshiSettingsRow checkRowWithTitle:NSLocalizedString([densityKeys objectAtIndex:i], nil) subtitle:nil checked:(NSUInteger)NoshiListDensityStored() == i tap:^{
-            NoshiWallpaperController *me = weak.target;
-            if (!me || (NSUInteger)NoshiListDensityStored() == i) return;
-            NoshiListDensityStore((NSInteger)i);
-            [me applyLook];
-            [me applyLookNow];
-        }]];
-    }
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.density.header", nil) footer:NSLocalizedString(@"custom.density.info", nil) rows:density]];
-
-    NoshiSettingsRow *indicator = [NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"custom.indicator", nil) subtitle:nil on:NoshiTabIndicatorOn() toggle:^(BOOL on) {
-        NoshiTabIndicatorStore(on);
-        [(NoshiWallpaperController *)weak.target applyLookNow];
-    }];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.layout.header", nil) footer:nil rows:[NSArray arrayWithObject:indicator]]];
-    return sections;
-}
-
-- (NoshiCustomPreviewView *)customPreviewView {
-    return _customPreview;
+    return [self classicCustomizationSections];
 }
 
 - (void)tintCommitted:(UIControl<NoshiTintControl> *)picker {

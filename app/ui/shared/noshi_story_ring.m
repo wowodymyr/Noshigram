@@ -17,16 +17,10 @@ static UIColor *NoshiRingRGB(int r, int g, int b) {
 void NoshiStoryRingColors(BOOL unseen, BOOL closeFriends, UIColor **from, UIColor **to) {
     if (!unseen) {
         *from = *to = NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.28] : [UIColor colorWithWhite:0 alpha:0.2];
-    } else if (NoshiThemeIsClassic()) {
+    } else {
         /* the system blue and green of ios 5 and 6 badges, from a lit top edge to a deep one */
         *from = closeFriends ? NoshiRingRGB(0x8c, 0xd8, 0x4a) : NoshiRingRGB(0x6f, 0xa8, 0xf0);
         *to = closeFriends ? NoshiRingRGB(0x2e, 0x8a, 0x1c) : NoshiRingRGB(0x1c, 0x4f, 0xb8);
-    } else if (closeFriends) {
-        *from = NoshiRingRGB(0x81, 0xce, 0x2d);
-        *to = NoshiRingRGB(0x18, 0xbd, 0x36);
-    } else {
-        *from = NoshiRingRGB(0x2c, 0x9e, 0xfc);
-        *to = NoshiRingRGB(0x2f, 0xc1, 0x83);
     }
 }
 
@@ -138,7 +132,7 @@ static CGFloat NoshiRingLength(CGRect box, CGFloat radius) {
     _unseenStroke.frame = frame;
     _seenStroke.frame = frame;
     /* the avatar of a list row is cut to the percent the person chose, in avatar sizes; 100 is a circle */
-    NoshiShape shape = _followsAvatarShape && !NoshiThemeIsClassic() ? (NoshiShape)NoshiAvatarShapeStored() : NoshiShapeRounded;
+    NoshiShape shape = NoshiShapeRounded;
     BOOL outline = NoshiShapeIsOutline(shape);
     CGFloat radius = _followsAvatarShape ? box.size.width * (shape == NoshiShapeCircle ? 100 : MIN(100, NoshiAvatarCornerPercent())) / 200.0f : box.size.width / 2;
     /* an outline shape of the avatar is followed by the ring along the same outline */

@@ -13,8 +13,6 @@
 #import "noshi_custom_emoji.h"
 #import "noshi_emoji_label.h"
 #import "noshi_contact_picker_controller.h"
-#import "noshi_custom_gift.h"
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 #import "noshi_gift_backdrop_view.h"
 #import "noshi_gift_facts_view.h"
@@ -61,14 +59,12 @@ enum {
     if (!self) return nil;
     _detail = detail;
     _navigation = [[UINavigationController alloc] initWithRootViewController:detail];
-    _navigation.navigationBarHidden = !NoshiThemeIsClassic();
-    if (NoshiThemeIsClassic()) {
-        /* the bar of the card wears the accent of the classic screens, not the system's pale chrome; it is not translucent, so the card keeps its shape under it */
-        NoshiClassicStyleNavigationBar(_navigation.navigationBar);
-        _navigation.navigationBar.translucent = NO;
-        detail.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
-            style:UIBarButtonItemStyleDone target:self action:@selector(close)] autorelease];
-    }
+    _navigation.navigationBarHidden = NO;
+    /* the bar of the card wears the accent of the classic screens, not the system's pale chrome; it is not translucent, so the card keeps its shape under it */
+    NoshiClassicStyleNavigationBar(_navigation.navigationBar);
+    _navigation.navigationBar.translucent = NO;
+    detail.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
+        style:UIBarButtonItemStyleDone target:self action:@selector(close)] autorelease];
     return self;
 }
 
@@ -262,10 +258,9 @@ enum {
 
 static NSString *NoshiDetailCount(int32_t count);
 
-/* "#227,690" the way the original client writes it, "#001" for the gifts of the app, which count from one */
+/* "#227,690" the way the original client writes it */
 - (NSString *)numberText {
-    int32_t number = _saved.gift.number;
-    return _saved.customImageName ? NoshiCustomGiftNumberText(number) : [@"#" stringByAppendingString:NoshiDetailCount(number)];
+    return [@"#" stringByAppendingString:NoshiDetailCount(_saved.gift.number)];
 }
 
 - (CGFloat)stickerSide {
@@ -389,9 +384,8 @@ static NSString *NoshiDetailRarity(int32_t permille) {
     NSString *fromText = anonymous ? NSLocalizedString(@"gifts.from.anonymous", nil) : _saved.fromName;
     NSArray *fromEntities = nil;
     if (!anonymous) {
-        /* the name is drawn as everywhere in the app: emoji as pictures, the status and the marks after it */
-        NSUInteger marks = NoshiPersonIsDeveloper(_saved.fromPerson) | NoshiMarksOfId(_saved.fromId);
-        fromText = NoshiNameWithBadges(_saved.fromName, NoshiPersonBadgeDocument(_saved.fromPerson), marks, &fromEntities);
+        /* the name is drawn as everywhere in the app: emoji as pictures, the status after it */
+        fromText = NoshiNameWithBadge(_saved.fromName, NoshiPersonBadgeDocument(_saved.fromPerson), &fromEntities);
         if (_saved.fromPerson.emojiStatus) {
             NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:_saved.fromPerson.emojiStatus]], self.session, self.media, ^{
                 NoshiGiftDetailController *me = weak.target;

@@ -49,29 +49,17 @@ static NoshiEmojiLabel *NoshiChannelEmojiLabel(UIColor *color, UIFont *font) {
     self = [super initWithFrame:frame];
     if (!self) return nil;
     NoshiAttachBounce(self, 0.03);
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the card is a plate of polished metal, as the menus and the info card are */
-        NoshiClassicApplyMenuPlate(self, 10);
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = 14;
-    }
+    /* the card is a plate of polished metal, as the menus and the info card are */
+    NoshiClassicApplyMenuPlate(self, 10);
     _kind = NoshiChannelLabel(NoshiColorAccent(), NoshiFontSemibold(13), NoshiTextAlignmentLeft);
     _kind.text = NSLocalizedString(@"profile.channel.kind", nil);
     _chip = NoshiChannelLabel(NoshiColorAccent(), NoshiFontMedium(12), NoshiTextAlignmentCenter);
-    if (classic) {
-        /* the follower count is a glossy accent capsule with a white word */
-        _chip.textColor = [UIColor whiteColor];
-        _chip.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _chip.shadowOffset = CGSizeMake(0, -1);
-        _chip.font = [UIFont boldSystemFontOfSize:12];
-        _chipPlate = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 8, NO)];
-    } else {
-        _chip.backgroundColor = NoshiColorField();
-        _chip.layer.cornerRadius = 10;
-        _chip.layer.masksToBounds = YES;
-    }
+    /* the follower count is a glossy accent capsule with a white word */
+    _chip.textColor = [UIColor whiteColor];
+    _chip.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+    _chip.shadowOffset = CGSizeMake(0, -1);
+    _chip.font = [UIFont boldSystemFontOfSize:12];
+    _chipPlate = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 8, NO)];
     _picture = [[NoshiAvatarView alloc] init];
     _picture.circular = YES;
     _title = NoshiChannelEmojiLabel(NoshiColorTitle(), NoshiFontSemibold(17));
@@ -109,7 +97,7 @@ static NoshiEmojiLabel *NoshiChannelEmojiLabel(UIColor *color, UIFont *font) {
     [super layoutSubviews];
     CGFloat width = self.bounds.size.width;
     /* the plate of the classic card is a layer of its own, sized by hand */
-    if (NoshiThemeIsClassic()) NoshiClassicFitPlate(self, 0);
+    NoshiClassicFitPlate(self, 0);
     CGSize kind = [_kind sizeThatFits:CGSizeMake(200, 18)];
     _kind.frame = CGRectMake(16, 10, kind.width, 20);
     CGSize chip = [_chip sizeThatFits:CGSizeMake(width, 20)];

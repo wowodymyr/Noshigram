@@ -178,21 +178,8 @@ static NSString *NoshiInviteEditDate(int32_t date) {
 #pragma mark saving
 
 - (void)refreshSaveButton {
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"channel.save", nil) style:UIBarButtonItemStyleBordered
-                                                                                  target:self action:@selector(save)] autorelease];
-        return;
-    }
-    if (!_done) {
-        _done = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        _done.titleLabel.font = NoshiFontSemibold(17);
-        [_done setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
-        [_done setTitle:NSLocalizedString(@"channel.save", nil) forState:UIControlStateNormal];
-        [_done addTarget:self action:@selector(save) forControlEvents:UIControlEventTouchUpInside];
-        [_done sizeToFit];
-        _done.frame = CGRectMake(0, 0, _done.frame.size.width + 24, 44);
-    }
-    self.barViews = [NSArray arrayWithObject:_done];
+    self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"channel.save", nil) style:UIBarButtonItemStyleBordered
+                                                                              target:self action:@selector(save)] autorelease];
 }
 
 - (void)save {

@@ -5,7 +5,6 @@
 #import "noshi_string_drawing.h"
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 
 static const CGFloat NoshiSearchIconWidth = 38.0;
 
@@ -14,14 +13,14 @@ static const CGFloat NoshiSearchIconWidth = 38.0;
 + (NoshiSearchField *)fieldWithPlaceholder:(NSString *)placeholder height:(CGFloat)height {
     NoshiSearchField *field = [[[NoshiSearchField alloc] init] autorelease];
     field.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-    field.backgroundColor = NoshiImportedThemeColor("root.searchBar.inputFill") ?: NoshiColorField();
+    field.backgroundColor = NoshiColorField();
     field.layer.cornerRadius = height / 2;
     field.placeholder = placeholder;
     field.font = NoshiFontRegular(16);
-    field.textColor = NoshiImportedThemeColor("root.searchBar.inputText") ?: NoshiColorTitle();
+    field.textColor = NoshiColorTitle();
     field.autocorrectionType = UITextAutocorrectionTypeNo;
     field.clearButtonMode = UITextFieldViewModeWhileEditing;
-    UIImageView *glass = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolMagnifier, 16, NoshiImportedThemeColor("root.searchBar.inputIcon") ?: NoshiColorMuted())] autorelease];
+    UIImageView *glass = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolMagnifier, 16, NoshiColorMuted())] autorelease];
     glass.contentMode = UIViewContentModeCenter;
     glass.frame = CGRectMake(0, 0, NoshiSearchIconWidth, height);
     field.leftView = glass;
@@ -42,7 +41,7 @@ static const CGFloat NoshiSearchIconWidth = 38.0;
 }
 
 - (void)drawPlaceholderInRect:(CGRect)rect {
-    [(NoshiImportedThemeColor("root.searchBar.inputPlaceholderText") ?: NoshiColorSecondary()) set];
+    [(NoshiColorSecondary()) set];
     CGFloat height = ceil(self.font.lineHeight);
     rect.origin.y += floor((rect.size.height - height) / 2);
     rect.size.height = height;

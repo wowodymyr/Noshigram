@@ -16,7 +16,6 @@
 #import "noshi_theme.h"
 #import "noshi_time.h"
 #import "noshi_topic_icon.h"
-#import "noshi_developers.h"
 #import "noshi_mutual_icon.h"
 #import "noshi_name_badge.h"
 
@@ -306,7 +305,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     [_communityHandler release];
     _communityHandler = nil;
     NSArray *badge = nil;
-    _title.text = NoshiNameWithBadges(dialog.title, NoshiDialogBadgeDocument(dialog), NoshiDialogIsDeveloper(dialog), &badge);
+    _title.text = NoshiNameWithBadge(dialog.title, NoshiDialogBadgeDocument(dialog), &badge);
     _title.entities = badge;
     _preview.text = dialog.preview;
     _preview.entities = dialog.previewEntities;
@@ -408,7 +407,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     _mutualButton.hidden = !person.mutual;
     /* the star of Premium and the marks of Noshigram follow the name here as in the contact row of the other style, which lists the same people */
     NSArray *personBadge = nil;
-    _title.text = NoshiNameWithBadges(person.name, NoshiBadgeDocument(0, person.premium), NoshiPersonIsDeveloper(person), &personBadge);
+    _title.text = NoshiNameWithBadge(person.name, NoshiBadgeDocument(0, person.premium), &personBadge);
     _title.entities = personBadge;
     _preview.text = person.bot ? NSLocalizedString(@"seen.bot", nil) : NoshiLastSeenText(person.presence, person.seen);
     _preview.entities = nil;
@@ -446,7 +445,7 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     _avatar.showsSymbol = NO;
     [_avatar setPhoto:call.photo cache:avatars];
     NSArray *callBadge = nil;
-    _title.text = NoshiNameWithBadges(call.name, 0, NoshiMarksOfId(call.userId), &callBadge);
+    _title.text = NoshiNameWithBadge(call.name, 0, &callBadge);
     _title.entities = callBadge;
     _preview.text = [call summaryText];
     _preview.entities = nil;

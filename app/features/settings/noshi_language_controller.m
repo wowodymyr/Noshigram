@@ -142,7 +142,7 @@
     picker.emptyText = NSLocalizedString(@"language.custom.empty.files", nil);
     picker.fileSymbol = NoshiSymbolSettingsLanguage;
     UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:picker] autorelease];
-    if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+    NoshiClassicStyleNavigationBar(navigation.navigationBar);
     [self presentViewController:navigation animated:YES completion:nil];
 }
 

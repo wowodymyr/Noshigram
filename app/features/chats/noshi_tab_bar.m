@@ -9,7 +9,6 @@
 #import "noshi_chat_settings.h"
 #import "noshi_shape.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 
 #define TAB_BAR_HEIGHT 49.0
 #define TAB_ICON_SIZE 26.0
@@ -17,12 +16,9 @@
 
 /* the bar is opaque white, so the selected tab takes the accent and idle ones a quiet blue lilac */
 static UIColor *NoshiTabIdleColor(void) {
-    if (NoshiThemeIsClassic()) return NoshiColorSecondary();
-    UIColor *imported = NoshiImportedThemeColor("root.tabBar.icon");
-    if (imported) return imported;
-    return NoshiThemeTinted(NoshiThemeIsDark() ? [UIColor colorWithRed:0.52 green:0.49 blue:0.68 alpha:1] : [UIColor colorWithRed:0.58 green:0.55 blue:0.75 alpha:1]);
+    return NoshiColorSecondary();
 }
-static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root.tabBar.selectedIcon") ?: NoshiColorAccent(); }
+static UIColor *NoshiTabActiveColor(void) { return NoshiColorAccent(); }
 
 @interface NoshiTabItem : UIControl {
     UIImageView *_icon;
@@ -88,12 +84,12 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root
     _caption.backgroundColor = [UIColor clearColor];
     _caption.text = title;
     _caption.font = NoshiFontMedium(10);
-    _caption.textColor = NoshiImportedThemeColor("root.tabBar.text") ?: NoshiTabIdleColor();
+    _caption.textColor = NoshiTabIdleColor();
     _caption.textAlignment = NoshiTextAlignmentCenter;
     [self addSubview:_caption];
     _badge = [[NoshiPillLabel alloc] init];
-    _badge.backgroundColor = NoshiImportedThemeColor("root.tabBar.badgeBackground") ?: NoshiColorAccent();
-    _badge.textColor = NoshiImportedThemeColor("root.tabBar.badgeText") ?: [UIColor whiteColor];
+    _badge.backgroundColor = NoshiColorAccent();
+    _badge.textColor = [UIColor whiteColor];
     _badge.font = NoshiFontSemibold(11);
     _badge.textAlignment = NoshiTextAlignmentCenter;
     _badge.layer.cornerRadius = TAB_BADGE_HEIGHT / 2;
@@ -132,14 +128,14 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root
         NoshiAnimateView(icon, CGAffineTransformIdentity, 1, NOSHI_MOTION_SPRING, nil);
     }
     if (_icon) _icon.image = active ? _activeImage : _idleImage;
-    BOOL pill = active && _pill && !NoshiThemeIsClassic() && NoshiTabIndicatorOn();
+    BOOL pill = NO;
     if (changed && self.window) [UIView animateWithDuration:0.2 animations:^{ _pill.alpha = pill ? 1 : 0; }];
     else _pill.alpha = pill ? 1 : 0;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _ringStroke.opacity = active ? 1 : 0;
     [CATransaction commit];
-    _caption.textColor = active ? (NoshiImportedThemeColor("root.tabBar.selectedText") ?: NoshiTabActiveColor()) : (NoshiImportedThemeColor("root.tabBar.text") ?: NoshiTabIdleColor());
+    _caption.textColor = active ? (NoshiTabActiveColor()) : (NoshiTabIdleColor());
     self.accessibilityTraits = active ? (UIAccessibilityTraitButton | UIAccessibilityTraitSelected) : UIAccessibilityTraitButton;
 }
 
@@ -173,7 +169,7 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root
     _ring.frame = CGRectMake((width - ringSide) / 2, 3, ringSide, ringSide);
     _avatar.frame = CGRectInset(_ring.bounds, 3, 3);
     if (_ringStroke) {
-        NoshiShape shape = NoshiThemeIsClassic() ? NoshiShapeCircle : (NoshiShape)NoshiAvatarShapeStored();
+        NoshiShape shape = NoshiShapeCircle;
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         _ringStroke.frame = _ring.bounds;
@@ -207,7 +203,7 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root
 - (id)initWithTitles:(NSArray *)titles symbols:(NSArray *)symbols {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
-    self.backgroundColor = NoshiImportedThemeColor("root.tabBar.background") ?: NoshiColorBar();
+    self.backgroundColor = NoshiColorBar();
     _itemArea = CGRectNull;
     /* the plate under the selected tab, a little lower than the middle of the bar */
     _items = [[NSMutableArray alloc] init];
@@ -223,7 +219,7 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiImportedThemeColor("root
         [self addSubview:item];
     }
     _hairline = [[UIView alloc] init];
-    _hairline.backgroundColor = NoshiImportedThemeColor("root.tabBar.separator") ?: NoshiColorHairline();
+    _hairline.backgroundColor = NoshiColorHairline();
     [self addSubview:_hairline];
     [self setSelectedIndex:0];
     return self;

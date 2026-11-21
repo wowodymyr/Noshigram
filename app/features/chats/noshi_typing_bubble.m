@@ -64,12 +64,11 @@ static NSString *const NoshiTypingBeatKey = @"noshigram.typing.beat";
 }
 
 - (void)applyTheme {
-    BOOL classic = NoshiThemeIsClassic();
-    CGFloat radius = (CGFloat)(classic ? NoshiChatClassicBubbleRadius() : NoshiChatBubbleRadius());
+    CGFloat radius = (CGFloat)(NoshiChatClassicBubbleRadius());
     self.backgroundColor = NoshiColorBubbleIn();
     self.layer.cornerRadius = MIN(radius, BUBBLE_HEIGHT / 2);
     /* a near white bubble melts into the light wallpaper, so the incoming ones get the thin outline the messages have */
-    self.layer.borderWidth = !classic && !NoshiThemeIsDark() ? 1 : 0;
+    self.layer.borderWidth = 0;
     self.layer.borderColor = [NoshiColorAccent() colorWithAlphaComponent:0.3f].CGColor;
     for (CALayer *dot in _dots) dot.backgroundColor = NoshiColorSecondary().CGColor;
 }

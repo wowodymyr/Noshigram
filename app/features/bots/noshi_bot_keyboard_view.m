@@ -18,15 +18,11 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    if (NoshiThemeIsClassic()) {
-        /* the keys of a bot sit on the same glossy purple as the bars, as the keys of the old keyboards sat on their plate */
-        UIImageView *plate = NoshiClassicStripBackdrop();
-        plate.frame = self.bounds;
-        plate.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        [self addSubview:plate];
-    } else {
-        self.backgroundColor = NoshiColorBar();
-    }
+    /* the keys of a bot sit on the same glossy purple as the bars, as the keys of the old keyboards sat on their plate */
+    UIImageView *plate = NoshiClassicStripBackdrop();
+    plate.frame = self.bounds;
+    plate.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self addSubview:plate];
     _scroll = [[UIScrollView alloc] init];
     _scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _scroll.alwaysBounceVertical = NO;
@@ -51,15 +47,9 @@
     for (NSArray *row in markup.rows) {
         for (NoshiMarkupButton *button in row) {
             NoshiEmojiTitleButton *key = [[[NoshiEmojiTitleButton alloc] initWithFrame:CGRectZero] autorelease];
-            if (NoshiThemeIsClassic()) {
-                [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-                [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-                [key setFaceText:button.text font:[UIFont boldSystemFontOfSize:16] color:[UIColor whiteColor]];
-            } else {
-                key.backgroundColor = NoshiColorCard();
-                key.layer.cornerRadius = 8;
-                [key setFaceText:button.text font:NoshiFontRegular(16) color:NoshiColorTitle()];
-            }
+            [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
+            [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+            [key setFaceText:button.text font:[UIFont boldSystemFontOfSize:16] color:[UIColor whiteColor]];
             key.contentEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 8);
             key.enabled = button.enabled;
             key.alpha = button.enabled ? 1 : 0.5;

@@ -66,8 +66,7 @@
     if (_rowHeight * (CGFloat)count > room) _rowHeight = MAX(ROW_HEIGHT_MIN, floor(room / (CGFloat)count));
     CGFloat content = _rowHeight * (CGFloat)_titles.count;
     CGFloat height = MIN(content, room);
-    BOOL classic = NoshiThemeIsClassic();
-    CGFloat radius = classic ? 10 : 14;
+    CGFloat radius = 10;
     _card = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CARD_WIDTH, height)];
     UIView *rows = _card;
     if (content > height) {
@@ -79,17 +78,7 @@
         [_card addSubview:scroll];
         rows = scroll;
     }
-    if (classic) {
-        NoshiClassicApplyMenuPlate(_card, radius);
-    } else {
-        _card.backgroundColor = NoshiColorCard();
-        _card.layer.cornerRadius = radius;
-        _card.layer.shadowColor = [UIColor blackColor].CGColor;
-        _card.layer.shadowOpacity = NoshiThemeIsDark() ? 0.5 : 0.22;
-        _card.layer.shadowRadius = 12;
-        _card.layer.shadowOffset = CGSizeMake(0, 4);
-        NoshiSetShadowPath(_card, radius);
-    }
+    NoshiClassicApplyMenuPlate(_card, radius);
     for (NSUInteger i = 0; i < _titles.count; ++i) {
         UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
         row.frame = CGRectMake(0, _rowHeight * (CGFloat)i, CARD_WIDTH, _rowHeight);
@@ -104,7 +93,7 @@
         [row addTarget:self action:@selector(picked:) forControlEvents:UIControlEventTouchUpInside];
         [row addTarget:self action:@selector(rowDown:) forControlEvents:UIControlEventTouchDown];
         [row addTarget:self action:@selector(rowUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-        UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(_symbols[i], ICON_SIDE, classic ? NoshiClassicMenuTextColor() : NoshiColorSecondary())] autorelease];
+        UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(_symbols[i], ICON_SIDE, NoshiClassicMenuTextColor())] autorelease];
         icon.contentMode = UIViewContentModeCenter;
         icon.frame = CGRectMake(16, (_rowHeight - ICON_SIDE) / 2, ICON_SIDE + 4, ICON_SIDE);
         icon.userInteractionEnabled = NO;
@@ -113,16 +102,11 @@
         label.backgroundColor = [UIColor clearColor];
         label.text = [_titles objectAtIndex:i];
         label.userInteractionEnabled = NO;
-        if (classic) {
-            label.textColor = NoshiClassicMenuTextColor();
-            NoshiClassicStyleMenuLabel(label, 16);
-        } else {
-            label.font = NoshiFontMedium(16);
-            label.textColor = NoshiColorTitle();
-        }
+        label.textColor = NoshiClassicMenuTextColor();
+        NoshiClassicStyleMenuLabel(label, 16);
         [row addSubview:label];
         [rows addSubview:row];
-        if (classic && i > 0) {
+        if (i > 0) {
             /* a dark groove over a lit line, the way the old menus split their rows */
             CGFloat y = _rowHeight * (CGFloat)i;
             BOOL charcoal = NoshiThemeIsDark();
@@ -140,7 +124,7 @@
 }
 
 - (void)rowDown:(UIButton *)row {
-    row.backgroundColor = NoshiThemeIsClassic() ? NoshiClassicMenuPressColor() : NoshiColorField();
+    row.backgroundColor = NoshiClassicMenuPressColor();
 }
 
 - (void)rowUp:(UIButton *)row {

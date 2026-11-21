@@ -56,11 +56,7 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    if (NoshiThemeIsClassic()) NoshiClassicStyleTable(self.tableView);
-    else {
-        self.tableView.backgroundColor = NoshiColorScreen();
-        self.tableView.separatorColor = NoshiColorHairline();
-    }
+    NoshiClassicStyleTable(self.tableView);
     if (!_directory && _rootTitle.length) self.title = _rootTitle;
     self.tableView.rowHeight = 64;
     if (self.navigationController.viewControllers.count == 1) {
@@ -72,7 +68,7 @@
         _search.placeholder = _searchPlaceholder.length ? _searchPlaceholder : NSLocalizedString(@"attach.file.search", nil);
         _search.delegate = self;
         _search.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-        if (NoshiThemeIsClassic()) NoshiClassicStyleSearchBar(_search);
+        NoshiClassicStyleSearchBar(_search);
         self.tableView.tableHeaderView = _search;
     }
     _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
@@ -198,8 +194,7 @@
     cell.detailTextLabel.text = !_directory ? [entry objectForKey:@"path"] : (directory ? NSLocalizedString(@"attach.file.folder", nil) : NoshiFileSizeText([[entry objectForKey:@"size"] longLongValue]));
     cell.imageView.image = NoshiSymbolImage(directory ? NoshiSymbolSettingsFolders : _fileSymbol, 28, NoshiColorAccent());
     cell.accessoryType = directory ? UITableViewCellAccessoryDisclosureIndicator : UITableViewCellAccessoryNone;
-    if (NoshiThemeIsClassic()) NoshiClassicStyleCell(cell);
-    else { cell.backgroundColor = NoshiColorCard(); cell.textLabel.textColor = NoshiColorTitle(); cell.detailTextLabel.textColor = NoshiColorSecondary(); }
+    NoshiClassicStyleCell(cell);
     return cell;
 }
 

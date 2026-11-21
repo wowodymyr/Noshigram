@@ -12,7 +12,6 @@
 #import "noshi_text_layout.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 #include "noshi_reaction_layout.h"
 
 /* the plate, label and faces are laid out separately, so UIKit cannot resize the classic plate independently of its contents */
@@ -119,8 +118,7 @@ CGFloat NoshiReactionsMetrics(NSArray *reactions, CGFloat width, BOOL counts, CG
 /* the look of a chip over a bubble: our bubble is the accent color */
 - (UIColor *)chipColorChosen:(BOOL)chosen {
     if (!_inBubble) return chosen ? NoshiColorAccent() : NoshiColorCard();
-    UIColor *imported = NoshiImportedThemeColor(_outgoing ? (chosen ? "chat.message.outgoing.bubble.withWp.reactionActiveBg" : "chat.message.outgoing.bubble.withWp.reactionInactiveBg")
-                                                        : (chosen ? "chat.message.incoming.bubble.withWp.reactionActiveBg" : "chat.message.incoming.bubble.withWp.reactionInactiveBg"));
+    UIColor *imported = nil;
     if (imported) return imported;
     if (_outgoing) return chosen ? [UIColor whiteColor] : [UIColor colorWithWhite:1 alpha:0.22];
     return chosen ? NoshiColorAccent() : [NoshiColorAccent() colorWithAlphaComponent:0.16];
@@ -128,8 +126,7 @@ CGFloat NoshiReactionsMetrics(NSArray *reactions, CGFloat width, BOOL counts, CG
 
 - (UIColor *)chipTextColorChosen:(BOOL)chosen {
     if (!_inBubble) return chosen ? [UIColor whiteColor] : NoshiColorTitle();
-    UIColor *imported = NoshiImportedThemeColor(_outgoing ? (chosen ? "chat.message.outgoing.bubble.withWp.reactionActiveFg" : "chat.message.outgoing.bubble.withWp.reactionInactiveFg")
-                                                        : (chosen ? "chat.message.incoming.bubble.withWp.reactionActiveFg" : "chat.message.incoming.bubble.withWp.reactionInactiveFg"));
+    UIColor *imported = nil;
     if (imported && CGColorGetAlpha(imported.CGColor) > 0) return imported;
     if (_outgoing) return chosen ? NoshiColorAccent() : [UIColor whiteColor];
     return chosen ? [UIColor whiteColor] : NoshiColorAccent();
@@ -294,7 +291,7 @@ static CAMediaTimingFunction *NoshiReactionCurve(void) {
         NoshiReaction *r = [reactions objectAtIndex:i];
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
         button.tag = (NSInteger)i;
-        if (NoshiThemeIsClassic() && (r.chosen || !_inBubble)) {
+        if ((r.chosen || !_inBubble)) {
             /* a lit button for the chip you picked and a plate for the others, as the old chrome draws them */
             UIImage *face = r.chosen ? NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) : NoshiClassicPlateImage();
             UIImageView *plate = [[[UIImageView alloc] initWithImage:face] autorelease];

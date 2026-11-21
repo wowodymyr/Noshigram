@@ -1,5 +1,4 @@
 #import "noshi_profile_identity_view.h"
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -14,14 +13,13 @@
 #define PRESS_SECONDS 0.12
 #define PROGRESS_SECONDS 0.18
 
-@interface NoshiProfileIdentityView () <UIGestureRecognizerDelegate> {
+@interface NoshiProfileIdentityView () {
     NoshiAvatarView *_avatar;
     UIControl *_avatarHit;
     UIControl *_badge;
     UIView *_progress;
     UIActivityIndicatorView *_spinner;
     NoshiEmojiLabel *_name;
-    NSString *_developerName;
     long long _userId;
     UILabel *_line;
 }
@@ -81,9 +79,6 @@
     /* a long name takes two lines and ends in an ellipsis: with no limit it ran down the page over the rows under it */
     _name.numberOfLines = 2;
     [self addSubview:_name];
-    UITapGestureRecognizer *hammerTap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(nameTapped:)] autorelease];
-    hammerTap.delegate = self;
-    [self addGestureRecognizer:hammerTap];
     _line = [[UILabel alloc] init];
     _line.backgroundColor = [UIColor clearColor];
     _line.font = NoshiFontRegular(17);
@@ -93,38 +88,21 @@
     return self;
 }
 
-- (void)setName:(NSString *)name developer:(NSUInteger)marks {
-    [self setName:name badge:0 developer:marks];
+- (void)setName:(NSString *)name {
+    [self setName:name badge:0];
 }
 
 - (void)redrawName {
     [_name setNeedsDisplay];
 }
 
-- (void)setName:(NSString *)name badge:(long long)badge developer:(NSUInteger)marks {
+- (void)setName:(NSString *)name badge:(long long)badge {
     NSArray *entities = nil;
-    _name.text = NoshiNameWithBadges(name, badge, marks, &entities);
+    _name.text = NoshiNameWithBadge(name, badge, &entities);
     _name.entities = entities;
-    [_developerName release];
-    _developerName = marks ? [name copy] : nil;
-}
-
-/* only the touches over the name: the photo and the camera of this block are controls, and a recognizer over all of it would cancel their touches */
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)recognizer shouldReceiveTouch:(UITouch *)touch {
-    (void)recognizer;
-    return _developerName != nil && CGRectContainsPoint(CGRectInset(_name.frame, 0, -8), [touch locationInView:self]);
-}
-
-- (void)nameTapped:(UITapGestureRecognizer *)tap {
-    if (tap.state != UIGestureRecognizerStateEnded || !_developerName) return;
-    CGPoint point = [tap locationInView:_name];
-    NSUInteger mark = NoshiMarkForDocument([_name customEmojiAtPoint:point]);
-    if (point.y < -8 || point.y > _name.bounds.size.height + 8 || !mark) return;
-    NoshiShowMarkNoticeForUser(_developerName, mark, self.userId);
 }
 
 - (void)dealloc {
-    [_developerName release];
     [_avatar release];
     [_avatarHit release];
     [_badge release];
@@ -171,7 +149,6 @@
     _avatarHit.frame = _avatar.frame;
     _progress.frame = _avatar.frame;
     /* the dark disc that covers the photo while a new one goes up takes the shape of the avatars; the classic style keeps its circle */
-    if (!NoshiThemeIsClassic()) NoshiApplyShapeToLayer(_progress.layer, (NoshiShape)NoshiAvatarShapeStored(), NOSHI_IDENTITY_AVATAR, NoshiAvatarCornerPercent());
     _spinner.center = CGPointMake(NOSHI_IDENTITY_AVATAR / 2, NOSHI_IDENTITY_AVATAR / 2);
     _badge.frame = CGRectMake(CGRectGetMaxX(_avatar.frame) - BADGE + 4, CGRectGetMaxY(_avatar.frame) - BADGE + 2, BADGE, BADGE);
     _name.frame = CGRectMake(24, CGRectGetMaxY(_avatar.frame) + 22, width - 48, 34 + [self extraHeightForWidth:width]);

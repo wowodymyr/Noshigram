@@ -56,14 +56,8 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _digestURL = [digestURL copy];
     _size = size;
     _card = [[UIView alloc] init];
-    if (NoshiThemeIsClassic()) {
-        /* the plate of the classic menus, with its shadow outside the card, so the card does not clip */
-        NoshiClassicApplyMenuPlate(_card, 14);
-    } else {
-        _card.backgroundColor = NoshiColorCard();
-        _card.layer.cornerRadius = 22;
-        _card.clipsToBounds = YES;
-    }
+    /* the plate of the classic menus, with its shadow outside the card, so the card does not clip */
+    NoshiClassicApplyMenuPlate(_card, 14);
     [self addSubview:_card];
     /* a jpeg of a photo size, with a file for each screen scale */
     _picture = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"release_meme.jpg"]];
@@ -72,15 +66,15 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     [_card addSubview:_picture];
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
-    _title.textColor = NoshiThemeIsClassic() ? NoshiClassicMenuTextColor() : NoshiColorTitle();
+    _title.textColor = NoshiClassicMenuTextColor();
     _title.font = NoshiFontBold(19);
-    if (NoshiThemeIsClassic()) NoshiClassicStyleMenuLabel(_title, 19);
+    NoshiClassicStyleMenuLabel(_title, 19);
     _title.textAlignment = NoshiTextAlignmentCenter;
     _title.numberOfLines = 2;
     [_card addSubview:_title];
     _notes = [[UITextView alloc] init];
     _notes.backgroundColor = [UIColor clearColor];
-    _notes.textColor = NoshiThemeIsClassic() ? [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.8f] : NoshiColorMessage();
+    _notes.textColor = [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.8f];
     _notes.font = NoshiFontRegular(14);
     _notes.editable = NO;
     [_card addSubview:_notes];
@@ -95,18 +89,13 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _wave.userInteractionEnabled = NO;
     [_card addSubview:_wave];
     _primary = [self buttonWithAction:@selector(primaryTapped) bold:YES];
-    if (NoshiThemeIsClassic()) {
-        [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-        [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-        [_primary setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-        _primary.titleLabel.shadowOffset = CGSizeMake(0, -1);
-    } else {
-        _primary.backgroundColor = NoshiColorAccent();
-        _primary.layer.cornerRadius = 22;
-    }
+    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
+    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    [_primary setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
+    _primary.titleLabel.shadowOffset = CGSizeMake(0, -1);
     [_primary setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     _secondary = [self buttonWithAction:@selector(secondaryTapped) bold:NO];
-    [_secondary setTitleColor:NoshiThemeIsClassic() ? NoshiClassicMenuTextColor() : NoshiColorSecondary() forState:UIControlStateNormal];
+    [_secondary setTitleColor:NoshiClassicMenuTextColor() forState:UIControlStateNormal];
     UITapGestureRecognizer *tap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(backdropTapped)] autorelease];
     tap.delegate = self;
     [self addGestureRecognizer:tap];
@@ -192,7 +181,7 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     CGAffineTransform held = _card.transform;
     _card.transform = CGAffineTransformIdentity;
     _card.frame = CGRectMake(floor((self.bounds.size.width - width) / 2), floor((self.bounds.size.height - height) / 2), width, height);
-    if (NoshiThemeIsClassic()) NoshiClassicFitPlate(_card, 0);
+    NoshiClassicFitPlate(_card, 0);
     _card.transform = held;
     _picture.frame = CGRectMake(16, y, inner, pictureHeight);
     y += pictureHeight + 8;
@@ -267,7 +256,7 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _secondary.enabled = YES;
     _wave.value = 0;
     /* the classic look has no waves: there the bar lies flat */
-    _wave.waving = !NoshiThemeIsClassic();
+    _wave.waving = NO;
     _status.text = NSLocalizedString(@"release.preparing", nil);
     [self showMode:NoticeWorking failure:NOSHI_OK];
     [_updater start];

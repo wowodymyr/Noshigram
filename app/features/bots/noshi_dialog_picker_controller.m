@@ -164,11 +164,9 @@
 
 - (UINavigationController *)presentableNavigation {
     UINavigationController *navigation = [[[UINavigationController alloc] initWithRootViewController:self] autorelease];
-    navigation.navigationBarHidden = !NoshiThemeIsClassic();
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
-            style:UIBarButtonItemStyleDone target:self action:@selector(goBack)] autorelease];
-    }
+    navigation.navigationBarHidden = NO;
+    self.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"story.close", nil)
+        style:UIBarButtonItemStyleDone target:self action:@selector(goBack)] autorelease];
     return navigation;
 }
 
@@ -315,25 +313,7 @@
 - (void)refreshAction {
     if (self.limit <= 1) return;
     NSString *title = _picked.count ? [NSString stringWithFormat:@"%@ (%lu)", NSLocalizedString(@"bots.pick.done", nil), (unsigned long)_picked.count] : nil;
-    if (NoshiThemeIsClassic()) {
-        self.navigationItem.rightBarButtonItem = title ? [[[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleBordered target:self action:@selector(finish)] autorelease] : nil;
-        return;
-    }
-    if (!title) {
-        self.barViews = [NSArray array];
-        return;
-    }
-    if (!_done) {
-        _done = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        _done.titleLabel.font = NoshiFontSemibold(17);
-        [_done setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
-        [_done addTarget:self action:@selector(finish) forControlEvents:UIControlEventTouchUpInside];
-    }
-    [_done setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
-    [_done setTitle:title forState:UIControlStateNormal];
-    [_done sizeToFit];
-    _done.frame = CGRectMake(0, 0, _done.frame.size.width + 24, 44);
-    self.barViews = [NSArray arrayWithObject:_done];
+    self.navigationItem.rightBarButtonItem = title ? [[[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleBordered target:self action:@selector(finish)] autorelease] : nil;
 }
 
 - (void)finish {

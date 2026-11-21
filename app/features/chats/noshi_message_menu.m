@@ -135,7 +135,7 @@
 
 #pragma mark skin
 
-static BOOL NoshiMenuClassic(void) { return NoshiThemeIsClassic(); }
+static BOOL NoshiMenuClassic(void) { return YES; }
 
 /* the classic plate is charcoal on the dark tone, and a pale glossy one on the white tone, where a black plate sat on the light list like a hole */
 static BOOL NoshiMenuCharcoal(void) { return NoshiMenuClassic() && NoshiThemeIsDark(); }
@@ -484,7 +484,7 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
 /* the reaction pill sits above the visible message and the card below it */
 - (void)layoutStack {
     CGSize size = self.bounds.size;
-    CGFloat top = EDGE + (NoshiThemeIsClassic() ? 0 : 20), bottom = size.height - EDGE;
+    CGFloat top = EDGE + (0), bottom = size.height - EDGE;
     CGFloat pillHeight = _pill ? _pill.frame.size.height : 0;
     CGFloat cardHeight = _card.frame.size.height;
     CGFloat cardY = MIN(CGRectGetMaxY(_bubble) + GAP, bottom - cardHeight);

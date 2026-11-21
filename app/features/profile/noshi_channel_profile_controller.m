@@ -373,7 +373,7 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
     _head = [[UIView alloc] init];
     _head.backgroundColor = [UIColor clearColor];
     _storyRing = [[NoshiStoryRing alloc] init];
-    _storyRing.followsAvatarShape = !NoshiThemeIsClassic();
+    _storyRing.followsAvatarShape = NO;
     _storyRing.hidden = YES;
     [_head addSubview:_storyRing];
     _avatar = [[NoshiAvatarView alloc] init];

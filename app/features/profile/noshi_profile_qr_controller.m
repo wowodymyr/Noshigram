@@ -55,17 +55,8 @@ static UIColor *NoshiQrColor(const CGFloat *rgb, CGFloat darken) {
     return [UIColor colorWithRed:rgb[0] * darken green:rgb[1] * darken blue:rgb[2] * darken alpha:1];
 }
 
-/* the sheet and its text follow the day or night switch of this screen, not the theme of the app */
-static UIColor *NoshiQrSheetColor(BOOL night) {
-    return night ? [UIColor colorWithRed:0.11 green:0.13 blue:0.18 alpha:1] : [UIColor whiteColor];
-}
-
-static UIColor *NoshiQrTextColor(BOOL night) {
-    return night ? [UIColor whiteColor] : [UIColor colorWithWhite:0.08 alpha:1];
-}
-
 static UIColor *NoshiQrPatternColor(CGFloat red, CGFloat green, CGFloat blue) {
-    return NoshiThemeFollowAccent([UIColor colorWithRed:red green:green blue:blue alpha:1], 286.0);
+    return [UIColor colorWithRed:red green:green blue:blue alpha:1];
 }
 
 /* the pattern is a mask, so it stays sharp when the screen changes size */
@@ -110,7 +101,6 @@ static UIView *NoshiQrPatternView(CGRect frame) {
     NSMutableArray *_tileViews;
     NSUInteger _theme;
     BOOL _night;
-    BOOL _classic;
     BOOL _statusWasHidden;
     CGFloat _tile;
 }
@@ -130,11 +120,10 @@ static UIView *NoshiQrPatternView(CGRect frame) {
     _seed = seed;
     _photoRef = [photo retain];
     _night = NoshiThemeIsDark();
-    _classic = NoshiThemeIsClassic();
-    _tile = _classic ? TILE_CLASSIC : TILE_MODERN;
+    _tile = TILE_CLASSIC;
     /* with no choice stored the screen opens on the wallpaper of the style the app wears */
     NSNumber *saved = [[NSUserDefaults standardUserDefaults] objectForKey:THEME_KEY];
-    _theme = saved && saved.integerValue >= 0 && (NSUInteger)saved.integerValue < THEME_COUNT ? (NSUInteger)saved.integerValue : (_classic ? 1 : 0);
+    _theme = saved && saved.integerValue >= 0 && (NSUInteger)saved.integerValue < THEME_COUNT ? (NSUInteger)saved.integerValue : 1;
     self.clearBar = YES;
     self.screenTitle = NSLocalizedString(@"profile.qr", nil);
     return self;
@@ -219,7 +208,7 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     _card.layer.mask = _cardMask;
     [_scroll addSubview:_card];
     _code = [[NoshiQrView alloc] init];
-    _code.metallic = _classic;
+    _code.metallic = YES;
     [_card addSubview:_code];
     _link = NoshiCodeLabel([UIColor blackColor], NoshiFontBold(18), NoshiTextAlignmentCenter);
     _link.adjustsFontSizeToFitWidth = YES;
@@ -243,28 +232,17 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     _tileViews = [[NSMutableArray alloc] init];
     _tiles = [[UIScrollView alloc] init];
     _tiles.showsHorizontalScrollIndicator = NO;
-    if (_classic) {
-        /* the classic sheet is the system's own toolbar holding the tiles, and the day or night switch sits in the navigation bar, so
+    /* the classic sheet is the system's own toolbar holding the tiles, and the day or night switch sits in the navigation bar, so
            the sheet is no taller than the tiles */
-        _sheetBar = [[UIToolbar alloc] init];
-        NoshiClassicStyleToolbar(_sheetBar);
-        [_sheet addSubview:_sheetBar];
-        _modeSwitch = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:NSLocalizedString(@"profile.qr.day", nil),
-                                                                 NSLocalizedString(@"profile.qr.night", nil), nil]];
-        NoshiClassicStyleSegmented(_modeSwitch);
-        _modeSwitch.frame = CGRectMake(0, 0, 160, SWITCH_HEIGHT);
-        [_modeSwitch addTarget:self action:@selector(modeChanged:) forControlEvents:UIControlEventValueChanged];
-        self.navigationItem.titleView = _modeSwitch;
-    } else {
-        _sheetMask = [[CAShapeLayer layer] retain];
-        _sheet.layer.mask = _sheetMask;
-        _sheetTitle = NoshiCodeLabel(NoshiQrTextColor(_night), NoshiFontBold(18), NoshiTextAlignmentLeft);
-        _sheetTitle.text = NSLocalizedString(@"profile.qr", nil);
-        [_sheet addSubview:_sheetTitle];
-        _mode = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        [_mode addTarget:self action:@selector(toggleNight) forControlEvents:UIControlEventTouchUpInside];
-        [_sheet addSubview:_mode];
-    }
+    _sheetBar = [[UIToolbar alloc] init];
+    NoshiClassicStyleToolbar(_sheetBar);
+    [_sheet addSubview:_sheetBar];
+    _modeSwitch = [[UISegmentedControl alloc] initWithItems:[NSArray arrayWithObjects:NSLocalizedString(@"profile.qr.day", nil),
+                                                             NSLocalizedString(@"profile.qr.night", nil), nil]];
+    NoshiClassicStyleSegmented(_modeSwitch);
+    _modeSwitch.frame = CGRectMake(0, 0, 160, SWITCH_HEIGHT);
+    [_modeSwitch addTarget:self action:@selector(modeChanged:) forControlEvents:UIControlEventValueChanged];
+    self.navigationItem.titleView = _modeSwitch;
     [root addSubview:_sheet];
     [_sheet addSubview:_tiles];
     for (NSUInteger i = 0; i < THEME_COUNT; ++i) [self addTile:i];
@@ -281,7 +259,7 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     CGFloat chipSide = floor(_tile * 0.46);
     UIControl *tile = [[[UIControl alloc] initWithFrame:bounds] autorelease];
     tile.tag = (NSInteger)index;
-    tile.layer.cornerRadius = _classic ? 6 : 12;
+    tile.layer.cornerRadius = 6;
     tile.layer.masksToBounds = YES;
     UIColor *ink;
     if (index == 0) {
@@ -309,7 +287,7 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     }
     UIImageView *chip = [[[UIImageView alloc] initWithFrame:CGRectMake((_tile - chipSide) / 2, index < PAPER_COUNT ? (_tile - chipSide) / 2 : 4, chipSide, chipSide)] autorelease];
     chip.backgroundColor = [UIColor whiteColor];
-    chip.layer.cornerRadius = _classic ? 4 : 7;
+    chip.layer.cornerRadius = 4;
     chip.contentMode = UIViewContentModeCenter;
     chip.image = NoshiSymbolImage(NoshiSymbolQr, chipSide - 8, ink);
     chip.userInteractionEnabled = NO;
@@ -328,14 +306,13 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
 }
 
 static void NoshiQrApplyPaper(UIImageView *view, NSUInteger index, BOOL night) {
-    BOOL classic = index == 1;
-    if (classic == NoshiThemeIsClassic() && night == NoshiThemeIsDark()) NoshiApplyChatWallpaper(view, night);
-    else NoshiApplyWallpaperStyle(view, classic, night);
+    if (index == 0 && night == NoshiThemeIsDark()) NoshiApplyChatWallpaper(view, night);
+    else NoshiApplyWallpaperStyle(view, night);
 }
 
 static NSArray *NoshiQrPatternColors(BOOL night) {
-    UIColor *top = night ? NoshiQrPatternColor(0.25, 0.10, 0.24) : NoshiQrPatternColor(0.85, 0.70, 0.87);
-    UIColor *bottom = night ? NoshiQrPatternColor(0.09, 0.08, 0.15) : NoshiQrPatternColor(0.94, 0.87, 0.95);
+    UIColor *top = night ? NoshiQrPatternColor(0.10, 0.18, 0.28) : NoshiQrPatternColor(0.70, 0.84, 0.95);
+    UIColor *bottom = night ? NoshiQrPatternColor(0.07, 0.09, 0.15) : NoshiQrPatternColor(0.87, 0.93, 0.98);
     return [NSArray arrayWithObjects:(id)top.CGColor, (id)bottom.CGColor, nil];
 }
 
@@ -361,13 +338,7 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
     _code.paperColor = sheet;
     _card.backgroundColor = sheet;
     _link.textColor = bottom;
-    if (_classic) {
-        _modeSwitch.selectedSegmentIndex = _night ? 1 : 0;
-    } else {
-        _sheet.backgroundColor = NoshiQrSheetColor(_night);
-        _sheetTitle.textColor = NoshiQrTextColor(_night);
-        [_mode setImage:NoshiSymbolImage(_night ? NoshiSymbolSun : NoshiSymbolMoon, 24, NoshiColorAccent()) forState:UIControlStateNormal];
-    }
+    _modeSwitch.selectedSegmentIndex = _night ? 1 : 0;
     for (UIView *tile in _tileViews) {
         if (tile.tag == 0) {
             NoshiQrApplyPaper((UIImageView *)[tile viewWithTag:PAPER_TAG], (NSUInteger)tile.tag, _night);
@@ -387,7 +358,7 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
         }
         BOOL chosen = (NSUInteger)tile.tag == _theme;
         tile.layer.borderColor = (chosen ? NoshiColorAccent() : [UIColor colorWithWhite:0.5 alpha:0.6]).CGColor;
-        tile.layer.borderWidth = chosen ? 2 : (_classic ? 1 : 0);
+        tile.layer.borderWidth = chosen ? 2 : (1);
     }
 }
 
@@ -441,22 +412,11 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
 
     /* the sheet: a row of tiles; the modern one has a title and the day or night switch over them, the classic one has the switch in
        the navigation bar */
-    CGFloat tilesTop = _classic ? 6 : 40;
-    CGFloat sheetHeight = tilesTop + _tile + (_classic ? 6 : 10) + MAX(insets.bottom, 4);
+    CGFloat tilesTop = 6;
+    CGFloat sheetHeight = tilesTop + _tile + (6) + MAX(insets.bottom, 4);
     CGFloat sheetTop = CGRectGetMaxY(body) - sheetHeight;
     _sheet.frame = CGRectMake(body.origin.x, sheetTop, width, sheetHeight);
-    if (_classic) {
-        _sheetBar.frame = _sheet.bounds;
-    } else {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        _sheetMask.frame = _sheet.bounds;
-        _sheetMask.path = [UIBezierPath bezierPathWithRoundedRect:_sheet.bounds byRoundingCorners:UIRectCornerTopLeft | UIRectCornerTopRight
-                                                      cornerRadii:CGSizeMake(SHEET_RADIUS, SHEET_RADIUS)].CGPath;
-        [CATransaction commit];
-        _sheetTitle.frame = CGRectMake(SHEET_MARGIN + 2, 6, width - 2 * SHEET_MARGIN - 56, 30);
-        _mode.frame = CGRectMake(width - SHEET_MARGIN - 48, 3, 48, 36);
-    }
+    _sheetBar.frame = _sheet.bounds;
     _tiles.frame = CGRectMake(0, tilesTop, width, _tile);
     for (NSUInteger i = 0; i < _tileViews.count; ++i) {
         UIView *tile = [_tileViews objectAtIndex:i];
@@ -475,7 +435,7 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
     CGFloat cardHeight = around + code;
     CGFloat top = AVATAR / 2 + MAX(6, (room - AVATAR / 2 - cardHeight) / 2);
     _card.frame = CGRectMake((width - cardWidth) / 2, top, cardWidth, cardHeight);
-    UIBezierPath *shape = [UIBezierPath bezierPathWithRoundedRect:_card.bounds cornerRadius:_classic ? CLASSIC_CARD_RADIUS : CARD_RADIUS];
+    UIBezierPath *shape = [UIBezierPath bezierPathWithRoundedRect:_card.bounds cornerRadius:CLASSIC_CARD_RADIUS];
     [shape appendPath:[UIBezierPath bezierPathWithOvalInRect:CGRectMake(cardWidth / 2 - cut, -cut, 2 * cut, 2 * cut)]];
     shape.usesEvenOddFillRule = YES;
     [CATransaction begin];
@@ -491,26 +451,19 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
 
 /* the modern bar is see-through, so the picture starts at the top edge and the card gets the room the bar would take */
 - (CGRect)bodyFrame {
-    if (_classic) return [super bodyFrame];
-    CGSize size = self.view.bounds.size;
-    CGFloat top = NoshiLayoutInsets(self).top;
-    return CGRectMake(0, top, size.width, size.height - top);
+    return [super bodyFrame];
 }
 
 /* the wallpaper stops at the status bar on ios 5 and 6, where the window's own lilac shows above it as a strip;
    the modern screen hides the bar like the story viewer does */
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    if (_classic) return;
-    NoshiStatusBarHide(self, UIStatusBarAnimationFade);
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    if (_classic) return;
-    NoshiStatusBarShow(self, UIStatusBarAnimationFade);
 }
 
-- (BOOL)prefersStatusBarHidden { return !_classic; }
+- (BOOL)prefersStatusBarHidden { return NO; }
 
 @end

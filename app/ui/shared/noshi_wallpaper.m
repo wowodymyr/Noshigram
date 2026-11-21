@@ -6,7 +6,6 @@
 #import "noshi_platform.h"
 #import "noshi_chat_settings.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 #import "noshi_wave.h"
 #import <Accelerate/Accelerate.h>
 #import <QuartzCore/QuartzCore.h>
@@ -483,8 +482,7 @@ static UIImage *NoshiSizedWallpaper(NoshiWallpaperSetting setting, CGSize size) 
 #pragma mark applying
 
 void NoshiApplyChatWallpaper(UIImageView *view, BOOL dark) {
-    BOOL classic = NoshiThemeIsClassic();
-    NoshiApplyWallpaperStyle(view, classic, dark);
+    NoshiApplyWallpaperStyle(view, dark);
     /* the picked wallpaper takes the place of the standard picture, or of the linen in the classic style */
     UIImage *picked = NoshiShownWallpaper();
     if (picked) view.image = picked;
@@ -504,8 +502,7 @@ void NoshiApplyChatWallpaperForChat(UIImageView *view, BOOL dark, int32_t peerKi
 }
 
 void NoshiApplyChatWallpaperSizedForChat(UIImageView *view, BOOL dark, CGSize size, int32_t peerKind, long long peerId) {
-    BOOL classic = NoshiThemeIsClassic();
-    NoshiApplyWallpaperStyle(view, classic, dark);
+    NoshiApplyWallpaperStyle(view, dark);
     NoshiWallpaperSetting setting = NoshiWallpaperStoredForChat(peerKind, peerId);
     /* a preview a few hundred points wide does not need the picture of the whole screen, which cost a full repaint of the pattern at every step of a slider */
     if (setting.kind != NoshiWallpaperStandard) view.image = NoshiSizedWallpaper(setting, size);
@@ -557,7 +554,7 @@ static UIImage *NoshiImportedWallpaperGradientImage(const uint32_t values[4], NS
    seed purple; zero and up is a hue the person chose. the turned picture is kept per name, hue and palette */
 static UIImage *NoshiTurnedImage(UIImage *original, NSString *name, CGFloat seedHue, NSInteger ownHue) {
     UIColor *seed = [UIColor colorWithHue:(CGFloat)(seedHue / 360.0) saturation:1 brightness:1 alpha:1];
-    UIColor *accent = ownHue >= 0 ? [UIColor colorWithHue:(CGFloat)(ownHue / 360.0) saturation:1 brightness:1 alpha:1] : NoshiThemeFollowAccent(seed, seedHue);
+    UIColor *accent = ownHue >= 0 ? [UIColor colorWithHue:(CGFloat)(ownHue / 360.0) saturation:1 brightness:1 alpha:1] : NoshiColorAccent();
     CGFloat seedRed = 0, seedGreen = 0, seedBlue = 0, red = 0, green = 0, blue = 0;
     if (![seed getRed:&seedRed green:&seedGreen blue:&seedBlue alpha:NULL] || ![accent getRed:&red green:&green blue:&blue alpha:NULL]) return original;
     if (fabs(seedRed - red) + fabs(seedGreen - green) + fabs(seedBlue - blue) < 0.005) return original;
@@ -619,15 +616,10 @@ UIColor *NoshiClassicLinenColor(BOOL dark) {
     return tile ? [UIColor colorWithPatternImage:tile] : NoshiColorChatBackground();
 }
 
-void NoshiApplyWallpaperStyle(UIImageView *view, BOOL classic, BOOL dark) {
-    uint32_t values[4] = {0};
-    int angle = 90;
-    NSUInteger importedColors = !classic ? NoshiImportedThemeWallpaperGradient(values, &angle) : 0;
-    BOOL importedBackground = !classic && NoshiImportedThemeColor("chat.defaultWallpaper") != nil;
-    view.image = classic || importedColors || importedBackground ? nil : NoshiStandardWallpaperImage(dark);
-    if (importedColors) view.image = NoshiImportedWallpaperGradientImage(values, importedColors, angle, [UIScreen mainScreen].bounds.size);
-    /* the classic wallpaper is a linen tile, laid as a pattern so the system repeats it at any size */
-    view.backgroundColor = classic ? NoshiClassicLinenColor(dark) : NoshiColorChatBackground();
+void NoshiApplyWallpaperStyle(UIImageView *view, BOOL dark) {
+    /* the doodles of the standard wallpaper, turned to the blue of the app */
+    view.image = NoshiStandardWallpaperImage(dark);
+    view.backgroundColor = NoshiColorChatBackground();
     view.contentMode = UIViewContentModeScaleAspectFill;
     view.clipsToBounds = YES;
 }

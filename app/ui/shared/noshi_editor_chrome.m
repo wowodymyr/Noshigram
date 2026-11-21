@@ -21,37 +21,12 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    if (NoshiThemeIsClassic()) {
-        /* the old system draws the bar flat and edge to edge: a toolbar is the background and the subviews stand on it */
-        UIToolbar *bar = [[[UIToolbar alloc] init] autorelease];
-        NoshiClassicStyleToolbar(bar);
-        bar.userInteractionEnabled = NO;
-        _effect = [bar retain];
-        _content = self;
-        [self addSubview:_effect];
-        return self;
-    }
-    _floating = YES;
-    self.layer.cornerRadius = PANEL_RADIUS;
-    self.clipsToBounds = YES;
-    self.layer.borderWidth = 0.5;
-    self.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.1].CGColor;
-    Class effect = NSClassFromString(@"UIBlurEffect"), view = NSClassFromString(@"UIVisualEffectView");
-    if (effect && view) {
-        /* UIBlurEffectStyleDark */
-        id blur = ((id (*)(id, SEL, NSInteger))objc_msgSend)(effect, NSSelectorFromString(@"effectWithStyle:"), 2);
-        id made = ((id (*)(id, SEL, id))objc_msgSend)([view alloc], NSSelectorFromString(@"initWithEffect:"), blur);
-        if (made) {
-            _effect = (UIView *)made;
-            _content = [_effect valueForKey:@"contentView"];
-        }
-    }
-    if (!_effect) {
-        /* before ios 8 there is no live blur, and a plate that is nearly opaque keeps the icons readable over any picture */
-        _effect = [[UIView alloc] init];
-        _effect.backgroundColor = [UIColor colorWithRed:0.09 green:0.09 blue:0.1 alpha:0.94];
-        _content = _effect;
-    }
+    /* the old system draws the bar flat and edge to edge: a toolbar is the background and the subviews stand on it */
+    UIToolbar *bar = [[[UIToolbar alloc] init] autorelease];
+    NoshiClassicStyleToolbar(bar);
+    bar.userInteractionEnabled = NO;
+    _effect = [bar retain];
+    _content = self;
     [self addSubview:_effect];
     return self;
 }
@@ -78,7 +53,6 @@
     NoshiSymbol _symbol;
     BOOL _hasSymbol;
     BOOL _lit;
-    BOOL _classic;
     UIView *_plate;
     UIImageView *_icon;
     UILabel *_caption;
@@ -91,7 +65,6 @@
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
     _style = style;
-    _classic = NoshiThemeIsClassic();
     _symbol = symbol;
     _hasSymbol = YES;
     self.backgroundColor = [UIColor clearColor];
@@ -146,15 +119,10 @@
     [self setNeedsLayout];
 }
 - (UIColor *)contentColor {
-    if (_style == NoshiEditorButtonAccent && !_classic) return [UIColor whiteColor];
-    if (_lit) return _classic ? [UIColor colorWithRed:0.35 green:0.65 blue:1 alpha:1] : NoshiMixedColor(NoshiColorAccent(), [UIColor whiteColor], 0.4);
+    if (_lit) return [UIColor colorWithRed:0.35 green:0.65 blue:1 alpha:1];
     return [UIColor colorWithWhite:1 alpha:0.94];
 }
 - (UIColor *)plateColor {
-    if (_classic) return [UIColor clearColor];
-    if (_style == NoshiEditorButtonAccent) return NoshiColorAccent();
-    if (_lit) return [NoshiColorAccent() colorWithAlphaComponent:0.34];
-    if (_style == NoshiEditorButtonRound || _style == NoshiEditorButtonPill) return [UIColor colorWithWhite:1 alpha:0.12];
     return [UIColor clearColor];
 }
 - (void)refreshAnimated:(BOOL)animated {

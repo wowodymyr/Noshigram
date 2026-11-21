@@ -12,7 +12,6 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import "noshi_alert.h"
-#import "noshi_senko_popup.h"
 #import "noshi_text_parts.h"
 #include "noshi_text_split.h"
 #import "noshi_session_privacy.h"
@@ -30,7 +29,6 @@
 #import "noshi_custom_emoji_loader.h"
 #import "noshi_topic_icon.h"
 #import "noshi_voice_transcriber.h"
-#import "noshi_developers.h"
 #import "noshi_mini_player.h"
 #import "noshi_next_chat_hint.h"
 #import "noshi_topics_screen.h"
@@ -43,7 +41,6 @@
 #import "noshi_session_actions.h"
 #import "noshi_settings_kit.h"
 #import "noshi_session_sendas.h"
-#import "noshi_send_as_menu.h"
 #import "noshi_sticker_maker.h"
 #import "noshi_sheet.h"
 #import "noshi_selection_bar.h"
@@ -69,8 +66,6 @@
 #import "noshi_media_viewer.h"
 #import "noshi_message_cell.h"
 #import "noshi_reaction_time_popup.h"
-#import "noshi_send_menu.h"
-#import "noshi_message_effect_player.h"
 #import "noshi_chat_settings.h"
 #import "noshi_music_player.h"
 #import "noshi_round_playback.h"
@@ -101,11 +96,9 @@
 #import "noshi_dust_effect.h"
 #import "noshi_session_drafts.h"
 #import "noshi_translate_config.h"
-#import "noshi_translate_sheet.h"
 #import "noshi_translator.h"
-#import "noshi_falling_view.h"
 #import "noshi_wallpaper.h"
-#import "noshi_chats_controller.h"
+#import "noshi_chat_list.h"
 #import "noshi_wallpaper_controller.h"
 #import "noshi_time.h"
 #include "noshi_scroll.h"
@@ -113,7 +106,6 @@
 #import "noshi_welcome_toast.h"
 #import "noshi_reaction_artwork.h"
 #import "noshi_reaction_effect.h"
-#import "noshi_saved_media_controller.h"
 
 #define BAR_HEIGHT 44.0
 /* what the buttons on the wider side of the classic bar of a chat take of a phone's width: the picture and the dots, or the arrow and a count of three digits */
@@ -243,9 +235,6 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     BOOL _channelFullFailed;
     NSUInteger _codeCopyToken;
     NoshiMiniPlayer *_miniPlayer;
-    NoshiFallingView *_snow;
-    NoshiFallingView *_foxes;
-    NoshiFallingView *_boys;
     UITableView *_table;
     BOOL _premium;
     BOOL _premiumKnown;
@@ -632,12 +621,6 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     [_avatars release];
     [_media release];
     [_stickers release];
-    [_snow stop];
-    [_foxes stop];
-    [_boys stop];
-    [_snow release];
-    [_foxes release];
-    [_boys release];
     _miniPlayer.changeHandler = nil;
     [_miniPlayer release];
     [_toEnd release];
@@ -848,7 +831,7 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     if (_subtitle) {
         [_subtitle setStatus:line kind:[self statusKind]];
         [self.view setNeedsLayout];
-    } else if (NoshiThemeIsClassic() && [self isViewLoaded]) {
+    } else if ([self isViewLoaded]) {
         (void)line;
         [self installClassicTitleView];
     }
@@ -867,7 +850,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     root.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.view = root;
 
-    BOOL classic = NoshiThemeIsClassic();
     _wallpaper = [[UIImageView alloc] init];
     NoshiApplyChatWallpaperForChat(_wallpaper, NoshiThemeIsDark(), _dialog.peerKind, _dialog.peerId);
     [root addSubview:_wallpaper];
@@ -881,23 +863,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
         [chat relayoutAnimatedThen:nil];
     };
     [root addSubview:_miniPlayer];
-    if (NoshiChatFlagGet(NoshiChatFlagSnow)) {
-        /* the snow falls over the background and under the messages */
-        _snow = [[NoshiFallingView alloc] initWithFrame:root.bounds];
-        [root addSubview:_snow];
-    }
-
-    if (NoshiChatFlagGet(NoshiChatFlagFoxes)) {
-        _foxes = [[NoshiFallingView alloc] initWithFrame:root.bounds spriteNamed:@"senko-fall"];
-        [root insertSubview:_foxes belowSubview:_miniPlayer];
-    }
-
-    /* the list of chats already lets them fall, so on a tablet the chat beside it does as well and the two panes show the same */
-    if (NoshiChatFlagGet(NoshiChatFlagBoykisser)) {
-        _boys = [[NoshiFallingView alloc] initWithFrame:root.bounds spriteNamed:@"boykisser"];
-        [root insertSubview:_boys belowSubview:_miniPlayer];
-    }
-
     _table = [[UITableView alloc] initWithFrame:root.bounds style:UITableViewStylePlain];
     NoshiScrollViewOwnsInsets(_table);
     NoshiTableUsesExactHeights(_table);
@@ -970,22 +935,20 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     _pinnedBar = [[UIControl alloc] init];
     _pinnedBar.backgroundColor = NoshiColorBar();
     _pinnedBar.clipsToBounds = YES;
-    if (classic) {
-        /* the same plain ground as the strip of the player, black on the dark theme and white on the light one: the wallpaper showed through the bar, and the purple plate made a stripe */
-        _pinnedBar.backgroundColor = NoshiClassicStripGround();
-    }
+    /* the same plain ground as the strip of the player, black on the dark theme and white on the light one: the wallpaper showed through the bar, and the purple plate made a stripe */
+    _pinnedBar.backgroundColor = NoshiClassicStripGround();
     _pinnedBar.hidden = YES;
     [_pinnedBar addTarget:self action:@selector(pinnedTapped) forControlEvents:UIControlEventTouchUpInside];
     _pinnedLine = [[NoshiPinnedLine alloc] initWithFrame:CGRectMake(12, 0, 2, PINNED_HEIGHT)];
     [_pinnedBar addSubview:_pinnedLine];
-    _pinnedTitle = NoshiChatLabel(classic && NoshiThemeIsDark() ? [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1] : NoshiColorAccent(), NoshiTextAlignmentLeft);
+    _pinnedTitle = NoshiChatLabel(NoshiThemeIsDark() ? [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1] : NoshiColorAccent(), NoshiTextAlignmentLeft);
     _pinnedTitle.text = NSLocalizedString(@"chat.pinned", nil);
     _pinnedTitle.userInteractionEnabled = NO;
     [_pinnedBar addSubview:_pinnedTitle];
     /* the pinned message is somebody's text, so its emoji come from the app's pictures */
     _pinnedText = [[NoshiEmojiLabel alloc] init];
-    _pinnedText.textColor = classic ? NoshiClassicStripInk() : NoshiColorTitle();
-    if (classic && NoshiThemeIsDark()) {
+    _pinnedText.textColor = NoshiClassicStripInk();
+    if (NoshiThemeIsDark()) {
         _pinnedText.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
         _pinnedText.shadowOffset = CGSizeMake(0, -1);
     }
@@ -1000,18 +963,16 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     _pinnedThumb.userInteractionEnabled = NO;
     [_pinnedBar addSubview:_pinnedThumb];
     _pinnedListButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_pinnedListButton setImage:NoshiSymbolImage(NoshiSymbolPinnedList, 22, classic ? NoshiClassicStripInk() : NoshiColorSecondary()) forState:UIControlStateNormal];
+    [_pinnedListButton setImage:NoshiSymbolImage(NoshiSymbolPinnedList, 22, NoshiClassicStripInk()) forState:UIControlStateNormal];
     [_pinnedListButton addTarget:self action:@selector(openPinnedList) forControlEvents:UIControlEventTouchUpInside];
     _pinnedListButton.accessibilityLabel = NSLocalizedString(@"chat.pinned.all", nil);
     _pinnedListButton.hidden = YES;
     [_pinnedBar addSubview:_pinnedListButton];
-    if (classic) {
-        UIView *foot = [[[UIView alloc] init] autorelease];
-        foot.backgroundColor = NoshiClassicStripEdge();
-        foot.userInteractionEnabled = NO;
-        foot.tag = PINNED_FOOT_TAG;
-        [_pinnedBar addSubview:foot];
-    }
+    UIView *foot = [[[UIView alloc] init] autorelease];
+    foot.backgroundColor = NoshiClassicStripEdge();
+    foot.userInteractionEnabled = NO;
+    foot.tag = PINNED_FOOT_TAG;
+    [_pinnedBar addSubview:foot];
     [root addSubview:_pinnedBar];
     /* the voice chat that runs in a group or channel: a bar under the pinned message with who is in it and the way to join */
     _voiceBar = [[UIControl alloc] init];
@@ -1041,19 +1002,9 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     [root addSubview:_toast];
     /* the way back to the newest message, which shows once the list is more than a screen above its end */
     _toEnd = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    if (NoshiThemeIsClassic()) {
-        /* the classic style has no flat card: the same glossy dome as the send button of the bar */
-        [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, NO) forState:UIControlStateNormal];
-        [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, YES) forState:UIControlStateHighlighted];
-    } else {
-        _toEnd.backgroundColor = NoshiColorCard();
-        _toEnd.layer.cornerRadius = 22;
-        _toEnd.layer.shadowColor = [UIColor blackColor].CGColor;
-        _toEnd.layer.shadowOpacity = 0.25f;
-        _toEnd.layer.shadowRadius = 5;
-        _toEnd.layer.shadowOffset = CGSizeMake(0, 2);
-        [_toEnd setImage:NoshiSymbolImage(NoshiSymbolArrowDown, 20, NoshiColorTitle()) forState:UIControlStateNormal];
-    }
+    /* the classic style has no flat card: the same glossy dome as the send button of the bar */
+    [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, NO) forState:UIControlStateNormal];
+    [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, YES) forState:UIControlStateHighlighted];
     [_toEnd addTarget:self action:@selector(toEndTapped) forControlEvents:UIControlEventTouchUpInside];
     _toEnd.accessibilityLabel = NSLocalizedString(@"chat.toend", nil);
     _toEnd.alpha = 0;
@@ -1061,17 +1012,8 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     [root addSubview:_toEnd];
     _reactionJump = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _reactionJump.layer.cornerRadius = 22;
-    if (classic) {
-        [_reactionJump setBackgroundImage:NoshiClassicRedRoundButtonImage(NoshiSymbolHeart, 44, NO) forState:UIControlStateNormal];
-        [_reactionJump setBackgroundImage:NoshiClassicRedRoundButtonImage(NoshiSymbolHeart, 44, YES) forState:UIControlStateHighlighted];
-    } else {
-        _reactionJump.backgroundColor = NoshiColorCard();
-        _reactionJump.layer.shadowColor = [UIColor blackColor].CGColor;
-        _reactionJump.layer.shadowOpacity = 0.25f;
-        _reactionJump.layer.shadowRadius = 5;
-        _reactionJump.layer.shadowOffset = CGSizeMake(0, 2);
-        [_reactionJump setImage:NoshiSymbolImage(NoshiSymbolHeartOutline, 22, NoshiColorTitle()) forState:UIControlStateNormal];
-    }
+    [_reactionJump setBackgroundImage:NoshiClassicRedRoundButtonImage(NoshiSymbolHeart, 44, NO) forState:UIControlStateNormal];
+    [_reactionJump setBackgroundImage:NoshiClassicRedRoundButtonImage(NoshiSymbolHeart, 44, YES) forState:UIControlStateHighlighted];
     [_reactionJump addTarget:self action:@selector(reactionJumpTapped) forControlEvents:UIControlEventTouchUpInside];
     UILongPressGestureRecognizer *reactionHold = [[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(reactionJumpHeld:)] autorelease];
     [_reactionJump addGestureRecognizer:reactionHold];
@@ -1082,7 +1024,7 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     _reactionBadge.font = NoshiFontSemibold(12);
     _reactionBadge.textColor = [UIColor whiteColor];
     _reactionBadge.textAlignment = NoshiTextAlignmentCenter;
-    _reactionBadge.backgroundColor = classic ? [UIColor colorWithRed:0.20 green:0.50 blue:0.92 alpha:1] : NoshiColorAccent();
+    _reactionBadge.backgroundColor = [UIColor colorWithRed:0.20 green:0.50 blue:0.92 alpha:1];
     _reactionBadge.layer.cornerRadius = 11;
     _reactionBadge.layer.masksToBounds = YES;
     _reactionBadge.userInteractionEnabled = NO;
@@ -1093,138 +1035,56 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     /* the hint sits in the list at the end of its content, in the space a pull past the last message opens */
     [_table addSubview:_nextHint];
 
-    if (classic && _pinnedList) {
+    if (_pinnedList) {
         self.title = NSLocalizedString(@"chat.pinned.list", nil);
         _input.hidden = YES;
         return;
     }
-    if (classic) {
-        /* the system's navigation bar carries the name and the status, the person's picture and the back button */
-        _classicBack = !NoshiIsDetailRoot(self);
-        if (_classicBack) {
-            self.navigationItem.hidesBackButton = YES;
-            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(unreadTotalChanged:) name:NoshiUnreadTotalDidChangeNotification object:nil];
-            /* the count is known before the title, so the title is made as wide as the room beside the arrow allows */
-            [self refreshBackBadge];
-        }
-        [self installClassicTitleView];
-        NoshiAvatarView *mini = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, 32, 32)] autorelease];
-        mini.seed = _dialog.avatarSeed;
-        mini.initials = _dialog.initials;
-        mini.deleted = _dialog.deleted;
-        mini.accent = _dialog.saved || _dialog.replies;
-        mini.showsSymbol = _dialog.saved || _dialog.replies;
-        mini.symbol = _dialog.replies ? NoshiSymbolReply : NoshiSymbolBookmark;
-        mini.circular = YES;
-        [mini setPhoto:_dialog.saved || _dialog.replies ? nil : _dialog.photo cache:_avatars];
-        mini.userInteractionEnabled = YES;
-        [mini addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
-        /* the ring stands in the bar item, which is a little wider than the picture, so the bar does not clip it */
-        CGFloat outset = 3;
-        UIView *avatarBox = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 32 + 2 * outset, 32 + 2 * outset)] autorelease];
-        _storyRing = [[NoshiStoryRing alloc] initWithFrame:avatarBox.bounds];
-        _storyRing.followsAvatarShape = !NoshiThemeIsClassic();
-        _storyRing.hidden = YES;
-        [avatarBox addSubview:_storyRing];
-        mini.frame = CGRectMake(outset, outset, 32, 32);
-        if ([self isForumTopic]) {
-            /* a topic wears its own icon, as in the modern bar, and not the initials of the group; loadTopicIcon swaps in the custom emoji once it is in memory */
-            _topicIcon = [[UIImageView alloc] initWithFrame:mini.frame];
-            _topicIcon.contentMode = UIViewContentModeScaleAspectFit;
-            _topicIcon.userInteractionEnabled = YES;
-            [_topicIcon addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
-            [avatarBox addSubview:_topicIcon];
-        } else [avatarBox addSubview:mini];
-        UIBarButtonItem *avatarItem = [[[UIBarButtonItem alloc] initWithCustomView:avatarBox] autorelease];
-        UIBarButtonItem *dotsItem = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
-                                                                       style:UIBarButtonItemStyleBordered target:self action:@selector(showChatMenu)] autorelease];
-        dotsItem.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
-        self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:dotsItem, avatarItem, nil];
-        return;
+    /* the system's navigation bar carries the name and the status, the person's picture and the back button */
+    _classicBack = !NoshiIsDetailRoot(self);
+    if (_classicBack) {
+        self.navigationItem.hidesBackButton = YES;
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(unreadTotalChanged:) name:NoshiUnreadTotalDidChangeNotification object:nil];
+        /* the count is known before the title, so the title is made as wide as the room beside the arrow allows */
+        [self refreshBackBadge];
     }
-    _header = [[UIView alloc] init];
-    _header.backgroundColor = NoshiColorBar();
-    [root addSubview:_header];
-    _headerLine = [[UIView alloc] init];
-    _headerLine.backgroundColor = NoshiColorHairline();
-    [_header addSubview:_headerLine];
-    /* the arrow is a picture of the app in the color of the title, like the dots at the other end of the bar, and not a chevron drawn in the color of the accent */
-    _back = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_back setImage:NoshiSymbolImage(NoshiSymbolBack, 22, NoshiColorTitle()) forState:UIControlStateNormal];
-    _back.accessibilityLabel = NSLocalizedString(@"phone.back", nil);
-    [_back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
-    [_header addSubview:_back];
-    _backBadge = [[UILabel alloc] init];
-    _backBadge.backgroundColor = NoshiColorAccent();
-    _backBadge.textColor = [UIColor whiteColor];
-    _backBadge.font = NoshiFontBold(12);
-    _backBadge.textAlignment = NoshiTextAlignmentCenter;
-    _backBadge.layer.cornerRadius = 9;
-    _backBadge.clipsToBounds = YES;
-    _backBadge.userInteractionEnabled = NO;
-    _backBadge.hidden = YES;
-    [_header addSubview:_backBadge];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(unreadTotalChanged:) name:NoshiUnreadTotalDidChangeNotification object:nil];
-    [self refreshBackBadge];
-    _storyRing = [[NoshiStoryRing alloc] init];
-    _storyRing.followsAvatarShape = !NoshiThemeIsClassic();
+    [self installClassicTitleView];
+    NoshiAvatarView *mini = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, 32, 32)] autorelease];
+    mini.seed = _dialog.avatarSeed;
+    mini.initials = _dialog.initials;
+    mini.deleted = _dialog.deleted;
+    mini.accent = _dialog.saved || _dialog.replies;
+    mini.showsSymbol = _dialog.saved || _dialog.replies;
+    mini.symbol = _dialog.replies ? NoshiSymbolReply : NoshiSymbolBookmark;
+    mini.circular = YES;
+    [mini setPhoto:_dialog.saved || _dialog.replies ? nil : _dialog.photo cache:_avatars];
+    mini.userInteractionEnabled = YES;
+    [mini addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
+    /* the ring stands in the bar item, which is a little wider than the picture, so the bar does not clip it */
+    CGFloat outset = 3;
+    UIView *avatarBox = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 32 + 2 * outset, 32 + 2 * outset)] autorelease];
+    _storyRing = [[NoshiStoryRing alloc] initWithFrame:avatarBox.bounds];
+    _storyRing.followsAvatarShape = NO;
     _storyRing.hidden = YES;
-    [_header addSubview:_storyRing];
-    _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.seed = _dialog.avatarSeed;
-    _avatar.initials = _dialog.initials;
-    _avatar.deleted = _dialog.deleted;
-    _avatar.accent = _dialog.saved || _dialog.replies;
-    _avatar.showsSymbol = _dialog.saved || _dialog.replies;
-    _avatar.symbol = _dialog.replies ? NoshiSymbolReply : NoshiSymbolBookmark;
-    _avatar.circular = YES;
-    [_avatar setPhoto:_dialog.saved || _dialog.replies ? nil : _dialog.photo cache:_avatars];
-    _avatar.userInteractionEnabled = YES;
-    [_avatar addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
-    [_header addSubview:_avatar];
+    [avatarBox addSubview:_storyRing];
+    mini.frame = CGRectMake(outset, outset, 32, 32);
     if ([self isForumTopic]) {
-        _avatar.hidden = YES;
-        _topicIcon = [[UIImageView alloc] init];
+        /* a topic wears its own icon, as in the modern bar, and not the initials of the group; loadTopicIcon swaps in the custom emoji once it is in memory */
+        _topicIcon = [[UIImageView alloc] initWithFrame:mini.frame];
         _topicIcon.contentMode = UIViewContentModeScaleAspectFit;
-        [_header addSubview:_topicIcon];
-    }
-    _title = [[NoshiEmojiLabel alloc] init];
-    _title.textColor = NoshiColorTitle();
-    _title.dropsUndrawable = YES;
-    [self showTitleBadge];
-    [_header addSubview:_title];
-    _subtitle = [[NoshiStatusLabel alloc] init];
-    _subtitle.backgroundColor = [UIColor clearColor];
-    _subtitle.textAlignment = NoshiTextAlignmentLeft;
-    [_subtitle setStatus:[self statusLine] kind:[self statusKind]];
-    [_header addSubview:_subtitle];
-    _menuButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_menuButton setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, NoshiColorTitle()) forState:UIControlStateNormal];
-    [_menuButton addTarget:self action:@selector(showChatMenu) forControlEvents:UIControlEventTouchUpInside];
-    _menuButton.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
-    [_header addSubview:_menuButton];
-    if (_pinnedList) {
-        /* the list of pinned messages has a title and no picture, status, menu or field */
-        _avatar.hidden = YES;
-        _subtitle.hidden = YES;
-        _menuButton.hidden = YES;
-        _input.hidden = YES;
-        _title.entities = nil;
-        _title.text = [self listTitle];
-        return;
-    }
-    /* the name and the status open the profile as the picture does */
-    _title.userInteractionEnabled = YES;
-    [_title addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(chatTitleTapped:)] autorelease]];
-    _subtitle.userInteractionEnabled = YES;
-    [_subtitle addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
+        _topicIcon.userInteractionEnabled = YES;
+        [_topicIcon addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
+        [avatarBox addSubview:_topicIcon];
+    } else [avatarBox addSubview:mini];
+    UIBarButtonItem *avatarItem = [[[UIBarButtonItem alloc] initWithCustomView:avatarBox] autorelease];
+    UIBarButtonItem *dotsItem = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
+                                                                   style:UIBarButtonItemStyleBordered target:self action:@selector(showChatMenu)] autorelease];
+    dotsItem.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
+    self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:dotsItem, avatarItem, nil];
 }
 
 - (void)chatTitleTapped:(UITapGestureRecognizer *)tap {
-    CGPoint point = [tap locationInView:_title];
-    NSUInteger mark = NoshiMarkForDocument([_title customEmojiAtPoint:point]);
-    if (mark) NoshiShowMarkNoticeForUser(_dialog.title, mark, _dialog.peerId);
-    else [self openProfileGifts];
+    [self openProfileGifts];
 }
 
 /* the ring round the picture follows the stories of the person: arcs coloured while unseen, grey once seen */
@@ -1604,17 +1464,10 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
             [again selectSendAsOption:option];
         }];
     };
-    if (NoshiThemeIsClassic()) {
-        NSMutableArray *titles = [NSMutableArray arrayWithCapacity:_sendAsOptions.count];
-        for (NoshiSendAsOption *option in _sendAsOptions) [titles addObject:option.isAccount ? NSLocalizedString(@"chat.sendas.account", nil) : option.identity.title];
-        [NoshiSheet presentInView:self.view title:NSLocalizedString(@"chat.sendas", nil) message:NSLocalizedString(@"chat.sendas.info", nil) options:titles destructive:nil
-                        cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:pick];
-    } else {
-        NSUInteger selected = [_sendAsOptions indexOfObjectIdenticalTo:[self currentSendAsOption]];
-        CGRect anchor = [_input.senderAvatar convertRect:_input.senderAvatar.bounds toView:self.view];
-        NoshiSendAsMenu *menu = [[[NoshiSendAsMenu alloc] initWithOptions:_sendAsOptions selected:selected avatars:_avatars handler:pick] autorelease];
-        [menu showInView:self.view anchor:anchor];
-    }
+    NSMutableArray *titles = [NSMutableArray arrayWithCapacity:_sendAsOptions.count];
+    for (NoshiSendAsOption *option in _sendAsOptions) [titles addObject:option.isAccount ? NSLocalizedString(@"chat.sendas.account", nil) : option.identity.title];
+    [NoshiSheet presentInView:self.view title:NSLocalizedString(@"chat.sendas", nil) message:NSLocalizedString(@"chat.sendas.info", nil) options:titles destructive:nil
+                    cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:pick];
 }
 
 /* the way in stands where the field would be while the account is outside the channel */
@@ -2438,10 +2291,6 @@ enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMes
 enum { NoshiChatAlertStylePlainTextInput = 2 };
 
 - (void)askSearchQuery {
-    if (!NoshiThemeIsClassic()) {
-        [self beginChatSearch];
-        return;
-    }
     Class alertClass = NoshiAlertClass();
     id alert = [[alertClass alloc] initWithTitle:NSLocalizedString(@"chat.search.prompt", nil) message:nil delegate:self
                                cancelButtonTitle:NSLocalizedString(@"picker.cancel", nil) otherButtonTitles:NSLocalizedString(@"chat.search.go", nil), nil];
@@ -2855,7 +2704,7 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     CGRect column = NoshiContentColumn(size, insets, NOSHI_COLUMN_CHAT);
     CGFloat left = column.origin.x, width = column.size.width, edge = CGRectGetMaxX(column);
     /* a classic chat sits under the system's own bar, which the view already starts below or reports in the top inset */
-    CGFloat headerHeight = NoshiThemeIsClassic() ? insets.top : insets.top + BAR_HEIGHT;
+    CGFloat headerHeight = insets.top;
     CGFloat pinnedHeight = _pinnedBar.hidden || _pinnedBarCollapsing ? 0 : PINNED_HEIGHT;
     /* ios 5 sometimes loses the announcement of the keyboard going down (a panel or a keyboard taken away while another screen was over the chat), and the field then stays
        where the keyboard was, in the middle of the screen over an empty bar. with nothing to type in and no slide running, there is no keyboard to make room for */
@@ -2871,9 +2720,6 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     _context.frame = CGRectMake(left, inputY - contextHeight, width, contextHeight);
     _reactionPicker.frame = self.view.bounds;
     _wallpaper.frame = self.view.bounds;
-    _snow.frame = self.view.bounds;
-    _foxes.frame = self.view.bounds;
-    _boys.frame = self.view.bounds;
     _header.frame = CGRectMake(0, 0, size.width, headerHeight);
     _headerLine.frame = CGRectMake(0, headerHeight - 1.0 / NoshiScreenScale(), size.width, 1.0 / NoshiScreenScale());
     /* the only page of the right pane of a tablet has no left pane to go back to, so the title moves into the room the arrow leaves */
@@ -2887,7 +2733,6 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     _avatar.frame = CGRectMake(left + 48 - shift, insets.top + 5, 34, 34);
     _storyRing.frame = CGRectInset(_avatar.frame, -3, -3);
     /* the classic icon stands in the box of the bar item, and this layout would move it to the place of the header's picture, outside the box where nothing shows it */
-    if (!NoshiThemeIsClassic()) _topicIcon.frame = _avatar.frame;
     _menuButton.frame = CGRectMake(edge - 48, insets.top, 44, BAR_HEIGHT);
     CGFloat textX = left + (_pinnedList ? 60 : 90) - shift, textWidth = edge - textX - (_pinnedList ? 12 : 56);
     BOOL hasStatus = _subtitle.text.length > 0;
@@ -3111,9 +2956,6 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     [self flushLiveMessages];
     [self refreshAnimations];
     [self performSelector:@selector(markReadIfNeeded) withObject:nil afterDelay:0];
-    [_snow start];
-    [_foxes start];
-    [_boys start];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -3181,9 +3023,6 @@ static NSString *const NoshiChatScrollKey = @"noshigram.chat.scrollpos";
     [_liveLink invalidate];
     [_liveLink release];
     _liveLink = nil;
-    [_snow stop];
-    [_foxes stop];
-    [_boys stop];
     NoshiNotifierSetOpenChat(0, 0);
     [self stopRaiseToSpeak];
     [self discardRecording];
@@ -3237,9 +3076,6 @@ static NSString *const NoshiChatScrollKey = @"noshigram.chat.scrollpos";
     [self flushLiveMessages];
     [self refreshAnimations];
     if (_visible) {
-        [_snow start];
-        [_foxes start];
-        [_boys start];
     }
     [self markReadIfNeeded];
     [self pollReactions];
@@ -3255,9 +3091,6 @@ static NSString *const NoshiChatScrollKey = @"noshigram.chat.scrollpos";
     [self saveDraftNow];
     [self stopAnimations];
     [self stopFollowingBottom];
-    [_snow stop];
-    [_foxes stop];
-    [_boys stop];
     [_liveLink invalidate];
     [_liveLink release];
     _liveLink = nil;
@@ -4257,7 +4090,7 @@ static NSInteger NoshiDayKey(NSCalendar *calendar, int32_t date, NoshiDaySpan *s
 - (void)showTitleBadge {
     long long badge = NoshiDialogBadgeDocument(_dialog);
     NSArray *entities = nil;
-    _title.text = NoshiNameWithBadges(_dialog.title, badge, NoshiDialogIsDeveloper(_dialog), &entities);
+    _title.text = NoshiNameWithBadge(_dialog.title, badge, &entities);
     _title.entities = entities;
     if (!_dialog.emojiStatus) return;
     NoshiWeakReference *weak = _weak;
@@ -4534,7 +4367,7 @@ static void NoshiRedrawTree(UIView *view) {
     NSInteger previousDay = 0;
     BOOL unreadShown = _unreadAnchor < 0 || _pinnedList || _startMessageId > 0;
     /* the colors of a quote do not depend on the message, so a walk over thousands of messages does not make them again for each */
-    BOOL classicTheme = NoshiThemeIsClassic(), darkTheme = NoshiThemeIsDark();
+    BOOL classicTheme = YES, darkTheme = NoshiThemeIsDark();
     UIColor *classicOwnQuote = classicTheme ? (darkTheme ? NoshiMixedColor(NoshiColorAccent(), [UIColor whiteColor], 0.55) : NoshiColorAccentDark()) : nil;
     UIColor *classicOtherQuote = classicTheme ? [UIColor colorWithWhite:darkTheme ? 0.74 : 0.40 alpha:1] : nil;
     for (NSUInteger at = 0; at < messages.count; ++at) {
@@ -7419,7 +7252,7 @@ static NSDate *NoshiReminderDate(NSUInteger choice) {
         [self dismissInput];
         NoshiLocationController *viewer=[[[NoshiLocationController alloc] initWithSession:_session dialog:_dialog location:selected.media.location selection:nil] autorelease];
         UINavigationController *navigation=[[[UINavigationController alloc] initWithRootViewController:viewer] autorelease];
-        if (NoshiThemeIsClassic()) NoshiClassicStyleNavigationBar(navigation.navigationBar);
+        NoshiClassicStyleNavigationBar(navigation.navigationBar);
         [self presentViewController:navigation animated:YES completion:nil];
         return;
     }

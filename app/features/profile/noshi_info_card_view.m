@@ -32,13 +32,8 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    if (NoshiThemeIsClassic()) {
-        /* the card is a plate of polished metal, as the menus are, with a groove between its rows */
-        NoshiClassicApplyMenuPlate(self, 10);
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = 14;
-    }
+    /* the card is a plate of polished metal, as the menus are, with a groove between its rows */
+    NoshiClassicApplyMenuPlate(self, 10);
     _rows = [[NSMutableArray alloc] init];
     self.hidden = YES;
     return self;
@@ -100,7 +95,7 @@ NSArray *NoshiInfoMentions(NSString *text) {
         [row addSubview:value];
         [row addSubview:small];
         [row addTarget:self action:@selector(copyRow:event:) forControlEvents:UIControlEventTouchUpInside];
-        if (NoshiThemeIsClassic() && _rows.count) {
+        if (_rows.count) {
             BOOL charcoal = NoshiThemeIsDark();
             UIView *groove = [[[UIView alloc] init] autorelease];
             groove.tag = 11;
@@ -169,7 +164,7 @@ NSArray *NoshiInfoMentions(NSString *text) {
     [super layoutSubviews];
     CGFloat width = self.bounds.size.width, y = 0;
     /* the plate of the classic card is a layer of its own, sized by hand */
-    if (NoshiThemeIsClassic()) NoshiClassicFitPlate(self, 0);
+    NoshiClassicFitPlate(self, 0);
     for (UIView *row in _rows) {
         NoshiEmojiLabel *value = (NoshiEmojiLabel *)[row viewWithTag:1], *caption = (NoshiEmojiLabel *)[row viewWithTag:2];
         CGFloat textWidth = [self textWidthOfRow:row card:width];

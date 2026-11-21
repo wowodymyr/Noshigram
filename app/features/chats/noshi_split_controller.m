@@ -3,13 +3,12 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import "noshi_chat_controller.h"
-#import "noshi_chats_controller.h"
+#import "noshi_chat_list.h"
 #import "noshi_classic_chats_controller.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_classic_search_controller.h"
 #import "noshi_main_controller.h"
 #import "noshi_platform.h"
-#import "noshi_search_controller.h"
 #import "noshi_settings_kit.h"
 #import "noshi_theme.h"
 #import "noshi_wallpaper.h"
@@ -80,9 +79,9 @@
 @synthesize main = _main;
 
 - (BOOL)opensInDetail:(UIViewController *)screen {
-    if ([screen isKindOfClass:[NoshiSearchController class]] || [screen isKindOfClass:[NoshiClassicSearchController class]]) return NO;
+    if ([screen isKindOfClass:[NoshiClassicSearchController class]]) return NO;
     /* a folder of the chat list (the archive) is a list of the left pane; the main list itself is never pushed */
-    if ([screen isKindOfClass:[NoshiChatsController class]] || [screen isKindOfClass:[NoshiClassicChatsController class]]) return NO;
+    if ([screen isKindOfClass:[NoshiClassicChatsController class]]) return NO;
     return YES;
 }
 
@@ -93,7 +92,7 @@
 - (void)showInDetail:(UIViewController *)screen animated:(BOOL)animated {
     if (!_detail) return;
     /* the classic bar of the right pane has no way back for its only page, so a button closes it into the empty pane */
-    if (NoshiThemeIsClassic() && !screen.navigationItem.leftBarButtonItem) {
+    if (!screen.navigationItem.leftBarButtonItem) {
         screen.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"split.close", nil) style:UIBarButtonItemStyleBordered
                                                                                     target:self action:@selector(closeDetail)] autorelease];
     }
@@ -121,12 +120,11 @@
 
 - (void)styleDidChange:(BOOL)involvesClassic {
     if (!_detail) return;
-    BOOL classic = NoshiThemeIsClassic();
     /* every change of the palette makes the pages again, not only the swap between the styles: the colors are read when a page is built, and a page left as it was kept the
        old ones, so with the list on the left in the dark theme the chat on the right stayed light */
     NSArray *oldPages = [[_detail.viewControllers copy] autorelease];
-    if (classic) NoshiClassicStyleNavigationBar(_detail.navigationBar);
-    [_detail setNavigationBarHidden:!classic animated:NO];
+    NoshiClassicStyleNavigationBar(_detail.navigationBar);
+    [_detail setNavigationBarHidden:NO animated:NO];
     if (!oldPages.count) return;
     NSMutableArray *pages = [NSMutableArray array];
     BOOL rebuilt = NO;
@@ -146,7 +144,7 @@
     if (!rebuilt && !involvesClassic) return;
     if (!pages.count) {
         [pages addObject:[[[NoshiDetailPlaceholder alloc] init] autorelease]];
-    } else if (classic) {
+    } else {
         UIViewController *root = [pages objectAtIndex:0];
         if (!root.navigationItem.leftBarButtonItem) {
             root.navigationItem.leftBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"split.close", nil) style:UIBarButtonItemStyleBordered
@@ -291,7 +289,7 @@ BOOL NoshiIsDetailRoot(UIViewController *screen) {
     _detailNavigation.view.frame = CGRectMake(master, 0, size.width - master, size.height);
     /* the system tab bar of the classic theme and the input bar of the chat are one strip along the bottom, so the line between the columns stops above it and
        does not cut the strip in two. a screen that hides the tab bar loses the line over the same height */
-    CGFloat stripHeight = NoshiThemeIsClassic() ? MIN(size.height, NoshiClassicTabBarHeight()) : 0;
+    CGFloat stripHeight = MIN(size.height, NoshiClassicTabBarHeight());
     _divider.frame = CGRectMake(master - hair, 0, hair, size.height - stripHeight);
     _divider.backgroundColor = NoshiColorHairline();
 }

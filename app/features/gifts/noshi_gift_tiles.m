@@ -1,6 +1,5 @@
 #import "noshi_gift_tiles.h"
 
-#import "noshi_custom_gift.h"
 #import "noshi_person.h"
 #import "noshi_time.h"
 
@@ -27,7 +26,7 @@ NoshiGiftTileInfo *NoshiTileForSavedGift(NoshiSavedGift *saved, BOOL mine) {
     tile.patternColor = gift.backdropPattern;
     tile.patternSticker = gift.patternSticker;
     if (gift.unique) {
-        tile.ribbon = saved.customImageName ? NoshiCustomGiftNumberText(gift.number) : NoshiGiftNumberText(gift.number);
+        tile.ribbon = NoshiGiftNumberText(gift.number);
         tile.expressive = saved.customImageName != nil;
     } else {
         /* a sender that is missing from the answer is as anonymous to the person as one who hid their name */

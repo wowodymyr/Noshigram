@@ -13,7 +13,6 @@
 #import "noshi_sheet.h"
 #import "noshi_string_drawing.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 #import "noshi_weak_reference.h"
 #import "noshi_wave_background_view.h"
 
@@ -516,23 +515,6 @@ static void NoshiRowTextHeights(NoshiSettingsRow *row, CGFloat width, CGFloat *t
     *subtitle = NoshiWrappedHeight(row.subtitle, NoshiFontRegular(13), room);
 }
 
-static CGFloat NoshiRowContentHeight(NoshiSettingsRow *row, CGFloat width) {
-    if (row.customView) return row.customHeight(width);
-    if (row.isSession) return 76;
-    if (row.hasLevel) return 112;
-    if (row.hasSlider) return 78;
-    CGFloat base = row.subtitle.length ? (row.hasSymbol || row.tileImage ? 64 : 60) : 52;
-    if (!row.subtitle.length) {
-        /* a title alone is as tall as its lines, with the same room above and below as the one-line row */
-        CGFloat title, subtitle;
-        NoshiRowTextHeights(row, width, &title, &subtitle);
-        return MAX(base, 16 + title + 16);
-    }
-    CGFloat title, subtitle;
-    NoshiRowTextHeights(row, width, &title, &subtitle);
-    return MAX(base, 14 + title + 4 + subtitle + 14);
-}
-
 /* a rectangle with one radius on its two upper corners and another on its two lower ones */
 static UIBezierPath *NoshiCardPath(CGRect rect, CGFloat top, CGFloat bottom) {
     CGFloat l = CGRectGetMinX(rect), r = CGRectGetMaxX(rect), t = CGRectGetMinY(rect), b = CGRectGetMaxY(rect);
@@ -923,7 +905,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     [CATransaction commit];
     BOOL tappable = row.tap != nil;
     _card.backgroundColor = [UIColor clearColor];
-    UIColor *textColor = row.destructive ? (NoshiImportedThemeColor("list.destructive") ?: NoshiColorBadgeRed()) : NoshiColorTitle();
+    UIColor *textColor = row.destructive ? (NoshiColorBadgeRed()) : NoshiColorTitle();
     _title.text = row.title;
     _title.textColor = textColor;
     _title.font = NoshiRowTitleFont(row);
@@ -1165,7 +1147,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     UILabel *_emptyLabel;
     NSString *_classicTitleText;
     NSArray *_classicTitleEntities;
-    BOOL _classic;
     NoshiClassicSearchInput *_classicSearch;
     UIView *_classicHead;
     /* the classic search sits in the navigation bar while it is open, and what it replaced waits here */
@@ -1207,7 +1188,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     _showsBack = YES;
     _titleAlpha = 1;
     _barFill = 1;
-    _classic = NoshiThemeIsClassic();
     _footerDirty = [[NSMutableIndexSet alloc] init];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeNotified:) name:NoshiThemeDidChangeNotification object:nil];
     return self;
@@ -1260,7 +1240,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 /* the name of a person or a chat in the classic bar is drawn by the app's own label: the system title shows boxes for the letters of a styled nick that the system font lacks */
 - (void)showClassicTitle {
-    if (!_classic || !self.isViewLoaded) return;
+    if (!self.isViewLoaded) return;
     /* the bar centers the view between its buttons, and the 190 points of the default ran under the back button and the dots of a phone 320 points wide: the width is what is left
        beside the wider side, as the system's own title had */
     CGSize screen = [UIScreen mainScreen].bounds.size;
@@ -1297,10 +1277,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     [_underlay removeFromSuperview];
     [_underlay release];
     _underlay = [underlay retain];
-    if (_underlay && _backdrop && !_classic) {
-        _underlay.frame = self.view.bounds;
-        [self.view insertSubview:_underlay aboveSubview:_backdrop];
-    }
     [self.view setNeedsLayout];
 }
 
@@ -1331,7 +1307,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     }
     /* a table takes the height of its head when the head is handed over, so a head that grew in place is handed over again, or the rows stay where the short one ended */
     if ([self isViewLoaded]) {
-        _table.tableHeaderView = _classic ? [self classicTableHeader] : _headerView;
+        _table.tableHeaderView = [self classicTableHeader];
         [self.view setNeedsLayout];
     }
 }
@@ -1380,7 +1356,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 - (void)setSearchable:(BOOL)searchable {
     _searchable = searchable;
     _searchButton.hidden = !searchable;
-    if (_classic && _classicSearch) _table.tableHeaderView = [self classicTableHeader];
+    if (_classicSearch) _table.tableHeaderView = [self classicTableHeader];
     if ([self isViewLoaded]) [self.view setNeedsLayout];
 }
 
@@ -1401,10 +1377,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 - (void)focusSearch {
     if (!_searchable) return;
-    if (!_classic) {
-        [self beginSearch];
-        return;
-    }
     [self beginClassicSearch];
 }
 
@@ -1494,30 +1466,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 - (void)endSearch {
     if (!_searching) return;
-    if (_classic) {
-        [self endClassicSearch];
-        return;
-    }
-    [_searchField resignFirstResponder];
-    _searching = NO;
-    _searchField.hidden = YES;
-    _titleLabel.hidden = NO;
-    _leadingView.hidden = NO;
-    _searchButton.hidden = !_searchable;
-    for (UIView *view in _barViews) view.hidden = NO;
-    _back.hidden = !_showsBack;
-    _barBackground.hidden = !_contentUnderBar;
-    _barBackground.alpha = _barFill;
-    [_searchSections release];
-    _searchSections = nil;
-    [_query release];
-    _query = nil;
-    _table.tableHeaderView = _headerView;
-    [self rebuildFlat];
-    [_table reloadData];
-    [self searchDidChangeState];
-    [self.view setNeedsLayout];
-    [self refreshEmptyLabel];
+    [self endClassicSearch];
 }
 
 - (void)reloadSearchResults {
@@ -1669,7 +1618,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
         [root insertSubview:_underlay aboveSubview:_backdrop];
     }
     _barBackground = [[UIView alloc] init];
-    _barBackground.backgroundColor = NoshiImportedThemeColor("root.navBar.background") ?: [NoshiColorScreen() colorWithAlphaComponent:0.94];
+    _barBackground.backgroundColor = [NoshiColorScreen() colorWithAlphaComponent:0.94];
     _barBackground.alpha = _barFill;
     _barBackground.hidden = !_contentUnderBar;
     [root addSubview:_barBackground];
@@ -1681,21 +1630,21 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     _emptyLabel.hidden = YES;
     [root addSubview:_emptyLabel];
     _back = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_back setImage:NoshiSymbolImage(NoshiSymbolBack, 24, NoshiImportedThemeColor("root.navBar.button") ?: NoshiColorTitle()) forState:UIControlStateNormal];
+    [_back setImage:NoshiSymbolImage(NoshiSymbolBack, 24, NoshiColorTitle()) forState:UIControlStateNormal];
     _back.accessibilityLabel = NSLocalizedString(@"story.close", nil);
     [_back addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
     _back.hidden = !_showsBack;
     [root addSubview:_back];
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.backgroundColor = [UIColor clearColor];
-    _titleLabel.textColor = NoshiImportedThemeColor("root.navBar.primaryText") ?: NoshiColorTitle();
+    _titleLabel.textColor = NoshiColorTitle();
     _titleLabel.text = _pageTitle;
     _titleLabel.alpha = _titleAlpha;
     [root addSubview:_titleLabel];
     for (UIView *view in _barViews) [root addSubview:view];
     if (_leadingView) [root addSubview:_leadingView];
     _searchButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_searchButton setImage:NoshiSymbolImage(NoshiSymbolMagnifier, 24, NoshiImportedThemeColor("root.navBar.button") ?: NoshiColorTitle()) forState:UIControlStateNormal];
+    [_searchButton setImage:NoshiSymbolImage(NoshiSymbolMagnifier, 24, NoshiColorTitle()) forState:UIControlStateNormal];
     _searchButton.accessibilityLabel = NSLocalizedString(@"settings.search", nil);
     [_searchButton addTarget:self action:@selector(beginSearch) forControlEvents:UIControlEventTouchUpInside];
     _searchButton.frame = CGRectMake(0, 0, 44, 44);
@@ -1703,7 +1652,7 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     [root addSubview:_searchButton];
     _searchField = [[NoshiSettingsSearchField alloc] init];
     _searchField.backgroundColor = [UIColor clearColor];
-    _searchField.textColor = NoshiImportedThemeColor("root.searchBar.inputText") ?: NoshiColorTitle();
+    _searchField.textColor = NoshiColorTitle();
     _searchField.returnKeyType = UIReturnKeySearch;
     _searchField.autocorrectionType = UITextAutocorrectionTypeNo;
     _searchField.clearButtonMode = UITextFieldViewModeWhileEditing;
@@ -1755,18 +1704,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 - (void)applyThemeInPlace {
     NoshiThemeApplyStored();
-    if (_classic || NoshiThemeIsClassic() || ![self isViewLoaded]) return;
-    if (_searching) [self endSearch];
-    CGPoint offset = _table.contentOffset;
-    UIView *root = self.view;
-    [self discardModernChrome];
-    root.backgroundColor = NoshiColorScreen();
-    [self buildModernChromeInRoot:root];
-    [self themeDidChange];
-    [_table reloadData];
-    [self.view setNeedsLayout];
-    [self.view layoutIfNeeded];
-    _table.contentOffset = offset;
 }
 
 - (void)themeDidChange {
@@ -1776,20 +1713,11 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    [self.navigationController setNavigationBarHidden:!_classic animated:animated];
+    [self.navigationController setNavigationBarHidden:NO animated:animated];
 }
 
 - (void)loadView {
-    _classic = NoshiThemeIsClassic();
-    if (_classic) {
-        [self loadClassicView];
-        return;
-    }
-    UIView *root = [[[UIView alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
-    root.backgroundColor = NoshiColorScreen();
-    root.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    self.view = root;
-    [self buildModernChromeInRoot:root];
+    [self loadClassicView];
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)orientation {
@@ -1806,67 +1734,13 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    if (_classic) {
-        UIView *header = _table.tableHeaderView;
-        CGFloat width = _table.bounds.size.width;
-        if (header && width > 0 && header.frame.size.width != width) {
-            CGRect frame = header.frame;
-            frame.size.width = width;
-            header.frame = frame;
-            _table.tableHeaderView = header;
-        }
-        return;
-    }
-    CGSize size = self.view.bounds.size;
-    UIEdgeInsets insets = NoshiLayoutInsets(self);
-    CGFloat top = insets.top;
-    /* the bar, the rows and the cards share one column: the wave and the bar fill stay full width behind it */
-    CGRect column = NoshiContentColumn(size, insets, NOSHI_COLUMN_PAGE);
-    CGFloat left = column.origin.x, edge = CGRectGetMaxX(column);
-    _backdrop.frame = self.view.bounds;
-    _underlay.frame = self.view.bounds;
-    /* a picture over the whole page covers the waves, which would still draw every frame under it */
-    BOOL covered = _underlay.subviews.count > 0;
-    _backdrop.hidden = covered;
-    _backdrop.animated = !covered;
-    _back.frame = CGRectMake(left + 6, top + 6, 44, 44);
-    _titleLabel.font = NoshiFontSemibold(22);
-    CGFloat right = edge - 8;
-    for (UIView *view in [_barViews reverseObjectEnumerator]) {
-        CGRect frame = view.frame;
-        frame.origin = CGPointMake(right - frame.size.width, top + (BAR_HEIGHT - frame.size.height) / 2);
-        view.frame = frame;
-        right = frame.origin.x - 4;
-    }
-    if (_searchable) {
-        _searchButton.frame = CGRectMake(right - 44, top + (BAR_HEIGHT - 44) / 2, 44, 44);
-        right = _searchButton.frame.origin.x - 4;
-    }
-    /* the only page of the right pane of a tablet has no left pane to go back to */
-    BOOL arrow = _searching || (_showsBack && !NoshiIsDetailRoot(self));
-    _back.hidden = !arrow;
-    CGFloat titleLeft = arrow ? left + 62 : left + 20;
-    _titleLabel.frame = CGRectMake(titleLeft, top, MAX(0, right - titleLeft), BAR_HEIGHT);
-    if (_leadingView) {
-        CGRect frame = _leadingView.frame;
-        frame.origin = CGPointMake(titleLeft - 8, top + (BAR_HEIGHT - frame.size.height) / 2);
-        _leadingView.frame = frame;
-    }
-    _searchField.font = NoshiFontRegular(18);
-    _searchField.frame = CGRectMake(titleLeft, top + (BAR_HEIGHT - 32) / 2, MAX(0, edge - 12 - titleLeft), 32);
-    CGFloat tableTop = (_contentUnderBar && !_searching) ? top : top + BAR_HEIGHT;
-    _emptyLabel.font = NoshiFontRegular(16);
-    _emptyLabel.frame = CGRectMake(left + 24, tableTop + 60, MAX(0, column.size.width - 48), 24);
-    _barBackground.frame = CGRectMake(0, 0, size.width, top + BAR_HEIGHT);
-    _table.frame = CGRectMake(left, tableTop, column.size.width, size.height - tableTop);
-    _table.contentInset = UIEdgeInsetsMake(0, 0, MAX(_bottomInset, insets.bottom) + 16, 0);
-    if (_headerView) {
-        CGRect frame = _headerView.frame;
-        if (frame.size.width != column.size.width) {
-            frame.size.width = column.size.width;
-            _headerView.frame = frame;
-            _table.tableHeaderView = _headerView;
-        }
+    UIView *header = _table.tableHeaderView;
+    CGFloat width = _table.bounds.size.width;
+    if (header && width > 0 && header.frame.size.width != width) {
+        CGRect frame = header.frame;
+        frame.size.width = width;
+        header.frame = frame;
+        _table.tableHeaderView = header;
     }
 }
 
@@ -1918,40 +1792,17 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
     [sections replaceObjectAtIndex:index withObject:section];
     [_sections release];
     _sections = [sections copy];
-    if (_classic) {
-        if (!_searching) [_table reloadSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationNone];
-        return;
-    }
-    NSArray *before = [[_flat retain] autorelease];
-    [self rebuildFlat];
-    if (_searching || _flat.count != before.count) {
-        [_table reloadData];
-        return;
-    }
-    NSArray *paths = [self pathsOfSection:index inFlat:_flat footersOnly:NO];
-    if (paths.count) [_table reloadRowsAtIndexPaths:paths withRowAnimation:UITableViewRowAnimationNone];
+    if (!_searching) [_table reloadSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationNone];
 }
 
 - (void)setFooter:(NSString *)footer forSectionAtIndex:(NSUInteger)index {
     if (index >= _sections.count) return;
     NoshiSettingsSection *section = [_sections objectAtIndex:index];
     if ([footer isEqualToString:section.footer]) return;
-    BOOL appears = footer.length != section.footer.length && (!footer.length || !section.footer.length);
     section.footer = footer;
-    if (_classic) {
-        /* the system's own footer is part of the section, which is made again once the finger leaves the slider above it */
-        [_footerDirty addIndex:index];
-        if (!_sliding) [self flushFooters];
-        return;
-    }
-    NSArray *before = [[_flat retain] autorelease];
-    [self rebuildFlat];
-    if (appears || _searching || _flat.count != before.count) {
-        [_table reloadData];
-        return;
-    }
-    NSArray *paths = [self pathsOfSection:index inFlat:_flat footersOnly:YES];
-    if (paths.count) [_table reloadRowsAtIndexPaths:paths withRowAnimation:UITableViewRowAnimationNone];
+    /* the system's own footer is part of the section, which is made again once the finger leaves the slider above it */
+    [_footerDirty addIndex:index];
+    if (!_sliding) [self flushFooters];
 }
 
 - (void)flushFooters {
@@ -1966,13 +1817,12 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     (void)tableView;
-    return _classic ? (NSInteger)[self shownSections].count : 1;
+    return (NSInteger)[self shownSections].count;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     (void)tableView;
-    if (_classic) return (NSInteger)[[[[self shownSections] objectAtIndex:(NSUInteger)section] rows] count];
-    return (NSInteger)_flat.count;
+    return (NSInteger)[[[[self shownSections] objectAtIndex:(NSUInteger)section] rows] count];
 }
 
 - (NSDictionary *)itemAt:(NSIndexPath *)indexPath {
@@ -1992,24 +1842,24 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
     (void)tableView;
-    return _classic ? [[[self shownSections] objectAtIndex:(NSUInteger)section] header] : nil;
+    return [[[self shownSections] objectAtIndex:(NSUInteger)section] header];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
     (void)tableView;
-    return _classic ? [[[self shownSections] objectAtIndex:(NSUInteger)section] footer] : nil;
+    return [[[self shownSections] objectAtIndex:(NSUInteger)section] footer];
 }
 
 /* the system header text is dark grey, unreadable on the dark grouped background */
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    if (!_classic || !NoshiThemeIsDark()) return nil;
+    if (!NoshiThemeIsDark()) return nil;
     NSString *text = [[[self shownSections] objectAtIndex:(NSUInteger)section] header];
     if (!text.length) return nil;
     return NoshiClassicGroupedHeader(text, tableView.bounds.size.width, 34, [UIColor whiteColor]);
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
-    if (!_classic || !NoshiThemeIsDark()) return nil;
+    if (!NoshiThemeIsDark()) return nil;
     NSString *text = [[[self shownSections] objectAtIndex:(NSUInteger)section] footer];
     if (!text.length) return nil;
     CGFloat edge = NoshiClassicGroupedTextInset(tableView.bounds.size.width);
@@ -2020,13 +1870,11 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     (void)tableView;
-    if (!_classic) return 0;
     NSString *text = [[[self shownSections] objectAtIndex:(NSUInteger)section] header];
     return text.length ? (NoshiThemeIsDark() ? 34 : UITableViewAutomaticDimension) : 10;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
-    if (!_classic) return 0;
     NSString *text = [[[self shownSections] objectAtIndex:(NSUInteger)section] footer];
     if (!text.length) return 10;
     if (!NoshiThemeIsDark()) return UITableViewAutomaticDimension;
@@ -2228,78 +2076,14 @@ static CGFloat NoshiClassicRowHeight(NoshiSettingsRow *row, CGFloat tableWidth) 
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (_classic) {
-        NoshiSettingsRow *row = [self classicRowAt:indexPath];
-        /* a grouped cell is narrower than the table by its margins before ios 7 */
-        if (row.customView) return row.customHeight(tableView.bounds.size.width - ([UIViewController instancesRespondToSelector:NSSelectorFromString(@"preferredStatusBarStyle")] ? 0 : 20));
-        return NoshiClassicRowHeight(row, tableView.bounds.size.width);
-    }
-    NSDictionary *item = [self itemAt:indexPath];
-    switch ([[item objectForKey:@"kind"] intValue]) {
-    case NoshiFlatHeader: return [self sectionTextHeight:[item objectForKey:@"text"] width:tableView.bounds.size.width font:NoshiFontSemibold(15) minimum:44];
-    case NoshiFlatSpace: return 14;
-    case NoshiFlatFooter: return [self sectionTextHeight:[item objectForKey:@"text"] width:tableView.bounds.size.width font:NoshiFontRegular([[item objectForKey:@"center"] boolValue] ? 14 : 13) minimum:0];
-    default: {
-        NoshiRowPlace place = (NoshiRowPlace)[[item objectForKey:@"place"] intValue];
-        BOOL last = place == NoshiRowPlaceLast || place == NoshiRowPlaceOnly;
-        return NoshiRowContentHeight([item objectForKey:@"row"], tableView.bounds.size.width - 2 * CARD_INSET) + (last ? 0 : ROW_GAP);
-    }
-    }
+    NoshiSettingsRow *row = [self classicRowAt:indexPath];
+    /* a grouped cell is narrower than the table by its margins before ios 7 */
+    if (row.customView) return row.customHeight(tableView.bounds.size.width - ([UIViewController instancesRespondToSelector:NSSelectorFromString(@"preferredStatusBarStyle")] ? 0 : 20));
+    return NoshiClassicRowHeight(row, tableView.bounds.size.width);
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if (_classic) return [self classicCellForRow:[self classicRowAt:indexPath] at:indexPath];
-    NSDictionary *item = [self itemAt:indexPath];
-    int kind = [[item objectForKey:@"kind"] intValue];
-    if (kind == NoshiFlatRow) {
-        NoshiSettingsRow *shown = [item objectForKey:@"row"];
-        if (shown.customView) {
-            static NSString *viewIdentifier = @"settings.view";
-            NoshiSettingsViewCell *host = (NoshiSettingsViewCell *)[tableView dequeueReusableCellWithIdentifier:viewIdentifier];
-            if (!host) {
-                host = [[[NoshiSettingsViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:viewIdentifier] autorelease];
-                host.backgroundColor = [UIColor clearColor];
-                host.selectionStyle = UITableViewCellSelectionStyleNone;
-                host.contentView.clipsToBounds = YES;
-            }
-            host.row = shown;
-            return host;
-        }
-        static NSString *identifier = @"settings";
-        NoshiSettingsCell *cell = (NoshiSettingsCell *)[tableView dequeueReusableCellWithIdentifier:identifier];
-        if (!cell) cell = [[[NoshiSettingsCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:identifier] autorelease];
-        [cell configureWithRow:[item objectForKey:@"row"] place:(NoshiRowPlace)[[item objectForKey:@"place"] intValue]];
-        [cell setCardFade:_cardFade];
-        return cell;
-    }
-    static NSString *textIdentifier = @"text";
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:textIdentifier];
-    UILabel *label;
-    if (!cell) {
-        cell = [[[NoshiSettingsTextCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:textIdentifier] autorelease];
-        cell.backgroundColor = [UIColor clearColor];
-        cell.selectionStyle = UITableViewCellSelectionStyleNone;
-        cell.contentView.clipsToBounds = YES;
-        label = [[[UILabel alloc] init] autorelease];
-        label.backgroundColor = [UIColor clearColor];
-        label.tag = 1;
-        [cell.contentView addSubview:label];
-    }
-    label = (UILabel *)[cell.contentView viewWithTag:1];
-    [cell setNeedsLayout];
-    NSString *text = [item objectForKey:@"text"];
-    label.text = text;
-    /* the frame comes from the table, not from a cell that may still hold the width and height of its last use */
-    label.frame = CGRectMake(CARD_INSET + ICON_PAD, 10, MAX(0, tableView.bounds.size.width - 2 * (CARD_INSET + ICON_PAD)),
-                             MAX(0, [self tableView:tableView heightForRowAtIndexPath:indexPath] - 20));
-    label.numberOfLines = 0;
-    label.font = kind == NoshiFlatHeader ? NoshiFontSemibold(15) : NoshiFontRegular(13);
-    label.textColor = kind == NoshiFlatHeader ? NoshiColorAccent() : NoshiColorSecondary();
-    label.hidden = kind == NoshiFlatSpace;
-    BOOL center = [[item objectForKey:@"center"] boolValue];
-    label.textAlignment = center ? NoshiTextAlignmentCenter : NoshiTextAlignmentLeft;
-    if (center) label.font = NoshiFontRegular(14);
-    return cell;
+    return [self classicCellForRow:[self classicRowAt:indexPath] at:indexPath];
 }
 
 #pragma mark removal
@@ -2310,27 +2094,16 @@ static UIColor *NoshiErrorContainerColor(void) {
 }
 
 - (void)rowPressed:(UILongPressGestureRecognizer *)press {
-    if (press.state != UIGestureRecognizerStateBegan || _classic || _searching) return;
-    NSIndexPath *path = [_table indexPathForRowAtPoint:[press locationInView:_table]];
-    if (!path || (NSUInteger)path.row >= _flat.count) return;
-    NSDictionary *item = [self itemAt:path];
-    NoshiSettingsRow *row = [item objectForKey:@"row"];
-    if ([[item objectForKey:@"kind"] intValue] != NoshiFlatRow || !row.remove) return;
-    [NoshiSheet presentInView:self.view title:row.title message:nil options:[NSArray arrayWithObject:NSLocalizedString(@"settings.remove", nil)]
-                    destructive:[NSIndexSet indexSetWithIndex:0] cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:^(NSUInteger index) {
-        (void)index;
-        [self removeRow:row];
-    }];
 }
 
 - (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    return _classic && [self classicRowAt:indexPath].remove != nil;
+    return [self classicRowAt:indexPath].remove != nil;
 }
 
 - (UITableViewCellEditingStyle)tableView:(UITableView *)tableView editingStyleForRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    return _classic && [self classicRowAt:indexPath].remove ? UITableViewCellEditingStyleDelete : UITableViewCellEditingStyleNone;
+    return [self classicRowAt:indexPath].remove ? UITableViewCellEditingStyleDelete : UITableViewCellEditingStyleNone;
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -2341,7 +2114,7 @@ static UIColor *NoshiErrorContainerColor(void) {
 
 - (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)style forRowAtIndexPath:(NSIndexPath *)indexPath {
     (void)tableView;
-    if (style != UITableViewCellEditingStyleDelete || !_classic) return;
+    if (style != UITableViewCellEditingStyleDelete) return;
     [self removeRow:[self classicRowAt:indexPath]];
 }
 
@@ -2353,7 +2126,7 @@ static UIColor *NoshiErrorContainerColor(void) {
     if (failure) {
         NoshiShowNotice(nil, failure);
         /* a swipe left the row open */
-        if (_classic) [_table reloadData];
+        [_table reloadData];
         return;
     }
     [self takeOutRow:row];
@@ -2383,17 +2156,13 @@ static UIColor *NoshiErrorContainerColor(void) {
         if (done) done();
         return;
     }
-    if (_classic) {
-        [_sections release];
-        _sections = [next copy];
-        [_table beginUpdates];
-        if (vanishes) [_table deleteSections:[NSIndexSet indexSetWithIndex:at] withRowAnimation:UITableViewRowAnimationLeft];
-        else [_table deleteRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:(NSInteger)rowIndex inSection:(NSInteger)at]] withRowAnimation:UITableViewRowAnimationLeft];
-        [_table endUpdates];
-        if (done) done();
-        return;
-    }
-    [self takeOutModernRow:row section:at vanishes:vanishes next:next done:done];
+    [_sections release];
+    _sections = [next copy];
+    [_table beginUpdates];
+    if (vanishes) [_table deleteSections:[NSIndexSet indexSetWithIndex:at] withRowAnimation:UITableViewRowAnimationLeft];
+    else [_table deleteRowsAtIndexPaths:[NSArray arrayWithObject:[NSIndexPath indexPathForRow:(NSInteger)rowIndex inSection:(NSInteger)at]] withRowAnimation:UITableViewRowAnimationLeft];
+    [_table endUpdates];
+    if (done) done();
 }
 
 - (void)takeOutModernRow:(NoshiSettingsRow *)row section:(NSUInteger)at vanishes:(BOOL)vanishes next:(NSArray *)next done:(void (^)(void))done {
@@ -2520,33 +2289,16 @@ static UIColor *NoshiErrorContainerColor(void) {
     CGRect rowRect = [tableView rectForRowAtIndexPath:indexPath];
     _selectPoint = [tableView convertPoint:CGPointMake(CGRectGetMidX(rowRect), CGRectGetMidY(rowRect)) toView:nil];
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
-    if (_classic) {
-        NoshiSettingsRow *row = [self classicRowAt:indexPath];
-        if (row.tap) row.tap();
-        return;
-    }
-    NSDictionary *item = [self itemAt:indexPath];
-    if ([[item objectForKey:@"kind"] intValue] != NoshiFlatRow) return;
-    NoshiSettingsRow *row = [item objectForKey:@"row"];
+    NoshiSettingsRow *row = [self classicRowAt:indexPath];
     if (row.tap) row.tap();
-    else if (row.hasSwitch && row.toggle && !row.disabled) {
-        /* a tap anywhere on the row moves its switch */
-        row.on = !row.on;
-        row.toggle(row.on);
-        [tableView reloadRowsAtIndexPaths:[NSArray arrayWithObject:indexPath] withRowAnimation:UITableViewRowAnimationNone];
-    }
 }
 
 @end
 
 void NoshiSettingsChoose(UIViewController *host, NSString *title, NSArray *options, void (^handler)(NSUInteger index)) {
-    if (NoshiThemeIsClassic() || !host.view) {
-        void (^pick)(NSUInteger) = [handler copy];
-        NoshiChoose(title, options, -1, ^(NSInteger index) {
-            if (index >= 0 && pick) pick((NSUInteger)index);
-        });
-        [pick release];
-        return;
-    }
-    [NoshiSheet presentInView:host.view title:title message:nil options:options destructive:nil cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:handler];
+    void (^pick)(NSUInteger) = [handler copy];
+    NoshiChoose(title, options, -1, ^(NSInteger index) {
+        if (index >= 0 && pick) pick((NSUInteger)index);
+    });
+    [pick release];
 }

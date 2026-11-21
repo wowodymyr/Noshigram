@@ -1,7 +1,6 @@
 #import "noshi_folder_tabs.h"
 #import "noshi_chat_settings.h"
 #import "noshi_filter_bar.h"
-#import "noshi_dialog_cell.h"
 #import "noshi_custom_emoji.h"
 #import "noshi_custom_emoji_loader.h"
 #import "noshi_message.h"
@@ -191,7 +190,6 @@
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gesture {
     UIView *hit = [gesture.view hitTest:[gesture locationInView:gesture.view] withEvent:nil];
     for (UIView *view = hit; view && view != gesture.view; view = view.superview) {
-        if ([view isKindOfClass:[NoshiDialogCell class]] && [(NoshiDialogCell *)view swipeOpen]) return NO;
         if ([view isKindOfClass:[UITableViewCell class]] &&
             ((UISwipeGestureRecognizer *)gesture).direction == UISwipeGestureRecognizerDirectionLeft &&
             NoshiChatSwipeStored() != NoshiChatSwipeFolders) return NO;

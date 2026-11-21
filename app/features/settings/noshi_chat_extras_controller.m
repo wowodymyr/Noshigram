@@ -131,10 +131,6 @@ static NoshiSettingsRow *NoshiFlagRow(NSString *titleKey, NSString *infoKey, Nos
 - (NoshiSettingsSection *)lookSection {
     NoshiWeakReference *weak = _weak;
     /* the classic table has no row that is a view of the owner's, so there the dialog is left out */
-    if (!_preview && !NoshiThemeIsClassic()) {
-        _preview = [[NoshiChatPreviewView alloc] initWithTalk:NoshiChatPreviewTalkNoshigram];
-        _preview.heightHandler = ^{ [(NoshiChatExtrasController *)weak.target updateRowHeights]; };
-    }
     NoshiChatPreviewView *preview = _preview;
     NSMutableArray *rows = [NSMutableArray array];
     if (preview) [rows addObject:[NoshiSettingsRow viewRowWithView:preview height:^CGFloat(CGFloat width) { return [preview heightForWidth:width]; }]];

@@ -3,7 +3,6 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import "noshi_chat_settings.h"
-#import "noshi_falling_view.h"
 #import "noshi_lite_mode.h"
 #import "noshi_platform.h"
 #import "noshi_theme.h"
@@ -57,7 +56,6 @@
     CALayer *_snapshotLayer;
     BOOL _topHiddenBeforeSnapshot;
     BOOL _bottomHiddenBeforeSnapshot;
-    NoshiFallingView *_boys;
 }
 @end
 
@@ -88,8 +86,6 @@
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [_boys stop];
-    [_boys release];
     [_snapshotLayer release];
     [_top release];
     [_bottom release];
@@ -113,20 +109,8 @@
 
 - (void)drawRect:(CGRect)rect {
     (void)rect;
-    if (NoshiThemeIsClassic()) {
-        [NoshiColorScreen() setFill];
-        UIRectFill(self.bounds);
-        return;
-    }
-    CGFloat w = self.bounds.size.width;
-    CGFloat h = self.bounds.size.height;
-    /* tools/make_assets.py paints the launch images with the first pair of colours */
-    static const CGFloat welcome[] = {0.988, 0.980, 1.0, 1.0, 0.910, 0.839, 0.957, 1.0};
-    static const CGFloat signedIn[] = {0.984, 0.980, 0.996, 1.0, 0.965, 0.957, 0.992, 1.0};
-    static const CGFloat signedInDark[] = {0.094, 0.080, 0.137, 1.0, 0.070, 0.060, 0.106, 1.0};
-    static const CGFloat welcomeDark[] = {0.110, 0.086, 0.165, 1.0, 0.160, 0.098, 0.220, 1.0};
-    NoshiFillGradient(UIGraphicsGetCurrentContext(), CGPointMake(0, 0), CGPointMake(0, h), _plain ? (NoshiThemeIsDark() ? signedInDark : signedIn) : (NoshiThemeIsDark() ? welcomeDark : welcome), 2);
-    (void)w;
+    [NoshiColorScreen() setFill];
+    UIRectFill(self.bounds);
 }
 
 /* the outline of one wave in coordinates local to its layer; the amplitude is the ripple height, and its sign picks the phase */
@@ -215,18 +199,6 @@
     [self refreshMotion];
 }
 
-static void NoshiDrift(CALayer *layer, CGFloat dx, CGFloat dy, CFTimeInterval seconds) {
-    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"position"];
-    animation.fromValue = [NSValue valueWithCGPoint:CGPointZero];
-    animation.toValue = [NSValue valueWithCGPoint:CGPointMake(dx, dy)];
-    animation.additive = YES;
-    animation.autoreverses = YES;
-    animation.repeatCount = HUGE_VALF;
-    animation.duration = seconds;
-    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [layer addAnimation:animation forKey:@"drift"];
-}
-
 /* the edge swings between its ripple and the opposite one: the same points, so the path interpolates */
 static void NoshiRipple(NoshiWaveLayer *layer, CGPathRef opposite, CFTimeInterval seconds) {
     CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"path"];
@@ -274,40 +246,13 @@ static void NoshiRipple(NoshiWaveLayer *layer, CGPathRef opposite, CFTimeInterva
 
 /* the classic style is flat and the setting of the person can take the waves away; the plain look keeps only the top one */
 - (void)syncWaveVisibility {
-    BOOL none = NoshiThemeIsClassic() || NoshiChatFlagGet(NoshiChatFlagHideWaves);
+    BOOL none = YES;
     _top.hidden = none;
     _bottom.hidden = none || _plain;
 }
 
-/* the setting of the person gives the corners of the screen to boykissers that fall in place of the waves */
-- (void)syncBoykisser {
-    BOOL on = NoshiChatFlagGet(NoshiChatFlagBoykisser) && self.window &&
-        [UIApplication sharedApplication].applicationState == UIApplicationStateActive &&
-        !NoshiReduceMotionEnabled() && NoshiLiteEnabled(NOSHI_LITE_PARTICLES);
-    if (on) {
-        _top.hidden = _bottom.hidden = YES;
-        if (!_boys) {
-            _boys = [[NoshiFallingView alloc] initWithFrame:self.bounds spriteNamed:@"boykisser"];
-            _boys.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-            [self addSubview:_boys];
-        }
-        _boys.frame = self.bounds;
-        [_boys start];
-        return;
-    }
-    [_boys stop];
-    if (_boys) {
-        [_boys removeFromSuperview];
-        [_boys release];
-        _boys = nil;
-        /* the waves come back as the plain or the welcome look wants them */
-        [self syncWaveVisibility];
-    }
-}
-
 /* backgrounding drops running core animations, so they start again when the app becomes active */
 - (void)refreshMotion {
-    [self syncBoykisser];
     /* new animations start on a layer that runs, and are held again below when a list is still moving */
     _scrolling = NO;
     [self applyScrolling];
@@ -315,15 +260,6 @@ static void NoshiRipple(NoshiWaveLayer *layer, CGPathRef opposite, CFTimeInterva
     [_bottom removeAnimationForKey:@"drift"];
     [_top.shape removeAnimationForKey:@"ripple"];
     [_bottom.shape removeAnimationForKey:@"ripple"];
-    if (NoshiThemeIsClassic() || !_animated || !self.window || NoshiReduceMotionEnabled() || !NoshiLiteEnabled(NOSHI_LITE_CHAT_BACKGROUND) ||
-        _builtSize.width <= 0) return;
-    CGFloat reach = 0.8 * WAVE_BLEED * _builtSize.width;
-    NoshiDrift(_top, reach, reach, TOP_DRIFT_SECONDS);
-    [self rippleLayer:_top seconds:TOP_RIPPLE_SECONDS];
-    /* the signed in screens keep only the top corner */
-    if (_plain) return;
-    NoshiDrift(_bottom, -reach, -reach, BOTTOM_DRIFT_SECONDS);
-    [self rippleLayer:_bottom seconds:BOTTOM_RIPPLE_SECONDS];
 }
 
 /* one wave as it is on the screen at this moment: the shape of its mask now and its place with the drift, filled with its gradient */

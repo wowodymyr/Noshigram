@@ -449,58 +449,18 @@ static UIImage *NoshiInkImage(NoshiSymbol symbol, CGRect ink, CGFloat width, UIC
     return image;
 }
 
-NoshiSymbol NoshiSymbolCheckMark(void) { return NoshiThemeIsClassic() ? NoshiSymbolCheck : NoshiSymbolMaterialCheck; }
-NoshiSymbol NoshiSymbolCloseMark(void) { return NoshiThemeIsClassic() ? NoshiSymbolClose : NoshiSymbolMaterialCloseOutlined; }
+NoshiSymbol NoshiSymbolCheckMark(void) { return NoshiSymbolCheck; }
+NoshiSymbol NoshiSymbolCloseMark(void) { return NoshiSymbolClose; }
 
 UIImage *NoshiSendingImage(CGFloat pointSize, UIColor *color) {
-    if (NoshiThemeIsClassic()) return NoshiSymbolImage(NoshiSymbolClock, pointSize, color);
-    return NoshiInkImage(NoshiSymbolMaterialSchedule, CGRectMake(2, 2, 20, 20), pointSize, color);
+    return NoshiSymbolImage(NoshiSymbolClock, pointSize, color);
 }
 
 UIImage *NoshiFailedImage(CGFloat pointSize, UIColor *color) {
     return NoshiInkImage(NoshiSymbolMaterialError, CGRectMake(2, 2, 20, 20), pointSize, color);
 }
 
-/* the ticks of exteraGram (msg_check_s and msg_seen), cut to the box their ink fills and drawn so that one unit of the 12 unit canvas of the single tick is pointSize / 12 points: the single
-   tick comes out pointSize wide and the double one 20 / 12 of it. the pictures are white masks that take the color */
-static UIImage *NoshiTickImage(BOOL read, CGFloat pointSize, UIColor *color) {
-    static NSCache *cache;
-    if (!cache) cache = [[NSCache alloc] init];
-    CGFloat r = 0, g = 0, b = 0, a = 0;
-    if (![color getRed:&r green:&g blue:&b alpha:&a]) {
-        CGFloat white = 0;
-        [color getWhite:&white alpha:&a];
-        r = g = b = white;
-    }
-    NSString *key = [NSString stringWithFormat:@"%d/%g/%g,%g,%g,%g/%g", read, (double)pointSize, (double)r, (double)g, (double)b, (double)a, (double)[UIScreen mainScreen].scale];
-    UIImage *image = [[[cache objectForKey:key] retain] autorelease];
-    if (image) return image;
-    UIImage *mask = [UIImage imageNamed:read ? @"tick_double" : @"tick_single"];
-    if (!mask) return nil;
-    CGFloat unit = pointSize / 12.0;
-    /* the canvas is 24 units for the double tick and 12 for the single one; the ink is 20 x 11 from (2, 7) and 12 x 9 from (0, 2) */
-    CGRect ink = read ? CGRectMake(2, 7, 20, 11) : CGRectMake(0, 2, 12, 9);
-    CGFloat canvas = read ? 24 : 12;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(ink.size.width * unit, ink.size.height * unit), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [mask drawInRect:CGRectMake(-ink.origin.x * unit, -ink.origin.y * unit, canvas * unit, canvas * unit)];
-    CGContextSetBlendMode(context, kCGBlendModeSourceIn);
-    CGContextSetFillColorWithColor(context, color.CGColor);
-    CGContextFillRect(context, CGRectMake(0, 0, ink.size.width * unit, ink.size.height * unit));
-    image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    if (image) [cache setObject:image forKey:key];
-    return image;
-}
-
 UIImage *NoshiCheckImage(BOOL read, CGFloat pointSize, UIColor *color) {
-    if (!NoshiThemeIsClassic()) {
-        UIImage *tick = NoshiTickImage(read, pointSize, color);
-        if (tick) return tick;
-        /* the pictures of the ticks are missing from the bundle: the Material marks stand in, so a message never loses its state */
-        if (read) return NoshiInkImage(NoshiSymbolMaterialDoneAll, CGRectMake(1, 6, 22, 12), pointSize * CHECK_DOUBLE_CANVAS / CHECK_CANVAS, color);
-        return NoshiInkImage(NoshiSymbolMaterialCheck, CGRectMake(3.6667, 6, 16.6667, 12), pointSize, color);
-    }
     return NoshiSymbolImage(read ? NoshiSymbolCheckDouble : NoshiSymbolCheck,
                               read ? pointSize * CHECK_DOUBLE_CANVAS / CHECK_CANVAS : pointSize, color);
 }

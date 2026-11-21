@@ -687,10 +687,6 @@
 	</array>
 	<key>UIAppFonts</key>
 	<array>
-		<string>Inter-Regular.ttf</string>
-		<string>Inter-Medium.ttf</string>
-		<string>Inter-SemiBold.ttf</string>
-		<string>Inter-Bold.ttf</string>
 		<string>Rubik-Regular.ttf</string>
 		<string>Rubik-Medium.ttf</string>
 		<string>Rubik-Bold.ttf</string>

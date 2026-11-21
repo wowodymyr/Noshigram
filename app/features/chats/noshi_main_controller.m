@@ -4,7 +4,6 @@
 #import "noshi_popup_menu.h"
 #import "noshi_chat_settings.h"
 
-#import "noshi_calls_controller.h"
 #import "noshi_classic_calls_controller.h"
 #import "noshi_classic_chats_controller.h"
 #import "noshi_classic_chrome.h"
@@ -13,11 +12,9 @@
 #import "noshi_chat_controller.h"
 #import "noshi_community_screen.h"
 #import "noshi_topics_screen.h"
-#import "noshi_contacts_controller.h"
 #import "noshi_language.h"
 #import "noshi_lite_mode.h"
 #import "noshi_link_router.h"
-#import "noshi_developers.h"
 #import "noshi_dialog_picker_controller.h"
 #import "noshi_gift_screen.h"
 #import "noshi_share_intake.h"
@@ -25,7 +22,6 @@
 #import "noshi_notifier.h"
 #import "noshi_person.h"
 #import "noshi_platform.h"
-#import "noshi_profile_controller.h"
 #import "noshi_settings_controller.h"
 #import "noshi_settings_kit.h"
 #import "noshi_split_controller.h"
@@ -83,8 +79,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     NoshiMediaCache *_media;
     NoshiStickerLibrary *_stickers;
     NoshiLinkRouter *_linkRouter;
-    NoshiTabBar *_tabBar;
-    NSMutableArray *_screens;
     UIViewController *_current;
     UITabBarController *_classicTabs;
     /* the tab that wears the profile photo in the classic bar; the tab controller owns it */
@@ -95,7 +89,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     NoshiThemeBusyView *_busy;
     BOOL _busyShown;
     CGPoint _revealOrigin;
-    NSInteger _currentTab;
     /* the kinds of the tabs the bar was built with, so a change of layout knows which tab the person stood on */
     NSInteger _kinds[NoshiTabCount];
 }
@@ -142,12 +135,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 
 /* the screens and the bar go together, so the theme change can build both again */
 - (void)releaseContent {
-    for (UIViewController *screen in _screens) {
-        if ([screen isKindOfClass:[NoshiChatsController class]]) [(NoshiChatsController *)screen setChatsDelegate:nil];
-        if ([screen isKindOfClass:[NoshiProfileController class]]) [(NoshiProfileController *)screen setDelegate:nil];
-        if ([screen isKindOfClass:[NoshiSettingsController class]]) [(NoshiSettingsController *)screen setSignOutHandler:nil];
-    }
-    /* the handlers capture this controller, and the classic screens are not in _screens */
+    /* the handlers capture this controller */
     for (UINavigationController *navigation in _classicTabs.viewControllers) {
         id root = navigation.viewControllers.count ? [navigation.viewControllers objectAtIndex:0] : nil;
         if ([root respondsToSelector:@selector(setSignOutHandler:)]) [root setSignOutHandler:nil];
@@ -161,12 +149,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     [_classicTabs release];
     _classicTabs = nil;
     _classicProfileItem = nil;
-    _tabBar.delegate = nil;
-    [_tabBar removeFromSuperview];
-    [_tabBar release];
-    _tabBar = nil;
-    [_screens release];
-    _screens = nil;
 }
 
 - (void)loadView {
@@ -176,12 +158,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     self.view = root;
     /* the busy view draws its duck into pictures when it is made, and the first change of the theme should find them done */
     [self performSelector:@selector(prepareBusy) withObject:nil afterDelay:3];
-    for (NSUInteger i = 0; i < 2; ++i) {
-        UISwipeGestureRecognizer *swipe = [[[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipedTab:)] autorelease];
-        swipe.direction = i == 0 ? UISwipeGestureRecognizerDirectionRight : UISwipeGestureRecognizerDirectionLeft;
-        swipe.delegate = self;
-        [root addGestureRecognizer:swipe];
-    }
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeChanged:)
                                                  name:NoshiThemeDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabOrderChanged:)
@@ -190,7 +166,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
                                                  name:NoshiLanguageDidChangeNotification object:nil];
     [self buildContentWithTab:-1];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ownProfileChanged) name:NoshiOwnProfileDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(openTeamPerson:) name:NoshiOpenTeamPersonNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(openChatRequested:) name:NoshiOpenChatNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(openLinkRequested:) name:NoshiOpenLinkNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shareFilesRequested:) name:NoshiShareFilesNotification object:nil];
@@ -235,17 +210,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     if (_classicTabs) anchor = [(UINavigationController *)_classicTabs.selectedViewController topViewController];
     _linkRouter.anchor = anchor;
     [_linkRouter openLink:url];
-}
-
-- (void)openTeamPerson:(NSNotification *)note {
-    NoshiPerson *person = [note.userInfo objectForKey:@"person"];
-    NoshiDialog *dialog = [NoshiDialog dialogWithPerson:person];
-    if (!dialog || !noshi_team_member_for_id(person.userId)) return;
-    if (!_linkRouter) _linkRouter = [[NoshiLinkRouter alloc] initWithSession:_session avatars:_avatars media:_media stickers:_stickers];
-    UIViewController *anchor = self;
-    if (_classicTabs) anchor = [(UINavigationController *)_classicTabs.selectedViewController topViewController];
-    _linkRouter.anchor = anchor;
-    [_linkRouter openDialog:dialog person:person draft:nil startParam:nil];
 }
 
 /* a notification was tapped: the chat opens over the list, whichever screen was up */
@@ -414,7 +378,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 /* the photo of the account was set or removed: the tab that wears it is asked for again, since it is made once when the bar is */
 - (void)ownProfileChanged {
     if (_classicTabs) [self loadClassicProfileTab];
-    else if (_tabBar) [self loadProfileTab];
 }
 
 /* the system tab bar swaps its screens at once; a push transition on the container of the screens, not on the bar, gives the same
@@ -448,29 +411,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 - (void)buildContentWithTab:(NSInteger)tab {
     NoshiTabKinds(NoshiTabLayoutStored(), _kinds);
     if (tab < 0 || tab >= NoshiTabCount) tab = MAX(0, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
-    if (NoshiThemeIsClassic()) {
-        [self buildClassicWithTab:tab];
-        return;
-    }
-    UIView *root = self.view;
-    /* screens are made on demand, so a tab nobody opens never asks the server for anything */
-    _screens = [[NSMutableArray alloc] init];
-    for (int i = 0; i < NoshiTabCount; ++i) [_screens addObject:[NSNull null]];
-
-    NSMutableArray *titles = [NSMutableArray array], *symbols = [NSMutableArray array];
-    for (NSInteger i = 0; i < NoshiTabCount; ++i) {
-        [titles addObject:NoshiTabTitle(_kinds[i])];
-        /* the profile tab shows the photo of the person, so it has no symbol of its own */
-        [symbols addObject:_kinds[i] == NoshiTabProfile ? (id)[NSNull null] : (id)[NSNumber numberWithInt:NoshiTabSymbol(_kinds[i])]];
-    }
-    _tabBar = [[NoshiTabBar alloc] initWithTitles:titles symbols:symbols];
-    _tabBar.delegate = self;
-    /* a rebuild lands on the settings tab, and the bar has to say so or the next tap on settings is taken for no change */
-    _tabBar.selectedIndex = tab;
-    _currentTab = tab;
-    [root addSubview:_tabBar];
-    [self showTab:tab];
-    [self loadProfileTab];
+    [self buildClassicWithTab:tab];
 }
 
 - (void)prepareBusy {
@@ -638,8 +579,6 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
 /* the pages pushed over the tab the person stands on */
 - (NSArray *)pagesToRestore {
     if (_detailHost) return nil;
-    BOOL involvesClassic = _classicTabs != nil || NoshiThemeStoredClassic();
-    if (!involvesClassic) return nil;
     UINavigationController *navigation = _classicTabs ? (UINavigationController *)_classicTabs.selectedViewController : self.navigationController;
     NSArray *all = navigation.viewControllers;
     NSUInteger from = _classicTabs ? 1 : [all indexOfObjectIdenticalTo:self] + 1;
@@ -662,7 +601,7 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
 
 - (void)rebuildContent {
     /* the person stays on the tab they were on, which is settings when the switch there made the change */
-    NSInteger tab = _classicTabs ? (NSInteger)_classicTabs.selectedIndex : _currentTab;
+    NSInteger tab = _classicTabs ? (NSInteger)_classicTabs.selectedIndex : 0;
     /* a new layout may put the tab somewhere else, or have none of that kind: the settings are where the change was made, so they are the fallback */
     NSInteger kind = tab >= 0 && tab < NoshiTabCount ? _kinds[tab] : NoshiTabSettings;
     NSInteger next[NoshiTabCount];
@@ -683,125 +622,6 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
     [self buildContentWithTab:tab];
 }
 
-/* the last tab wears the profile photo, so the profile is fetched once for the tab bar as well */
-- (void)loadProfileTab {
-    NSInteger profileIndex = NoshiTabIndexOfKind(_kinds, NoshiTabProfile);
-    /* the photo of the last time is on the tab before the answer comes */
-    NoshiPerson *known = [_session ownPerson];
-    if (known && profileIndex >= 0) {
-        [_avatars pinPhoto:known.photo];
-        [_tabBar setAvatarInitials:known.initials seed:(NSUInteger)(known.userId % 1000003) photo:known.photo cache:_avatars forIndex:profileIndex];
-    }
-    [_session loadSelf:^(NSArray *items, NSString *errorName) {
-        if (!items) {
-            NSLog(@"noshigram: profile tab did not load: %@", errorName);
-            return;
-        }
-        NoshiPerson *person = [items objectAtIndex:0];
-        [_avatars pinPhoto:person.photo];
-        NoshiAccountKeepPhotoOfPerson(person, _avatars);
-        NoshiLiteSetPremium(NoshiPremiumEffective(person.premium));
-        if (profileIndex >= 0) [_tabBar setAvatarInitials:person.initials seed:(NSUInteger)(person.userId % 1000003) photo:person.photo cache:_avatars
-                                                 forIndex:profileIndex];
-    }];
-}
-
-- (UIViewController *)screenForTab:(NSInteger)tab {
-    id existing = [_screens objectAtIndex:(NSUInteger)tab];
-    if (existing != [NSNull null]) return existing;
-    UIViewController *screen = nil;
-    switch (_kinds[tab]) {
-    case NoshiTabChats: {
-        NoshiChatsController *chats = [[[NoshiChatsController alloc] initWithSession:_session] autorelease];
-        chats.chatsDelegate = self;
-        chats.media = _media;
-        chats.stickerLibrary = _stickers;
-        screen = chats;
-        break;
-    }
-    case NoshiTabContacts: {
-        NoshiContactsController *contacts = [[[NoshiContactsController alloc] initWithSession:_session] autorelease];
-        contacts.media = _media;
-        contacts.stickerLibrary = _stickers;
-        screen = contacts;
-        break;
-    }
-    case NoshiTabCalls: {
-        NoshiCallsController *calls = [[[NoshiCallsController alloc] initWithSession:_session] autorelease];
-        calls.media = _media;
-        calls.stickerLibrary = _stickers;
-        screen = calls;
-        break;
-    }
-    case NoshiTabSettings: {
-        NoshiSettingsController *settings = [[[NoshiSettingsController alloc] initWithSession:_session avatars:_avatars media:_media] autorelease];
-        settings.signOutHandler = ^(void (^completion)(NSString *errorName)) { [_delegate mainController:self requestsSignOut:completion]; };
-        screen = settings;
-        break;
-    }
-    default: {
-        NoshiProfileController *profile = [[[NoshiProfileController alloc] initWithSession:_session] autorelease];
-        profile.delegate = self;
-        screen = profile;
-        break;
-    }
-    }
-    if ([screen isKindOfClass:[NoshiListController class]]) [(NoshiListController *)screen setAvatars:_avatars];
-    else if ([screen isKindOfClass:[NoshiProfileController class]]) {
-        [(NoshiProfileController *)screen setAvatars:_avatars];
-        [(NoshiProfileController *)screen setMedia:_media];
-        [(NoshiProfileController *)screen setStickerLibrary:_stickers];
-    }
-    [_screens replaceObjectAtIndex:(NSUInteger)tab withObject:screen];
-    return screen;
-}
-
-- (void)setBottomInsetOf:(UIViewController *)screen to:(CGFloat)inset {
-    if ([screen isKindOfClass:[NoshiListController class]]) [(NoshiListController *)screen setBottomInset:inset];
-    else if ([screen isKindOfClass:[NoshiSettingsController class]]) [(NoshiSettingsController *)screen setBottomInset:inset];
-    else if ([screen isKindOfClass:[NoshiProfileController class]]) [(NoshiProfileController *)screen setBottomInset:inset];
-}
-
-/* the tabs swap with a sideways slide in the direction of the tab bar: the new screen comes in from the side of its tab and the
-   old one leaves towards the other */
-- (void)showTab:(NSInteger)tab {
-    UIViewController *next = [self screenForTab:tab];
-    if (next == _current) return;
-    UIView *leaving = nil;
-    CGFloat direction = tab > _currentTab ? 1 : -1;
-    if (_current) {
-        [_current willMoveToParentViewController:nil];
-        [_current beginAppearanceTransition:NO animated:NO];
-        leaving = [_current.view retain];
-        [_current endAppearanceTransition];
-        [_current removeFromParentViewController];
-    }
-    _current = next;
-    _currentTab = tab;
-    [self addChildViewController:next];
-    next.view.frame = self.view.bounds;
-    next.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [self.view insertSubview:next.view belowSubview:_tabBar];
-    [next beginAppearanceTransition:YES animated:NO];
-    [next endAppearanceTransition];
-    [next didMoveToParentViewController:self];
-    [self layoutTabBar];
-    if (!leaving) return;
-    CGFloat width = self.view.bounds.size.width;
-    next.view.transform = CGAffineTransformMakeTranslation(direction * width, 0);
-    self.view.userInteractionEnabled = NO;
-    [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        next.view.transform = CGAffineTransformIdentity;
-        leaving.transform = CGAffineTransformMakeTranslation(-direction * width, 0);
-    } completion:^(BOOL finished) {
-        (void)finished;
-        [leaving removeFromSuperview];
-        leaving.transform = CGAffineTransformIdentity;
-        [leaving release];
-        self.view.userInteractionEnabled = YES;
-    }];
-}
-
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)orientation {
     return NoshiAllowsOrientation(orientation);
 }
@@ -818,34 +638,12 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
 }
 #pragma clang diagnostic pop
 
-- (void)layoutTabBar {
-    CGSize size = self.view.bounds.size;
-    UIEdgeInsets insets = NoshiLayoutInsets(self);
-    CGFloat height = [NoshiTabBar barHeight] + insets.bottom;
-    _tabBar.frame = CGRectMake(0, size.height - height, size.width, height);
-    _tabBar.itemArea = NoshiContentColumn(size, insets, NOSHI_COLUMN_LIST);
-    for (UIViewController *screen in _screens) {
-        if (screen != (id)[NSNull null]) [self setBottomInsetOf:screen to:height];
-    }
-}
-
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    [self layoutTabBar];
     if (_classicTabs) {
         NoshiClassicNoteTabBarHeight(_classicTabs.tabBar.frame.size.height);
         NoshiPlaceClassicBadge(_classicTabs.tabBar, self.view.bounds.size.width, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
     }
-}
-
-/* the first scroll view in the tree of a screen: the table of a list, or the one a settings page holds */
-static UIScrollView *NoshiPrimaryScroll(UIView *view) {
-    if ([view isKindOfClass:[UIScrollView class]]) return (UIScrollView *)view;
-    for (UIView *child in view.subviews) {
-        UIScrollView *found = NoshiPrimaryScroll(child);
-        if (found) return found;
-    }
-    return nil;
 }
 
 - (void)tabBarController:(UITabBarController *)tabs didSelectViewController:(UIViewController *)screen {
@@ -865,57 +663,7 @@ static UIScrollView *NoshiPrimaryScroll(UIView *view) {
 
 #pragma mark delegates
 
-static BOOL NoshiSwipeTabKind(NSInteger kind) {
-    return kind == NoshiTabProfile || kind == NoshiTabSettings || kind == NoshiTabContacts;
-}
-
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    (void)gesture;
-    if (_classicTabs || !_tabBar || _currentTab < 0 || _currentTab >= NoshiTabCount || !NoshiSwipeTabKind(_kinds[_currentTab])) return NO;
-    for (UIView *view = touch.view; view && view != self.view; view = view.superview) {
-        if ([view isKindOfClass:[UISlider class]] || [view isKindOfClass:[UISwitch class]] ||
-            [view isKindOfClass:[UITextField class]] || [view isKindOfClass:[UITextView class]]) return NO;
-        if ([view isKindOfClass:[UIScrollView class]]) {
-            UIScrollView *scroll = (UIScrollView *)view;
-            if (scroll.contentSize.width > scroll.bounds.size.width + 1) return NO;
-        }
-    }
-    return YES;
-}
-
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)other {
-    (void)gesture;
-    return [other.view isKindOfClass:[UIScrollView class]] && other == [(UIScrollView *)other.view panGestureRecognizer];
-}
-
-- (void)swipedTab:(UISwipeGestureRecognizer *)swipe {
-    if (swipe.state != UIGestureRecognizerStateRecognized || !_tabBar) return;
-    NSInteger step = swipe.direction == UISwipeGestureRecognizerDirectionRight ? -1 : 1;
-    NSInteger next = _currentTab + step;
-    while (next >= 0 && next < NoshiTabCount && !NoshiSwipeTabKind(_kinds[next])) next += step;
-    if (next < 0 || next >= NoshiTabCount) return;
-    _tabBar.selectedIndex = next;
-    [self showTab:next];
-}
-
-- (void)tabBar:(NoshiTabBar *)tabBar didSelectIndex:(NSInteger)index {
-    [self showTab:index];
-}
-
-/* the tab of the chats pressed again takes the list back to its top */
-- (void)tabBar:(NoshiTabBar *)tabBar didReselectIndex:(NSInteger)index {
-    (void)tabBar;
-    if (index < 0 || index >= NoshiTabCount || _kinds[index] != NoshiTabChats) return;
-    if ([_current isKindOfClass:[NoshiChatsController class]]) [(NoshiChatsController *)_current scrollToTopAnimated];
-}
-
-/* a finger held on the profile tab offers the accounts of the phone, as the official client does */
-- (void)tabBar:(NoshiTabBar *)tabBar didLongPressIndex:(NSInteger)index frame:(CGRect)frame {
-    if (index < 0 || index >= NoshiTabCount || _kinds[index] != NoshiTabProfile) return;
-    [self showAccountsAboveBar:tabBar frame:frame];
-}
-
-/* the classic bar is the system one, which has no hold of its own: a finger held on the slot of the profile tab gets the same list as the modern bar */
+/* the system tab bar has no hold of its own: a finger held on the slot of the profile tab offers the accounts of the phone, as the official client does */
 - (void)classicBarHeld:(UILongPressGestureRecognizer *)hold {
     if (hold.state != UIGestureRecognizerStateBegan || !_classicTabs) return;
     UIView *bar = hold.view;
@@ -952,25 +700,6 @@ static BOOL NoshiSwipeTabKind(NSInteger kind) {
     CGRect area = [tabBar convertRect:frame toView:self.view];
     menu.bottomInset = self.view.bounds.size.height - area.origin.y;
     [menu showInView:self.view anchor:CGPointMake(CGRectGetMaxX(area), area.origin.y - 8)];
-}
-
-- (void)chatsController:(NoshiChatsController *)controller didChangeUnreadTotal:(NSInteger)total {
-    (void)controller;
-    NSInteger chatsIndex = NoshiTabIndexOfKind(_kinds, NoshiTabChats);
-    if (chatsIndex >= 0) [_tabBar setBadge:total forIndex:chatsIndex];
-}
-
-- (void)profileControllerRequestsSettings:(NoshiProfileController *)controller {
-    (void)controller;
-    NSInteger index = NoshiTabIndexOfKind(_kinds, NoshiTabSettings);
-    if (index < 0 || !_tabBar) return;
-    _tabBar.selectedIndex = index;
-    [self showTab:index];
-}
-
-- (void)profileController:(NoshiProfileController *)controller requestsSignOut:(void (^)(NSString *errorName))completion {
-    (void)controller;
-    [_delegate mainController:self requestsSignOut:completion];
 }
 
 @end

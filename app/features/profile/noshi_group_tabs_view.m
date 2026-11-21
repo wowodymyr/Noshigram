@@ -1,4 +1,3 @@
-#import "noshi_developers.h"
 #import "noshi_group_tabs_view.h"
 
 #import <QuartzCore/QuartzCore.h>
@@ -428,7 +427,6 @@ static NoshiSymbol NoshiVoiceRowSymbol(NoshiMessage *message) {
             if (person.presence == NOSHI_PRESENCE_ONLINE) color = NoshiColorAccent();
             subtitle = NoshiLastSeenText(person.presence, person.seen);
         }
-        cell.developer = NoshiPersonIsDeveloper(person);
         cell.premium = person.premium;
         [cell configureWithName:person.name initials:person.initials seed:(NSUInteger)(person.userId % 1000003) subtitle:subtitle subtitleColor:color
                        trailing:trailing symbol:NoshiSymbolChevronRight showsSymbol:NO nameColor:nil photo:person.photo avatars:_avatars];

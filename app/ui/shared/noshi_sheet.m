@@ -38,14 +38,10 @@
 static UIView *NoshiSheetCard(void) {
     UIView *card = [[[UIView alloc] init] autorelease];
     /* the classic card is a plate of polished metal, which is put on once the card has its size, and its shadow must not be clipped */
-    if (NoshiThemeIsClassic()) return card;
-    card.backgroundColor = NoshiColorCard();
-    card.layer.cornerRadius = CARD_RADIUS;
-    card.layer.masksToBounds = YES;
     return card;
 }
 
-static UIColor *NoshiSheetText(void) { return NoshiThemeIsClassic() ? NoshiClassicMenuTextColor() : NoshiColorTitle(); }
+static UIColor *NoshiSheetText(void) { return NoshiClassicMenuTextColor(); }
 
 static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
     UILabel *label = [[[UILabel alloc] init] autorelease];
@@ -70,12 +66,8 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
 }
 
 - (void)rowDown:(UIButton *)row {
-    if (NoshiThemeIsClassic()) {
-        /* the cancel key is a picture and shows its own pressed one */
-        if (row.tag >= 0) row.backgroundColor = NoshiClassicMenuPressColor();
-        return;
-    }
-    row.backgroundColor = NoshiColorField();
+    /* the cancel key is a picture and shows its own pressed one */
+    if (row.tag >= 0) row.backgroundColor = NoshiClassicMenuPressColor();
 }
 - (void)rowUp:(UIButton *)row { row.backgroundColor = [UIColor clearColor]; }
 
@@ -103,12 +95,11 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
     [_dim addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(cancel)] autorelease]];
     [self addSubview:_dim];
 
-    BOOL classic = NoshiThemeIsClassic();
     UIView *card = NoshiSheetCard();
     CGFloat y = 0;
     CGFloat textWidth = width - 2 * TEXT_PAD;
     if (title.length) {
-        UILabel *label = NoshiSheetLabel(classic ? [UIFont boldSystemFontOfSize:16] : NoshiFontSemibold(16), NoshiSheetText());
+        UILabel *label = NoshiSheetLabel([UIFont boldSystemFontOfSize:16], NoshiSheetText());
         label.text = title;
         CGSize fit = [label sizeThatFits:CGSizeMake(textWidth, 200)];
         label.frame = CGRectMake(TEXT_PAD, y + 16, textWidth, fit.height);
@@ -116,7 +107,7 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
         y += 16 + fit.height + (message.length ? 4 : 12);
     }
     if (message.length) {
-        UILabel *label = NoshiSheetLabel(classic ? [UIFont systemFontOfSize:14] : NoshiFontRegular(14.5), classic ? [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7] : NoshiColorSecondary());
+        UILabel *label = NoshiSheetLabel([UIFont systemFontOfSize:14], [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7]);
         label.text = message;
         CGSize fit = [label sizeThatFits:CGSizeMake(textWidth, 300)];
         label.frame = CGRectMake(TEXT_PAD, y + (title.length ? 0 : 16), textWidth, fit.height);
@@ -133,49 +124,39 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
     list.contentSize = CGSizeMake(width, rows);
     list.showsVerticalScrollIndicator = NO;
     list.bounces = rows > list.bounds.size.height;
-    if (classic) {
-        /* the bottom rows follow the round corners of the plate under them */
-        list.layer.cornerRadius = CLASSIC_RADIUS;
-        list.layer.masksToBounds = YES;
-    }
+    /* the bottom rows follow the round corners of the plate under them */
+    list.layer.cornerRadius = CLASSIC_RADIUS;
+    list.layer.masksToBounds = YES;
     for (NSUInteger i = 0; i < options.count; ++i) {
-        UIColor *color = [destructive containsIndex:i] ? (classic ? NoshiClassicMenuRedColor() : NoshiColorBadgeRed()) : NoshiSheetText();
-        UIButton *button = [self buttonWithTitle:[options objectAtIndex:i] color:color font:classic ? [UIFont boldSystemFontOfSize:17] : NoshiFontMedium(17) tag:(NSInteger)i];
+        UIColor *color = [destructive containsIndex:i] ? (NoshiClassicMenuRedColor()) : NoshiSheetText();
+        UIButton *button = [self buttonWithTitle:[options objectAtIndex:i] color:color font:[UIFont boldSystemFontOfSize:17] tag:(NSInteger)i];
         button.frame = CGRectMake(0, ROW_HEIGHT * (CGFloat)i, width, ROW_HEIGHT);
         [button addTarget:self action:@selector(picked:) forControlEvents:UIControlEventTouchUpInside];
-        if (classic) {
-            /* a dark groove over a lit line, the way the old menus split their rows */
-            BOOL charcoal = NoshiThemeIsDark();
-            UIView *groove = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 1)] autorelease];
-            groove.backgroundColor = [UIColor colorWithWhite:0 alpha:charcoal ? 0.45 : 0.14];
-            groove.userInteractionEnabled = NO;
-            [button addSubview:groove];
-            UIView *lit = [[[UIView alloc] initWithFrame:CGRectMake(0, 1, width, 1)] autorelease];
-            lit.backgroundColor = [UIColor colorWithWhite:1 alpha:charcoal ? 0.08 : 0.85];
-            lit.userInteractionEnabled = NO;
-            [button addSubview:lit];
-        } else {
-            UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 1.0 / NoshiScreenScale())] autorelease];
-            line.backgroundColor = NoshiColorHairline();
-            [button addSubview:line];
-        }
+        /* a dark groove over a lit line, the way the old menus split their rows */
+        BOOL charcoal = NoshiThemeIsDark();
+        UIView *groove = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 1)] autorelease];
+        groove.backgroundColor = [UIColor colorWithWhite:0 alpha:charcoal ? 0.45 : 0.14];
+        groove.userInteractionEnabled = NO;
+        [button addSubview:groove];
+        UIView *lit = [[[UIView alloc] initWithFrame:CGRectMake(0, 1, width, 1)] autorelease];
+        lit.backgroundColor = [UIColor colorWithWhite:1 alpha:charcoal ? 0.08 : 0.85];
+        lit.userInteractionEnabled = NO;
+        [button addSubview:lit];
         [list addSubview:button];
     }
     [card addSubview:list];
     card.frame = CGRectMake(0, 0, width, cardHeight);
-    if (classic) NoshiClassicApplyMenuPlate(card, CLASSIC_RADIUS);
+    NoshiClassicApplyMenuPlate(card, CLASSIC_RADIUS);
 
     UIView *cancel = NoshiSheetCard();
     cancel.frame = CGRectMake(0, cardHeight + GAP, width, cancelHeight);
-    UIButton *cancelButton = [self buttonWithTitle:cancelTitle color:classic ? [UIColor whiteColor] : NoshiColorAccent() font:classic ? [UIFont boldSystemFontOfSize:17] : NoshiFontSemibold(17) tag:-1];
+    UIButton *cancelButton = [self buttonWithTitle:cancelTitle color:[UIColor whiteColor] font:[UIFont boldSystemFontOfSize:17] tag:-1];
     cancelButton.frame = cancel.bounds;
-    if (classic) {
-        /* the cancel key is a glossy slate key of its own, apart from the plate, as on the old action sheets */
-        [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-        [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-        cancelButton.titleLabel.shadowOffset = CGSizeMake(0, -1);
-        [cancelButton setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-    }
+    /* the cancel key is a glossy slate key of its own, apart from the plate, as on the old action sheets */
+    [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
+    [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    cancelButton.titleLabel.shadowOffset = CGSizeMake(0, -1);
+    [cancelButton setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
     [cancelButton addTarget:self action:@selector(cancel) forControlEvents:UIControlEventTouchUpInside];
     [cancel addSubview:cancelButton];
 
@@ -234,15 +215,6 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
 @end
 
 void NoshiConfirmAction(UIViewController *host, NSString *message, NSString *actionTitle, void (^confirmed)(void)) {
-    if (!NoshiThemeIsClassic() && host.view) {
-        [NoshiSheet presentInView:host.view title:nil message:message options:[NSArray arrayWithObject:actionTitle]
-                        destructive:[NSIndexSet indexSetWithIndex:0] cancelTitle:NSLocalizedString(@"picker.cancel", nil)
-                            handler:^(NSUInteger index) {
-            (void)index;
-            if (confirmed) confirmed();
-        }];
-        return;
-    }
     /* the classic style keeps the system alert it always had */
     NoshiConfirm(nil, message, actionTitle, confirmed);
 }

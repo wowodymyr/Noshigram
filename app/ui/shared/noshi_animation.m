@@ -258,10 +258,9 @@ void NoshiSetFrameRate(CADisplayLink *link, NSInteger framesPerSecond) {
 }
 
 noshi_motion_curve NoshiPopupCurve(BOOL entering) {
-    if (NoshiThemeIsClassic()) return entering ? NOSHI_MOTION_POPUP_CLASSIC_ENTER : NOSHI_MOTION_POPUP_CLASSIC_EXIT;
-    return entering ? NOSHI_MOTION_POPUP_MODERN_ENTER : NOSHI_MOTION_POPUP_MODERN_EXIT;
+    return entering ? NOSHI_MOTION_POPUP_CLASSIC_ENTER : NOSHI_MOTION_POPUP_CLASSIC_EXIT;
 }
 
 CGFloat NoshiPopupScale(void) {
-    return NoshiThemeIsClassic() ? 0.95 : 0.9;
+    return 0.95;
 }

@@ -70,20 +70,13 @@ static void NoshiDrawGlossShield(CGContextRef c, CGFloat w, CGFloat h, UIColor *
     (void)rect;
     CGContextRef c = UIGraphicsGetCurrentContext();
     CGFloat w = self.bounds.size.width, h = self.bounds.size.height;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        NoshiDrawGlossShield(c, w, h, NoshiColorTitle());
-    } else {
-        [NoshiColorTitle() setFill];
-        NoshiAddShield(c, w, h);
-        CGContextFillPath(c);
-    }
+    NoshiDrawGlossShield(c, w, h, NoshiColorTitle());
     NSString *text = [NSString stringWithFormat:@"%d", (int)_level];
     UIFont *font = NoshiFontBold(10);
     CGSize size = [text sizeWithFont:font];
     CGContextSaveGState(c);
     /* the digit is pressed into the plate: a light edge under it */
-    if (classic) CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 0, [UIColor colorWithWhite:1 alpha:0.6f].CGColor);
+    CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 0, [UIColor colorWithWhite:1 alpha:0.6f].CGColor);
     [NoshiColorScreen() setFill];
     [text drawAtPoint:CGPointMake(floor((w - size.width) / 2), floor((h - size.height) / 2) - 1) withFont:font];
     CGContextRestoreGState(c);
@@ -113,12 +106,10 @@ static NSString *NoshiStarsShort(long long stars) {
     if (!self) return nil;
     self.backgroundColor = [UIColor clearColor];
     self.opaque = NO;
-    if (NoshiThemeIsClassic()) {
-        self.layer.shadowColor = [UIColor blackColor].CGColor;
-        self.layer.shadowOpacity = 0.45f;
-        self.layer.shadowRadius = 3;
-        self.layer.shadowOffset = CGSizeMake(0, 1.5);
-    }
+    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.layer.shadowOpacity = 0.45f;
+    self.layer.shadowRadius = 3;
+    self.layer.shadowOffset = CGSizeMake(0, 1.5);
     return self;
 }
 - (void)dealloc { [_amount release]; [_goal release]; [super dealloc]; }
@@ -154,24 +145,18 @@ static void NoshiAddCrown(CGContextRef c, CGRect box) {
     CGContextRef c = UIGraphicsGetCurrentContext();
     CGFloat w = self.bounds.size.width;
     CGRect body = CGRectMake(0, 0, w, PILL_HEIGHT);
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the plate is a glossy capsule, as the badges of the old home screen are; its shadow is the layer's */
-        [NoshiClassicTintedGlossImage(NoshiColorAccent(), PILL_HEIGHT / 2 - 2, NO) drawInRect:body];
-        CGFloat r = 0, g = 0, b = 0;
-        [NoshiColorAccent() getRed:&r green:&g blue:&b alpha:NULL];
-        [[UIColor colorWithRed:r * 0.74 green:g * 0.74 blue:b * 0.74 alpha:1] setFill];
-    } else {
-        [NoshiColorAccent() setFill];
-        [[UIBezierPath bezierPathWithRoundedRect:body cornerRadius:PILL_HEIGHT / 2] fill];
-    }
+    /* the plate is a glossy capsule, as the badges of the old home screen are; its shadow is the layer's */
+    [NoshiClassicTintedGlossImage(NoshiColorAccent(), PILL_HEIGHT / 2 - 2, NO) drawInRect:body];
+    CGFloat r = 0, g = 0, b = 0;
+    [NoshiColorAccent() getRed:&r green:&g blue:&b alpha:NULL];
+    [[UIColor colorWithRed:r * 0.74 green:g * 0.74 blue:b * 0.74 alpha:1] setFill];
     CGContextMoveToPoint(c, w / 2 - 9, PILL_HEIGHT - 1);
     CGContextAddLineToPoint(c, w / 2, PILL_HEIGHT + PILL_TAIL);
     CGContextAddLineToPoint(c, w / 2 + 9, PILL_HEIGHT - 1);
     CGContextClosePath(c);
     CGContextFillPath(c);
     [[UIColor whiteColor] setFill];
-    if (classic) CGContextSetShadowWithColor(c, CGSizeMake(0, -1), 0, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
+    CGContextSetShadowWithColor(c, CGSizeMake(0, -1), 0, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
     CGFloat x = 16;
     NoshiAddCrown(c, CGRectMake(x, (PILL_HEIGHT - PILL_CROWN * 0.8) / 2, PILL_CROWN, PILL_CROWN * 0.8));
     x += PILL_CROWN + 6;
@@ -245,40 +230,28 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     /* the rounded top is a stretched picture and not a mask of the layer: a masked layer is drawn off screen at every frame of its move, which made the sheet judder when it left */
     _panel.backgroundColor = [UIColor clearColor];
     _panelBack = [[UIImageView alloc] initWithImage:NoshiRatingSheetImage()];
-    if (NoshiThemeIsClassic()) {
-        /* the classic sheet is a plate of polished metal, as the menus are, and runs below the screen so that its lower corners are not seen */
-        _panelBack.hidden = YES;
-        NoshiClassicApplyMenuPlate(_panel, 10);
-    }
+    /* the classic sheet is a plate of polished metal, as the menus are, and runs below the screen so that its lower corners are not seen */
+    _panelBack.hidden = YES;
+    NoshiClassicApplyMenuPlate(_panel, 10);
     [_panel addSubview:_panelBack];
     [self addSubview:_panel];
     _scroll = [[UIScrollView alloc] init];
     _scroll.showsVerticalScrollIndicator = NO;
     [_panel addSubview:_scroll];
     _track = [[UIView alloc] init];
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the bar is a groove cut into the plate, with a dark line along its upper edge and a lit one along its lower, and the fill is a glossy accent capsule */
-        _track.backgroundColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.40 : 0.16];
-        _track.layer.cornerRadius = 20;
-        _track.layer.borderWidth = 1;
-        _track.layer.borderColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.7 : 0.3].CGColor;
-        _track.clipsToBounds = YES;
-        [_scroll addSubview:_track];
-        _fill = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 18, NO)];
-    } else {
-        _track.backgroundColor = [NoshiColorSecondary() colorWithAlphaComponent:0.16];
-        _track.layer.cornerRadius = 9;
-        _track.clipsToBounds = YES;
-        [_scroll addSubview:_track];
-        _fill = [[UIView alloc] init];
-        _fill.backgroundColor = NoshiColorAccent();
-    }
+    /* the bar is a groove cut into the plate, with a dark line along its upper edge and a lit one along its lower, and the fill is a glossy accent capsule */
+    _track.backgroundColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.40 : 0.16];
+    _track.layer.cornerRadius = 20;
+    _track.layer.borderWidth = 1;
+    _track.layer.borderColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.7 : 0.3].CGColor;
+    _track.clipsToBounds = YES;
+    [_scroll addSubview:_track];
+    _fill = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 18, NO)];
     [_track addSubview:_fill];
     _level = [ratingLabel(@"", NoshiFontSemibold(16), [UIColor whiteColor], NoshiTextAlignmentLeft) retain];
     _level.numberOfLines = 1;
     [_track addSubview:_level];
-    _nextLevel = [ratingLabel(@"", NoshiFontSemibold(16), classic ? NoshiClassicMenuTextColor() : NoshiColorTitle(), NoshiTextAlignmentRight) retain];
+    _nextLevel = [ratingLabel(@"", NoshiFontSemibold(16), NoshiClassicMenuTextColor(), NoshiTextAlignmentRight) retain];
     _nextLevel.numberOfLines = 1;
     [_track addSubview:_nextLevel];
     _pill = [[NoshiRatingPill alloc] init];
@@ -290,16 +263,14 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     _preview.titleLabel.font = NoshiFontSemibold(14);
     [_preview addTarget:self action:@selector(togglePreview) forControlEvents:UIControlEventTouchUpInside];
     [_scroll addSubview:_preview];
-    UIColor *ink = classic ? NoshiClassicMenuTextColor() : NoshiColorTitle();
-    UILabel *title = ratingLabel(NSLocalizedString(@"rating.title", nil), classic ? [UIFont boldSystemFontOfSize:23] : NoshiFontBold(24), ink, NoshiTextAlignmentCenter);
-    if (classic) {
-        /* the letters are cut into the plate: a light edge under them on the pale plate, a dark one on the charcoal */
-        title.shadowColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:0 alpha:0.6] : [UIColor colorWithWhite:1 alpha:0.9];
-        title.shadowOffset = CGSizeMake(0, NoshiThemeIsDark() ? -1 : 1);
-    }
+    UIColor *ink = NoshiClassicMenuTextColor();
+    UILabel *title = ratingLabel(NSLocalizedString(@"rating.title", nil), [UIFont boldSystemFontOfSize:23], ink, NoshiTextAlignmentCenter);
+    /* the letters are cut into the plate: a light edge under them on the pale plate, a dark one on the charcoal */
+    title.shadowColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:0 alpha:0.6] : [UIColor colorWithWhite:1 alpha:0.9];
+    title.shadowOffset = CGSizeMake(0, NoshiThemeIsDark() ? -1 : 1);
     title.tag = 100;
     [_scroll addSubview:title];
-    UILabel *about = ratingLabel(NSLocalizedString(@"rating.about", nil), classic ? [UIFont systemFontOfSize:15] : NoshiFontRegular(15), ink, NoshiTextAlignmentCenter);
+    UILabel *about = ratingLabel(NSLocalizedString(@"rating.about", nil), [UIFont systemFontOfSize:15], ink, NoshiTextAlignmentCenter);
     about.tag = 101;
     [_scroll addSubview:about];
     _rows = [[NSMutableArray alloc] initWithObjects:NoshiRatingRow(NoshiSymbolGift, @"rating.gifts.title", @"rating.gifts.body", YES),
@@ -309,31 +280,28 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     for (NSMutableDictionary *row in _rows) {
         NoshiSymbol symbol = (NoshiSymbol)[[row objectForKey:@"symbol"] intValue];
         /* the classic row has the colored glossy tile with a white sign of the settings lists and of the old messaging apps */
-        UIImageView *icon = [[[UIImageView alloc] initWithImage:classic ? NoshiSettingsTileImage(symbol, tag == 200 ? NoshiSettingsTonePurple : (tag == 210 ? NoshiSettingsToneBlue : NoshiSettingsToneOrange), 32)
-                                                                      : NoshiSymbolImage(symbol, 26, NoshiColorTitle())] autorelease];
+        UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSettingsTileImage(symbol, tag == 200 ? NoshiSettingsTonePurple : (tag == 210 ? NoshiSettingsToneBlue : NoshiSettingsToneOrange), 32)] autorelease];
         icon.contentMode = UIViewContentModeCenter;
         icon.tag = tag;
         [_scroll addSubview:icon];
-        UILabel *name = ratingLabel(NSLocalizedString([row objectForKey:@"title"], nil), classic ? [UIFont boldSystemFontOfSize:17] : NoshiFontSemibold(18), ink, NoshiTextAlignmentLeft);
+        UILabel *name = ratingLabel(NSLocalizedString([row objectForKey:@"title"], nil), [UIFont boldSystemFontOfSize:17], ink, NoshiTextAlignmentLeft);
         name.tag = tag + 1;
         [_scroll addSubview:name];
         BOOL adds = [[row objectForKey:@"adds"] boolValue];
         UILabel *mark = ratingLabel(NSLocalizedString(adds ? @"rating.plus" : @"rating.minus", nil), NoshiFontSemibold(12), adds ? [UIColor whiteColor] : NoshiColorTitle(), NoshiTextAlignmentCenter);
         mark.numberOfLines = 1;
         mark.backgroundColor = adds ? NoshiColorAccent() : [NoshiColorSecondary() colorWithAlphaComponent:0.35];
-        if (classic) {
-            mark.textColor = [UIColor whiteColor];
-            mark.backgroundColor = adds ? [UIColor colorWithRed:0.25 green:0.62 blue:0.22 alpha:1] : [UIColor colorWithRed:0.78 green:0.20 blue:0.16 alpha:1];
-            mark.layer.borderWidth = 1;
-            mark.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.35].CGColor;
-            mark.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-            mark.shadowOffset = CGSizeMake(0, -1);
-        }
+        mark.textColor = [UIColor whiteColor];
+        mark.backgroundColor = adds ? [UIColor colorWithRed:0.25 green:0.62 blue:0.22 alpha:1] : [UIColor colorWithRed:0.78 green:0.20 blue:0.16 alpha:1];
+        mark.layer.borderWidth = 1;
+        mark.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.35].CGColor;
+        mark.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+        mark.shadowOffset = CGSizeMake(0, -1);
         mark.layer.cornerRadius = 5;
         mark.clipsToBounds = YES;
         mark.tag = tag + 2;
         [_scroll addSubview:mark];
-        UILabel *body = ratingLabel(@"", classic ? [UIFont systemFontOfSize:15] : NoshiFontRegular(16), classic ? [ink colorWithAlphaComponent:0.72] : NoshiColorSecondary(), NoshiTextAlignmentLeft);
+        UILabel *body = ratingLabel(@"", [UIFont systemFontOfSize:15], [ink colorWithAlphaComponent:0.72], NoshiTextAlignmentLeft);
         body.tag = tag + 3;
         [_scroll addSubview:body];
         tag += 10;
@@ -341,18 +309,12 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     _close = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_close setTitle:NSLocalizedString(@"rating.ok", nil) forState:UIControlStateNormal];
     [_close setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    if (classic) {
-        /* the blue key of the old messaging apps, in the accent: a glossy plate with a white word on it */
-        _close.titleLabel.font = [UIFont boldSystemFontOfSize:17];
-        _close.titleLabel.shadowOffset = CGSizeMake(0, -1);
-        [_close setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-        [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, NO) forState:UIControlStateNormal];
-        [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, YES) forState:UIControlStateHighlighted];
-    } else {
-        _close.titleLabel.font = NoshiFontSemibold(17);
-        _close.backgroundColor = NoshiColorAccent();
-        _close.layer.cornerRadius = 12;
-    }
+    /* the blue key of the old messaging apps, in the accent: a glossy plate with a white word on it */
+    _close.titleLabel.font = [UIFont boldSystemFontOfSize:17];
+    _close.titleLabel.shadowOffset = CGSizeMake(0, -1);
+    [_close setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
+    [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, NO) forState:UIControlStateNormal];
+    [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, YES) forState:UIControlStateHighlighted];
     [_close addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:_close];
     [self updateRating];
@@ -467,7 +429,7 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     NoshiPlaceView(_panel, CGRectMake(floor((self.bounds.size.width - width) / 2), self.bounds.size.height - height, width, height));
     _panelBack.frame = _panel.bounds;
     /* the plate of the classic sheet is a layer of its own, sized by hand and taller than the panel, so the rounded lower corners stay under the screen */
-    if (NoshiThemeIsClassic()) NoshiClassicFitPlate(_panel, 14);
+    NoshiClassicFitPlate(_panel, 14);
     _close.frame = CGRectMake(16, height - 16 - safe.bottom - 44, width - 32, 44);
     _scroll.frame = CGRectMake(0, 0, width, height - closeRoom + 8);
     _scroll.contentSize = CGSizeMake(width, y);

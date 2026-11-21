@@ -60,7 +60,7 @@ NoshiWallpaperSetting NoshiWallpaperPreset(NSUInteger index);
 UIImage *NoshiWallpaperImage(NoshiWallpaperSetting setting, CGSize size);
 
 /* the same for a style picked by the caller, for the screens that offer both whatever theme the app wears */
-void NoshiApplyWallpaperStyle(UIImageView *view, BOOL classic, BOOL dark);
+void NoshiApplyWallpaperStyle(UIImageView *view, BOOL dark);
 
 #include "noshi_channel.h"
 

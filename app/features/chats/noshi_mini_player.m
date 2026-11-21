@@ -82,17 +82,9 @@
     return [NoshiRoundPlayback sharedPlayback].active || (player.state != NoshiMusicStateIdle && player.track != nil);
 }
 
-+ (CGFloat)height { return NoshiThemeIsClassic() ? STRIP_HEIGHT : CARD_HEIGHT; }
-+ (CGFloat)heightForPill:(BOOL)pill { return NoshiThemeIsClassic() || !pill ? [self height] : CARD_HEIGHT + 2 * PILL_GAP; }
++ (CGFloat)height { return STRIP_HEIGHT; }
++ (CGFloat)heightForPill:(BOOL)pill { return [self height]; }
 
-/* the tonal colors of the card from a key color, the way a Material You scheme makes them: a container a little off the surface, a stronger one for the glyph tile, the key
-   color itself for the play key and a dark or light ink for what stands on each. the key color is the accent, or the tonal primary of the cover in the lyrics */
-static UIColor *NoshiStripContainer(UIColor *surface, UIColor *key) {
-    return NoshiMixedColor(surface, key, NoshiThemeIsDark() ? 0.22 : 0.14);
-}
-static UIColor *NoshiStripTile(UIColor *key) {
-    return NoshiThemeIsDark() ? NoshiMixedColor([UIColor colorWithWhite:0.12 alpha:1], key, 0.5) : NoshiMixedColor([UIColor whiteColor], key, 0.3);
-}
 static UIColor *NoshiStripOnTile(UIColor *key) {
     return NoshiThemeIsDark() ? NoshiMixedColor(key, [UIColor whiteColor], 0.75) : NoshiMixedColor(key, [UIColor blackColor], 0.55);
 }
@@ -109,30 +101,9 @@ static UIColor *NoshiStripTonalPrimary(UIColor *tone) {
     return [UIColor colorWithRed:red green:green blue:blue alpha:1];
 }
 
-/* a round state layer that stretches to the button it is the background of, so a press lights a disc and not the whole box of the button */
-static UIImage *NoshiStripDisc(UIColor *color) {
-    CGFloat side = 40;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    [color setFill];
-    CGContextFillEllipseInRect(UIGraphicsGetCurrentContext(), CGRectMake(0, 0, side, side));
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return [image resizableImageWithCapInsets:UIEdgeInsetsMake(side / 2 - 1, side / 2 - 1, side / 2 - 1, side / 2 - 1)];
-}
-
-static NSString *NoshiStripClock(NSTimeInterval seconds) {
-    NSInteger total = seconds > 0 ? (NSInteger)seconds : 0;
-    return [NSString stringWithFormat:@"%ld:%02ld", (long)(total / 60), (long)(total % 60)];
-}
-
 static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSString *label) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    if (NoshiThemeIsClassic()) {
-        [button setImage:NoshiSymbolImage(symbol, 20, NoshiClassicStripInk()) forState:UIControlStateNormal];
-    } else {
-        [button setImage:NoshiSymbolImage(symbol, 24, NoshiColorSecondary()) forState:UIControlStateNormal];
-        [button setBackgroundImage:NoshiStripDisc([NoshiColorSecondary() colorWithAlphaComponent:0.16]) forState:UIControlStateHighlighted];
-    }
+    [button setImage:NoshiSymbolImage(symbol, 20, NoshiClassicStripInk()) forState:UIControlStateNormal];
     [button addTarget:target action:action forControlEvents:UIControlEventTouchUpInside];
     button.accessibilityLabel = NSLocalizedString(label, nil);
     return button;
@@ -148,25 +119,6 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
 
 /* the card in the colors of its key: the surface, the tile, the keys, the bar. a tone makes the card a scheme of that color and its progress a wave, no tone is the accent of the app */
 - (void)applyScheme {
-    if (NoshiThemeIsClassic()) return;
-    UIColor *key = [self key];
-    BOOL wave = _tone != nil;
-    _card.backgroundColor = _surface ? _surface : NoshiStripContainer(NoshiColorCard(), key);
-    _lead.backgroundColor = NoshiStripTile(key);
-    _track.backgroundColor = wave ? [UIColor clearColor] : NoshiStripTile(key);
-    _indicator.backgroundColor = key;
-    _indicator.hidden = wave;
-    _waveClip.hidden = !wave;
-    _rest.hidden = !wave;
-    _wave.strokeColor = key.CGColor;
-    _rest.backgroundColor = NoshiMixedColor(NoshiColorCard(), key, 0.35).CGColor;
-    [_toggle setBackgroundImage:NoshiStripDisc(key) forState:UIControlStateNormal];
-    [_toggle setBackgroundImage:NoshiStripDisc(NoshiMixedColor(key, NoshiStripOnPrimary(key), 0.14)) forState:UIControlStateHighlighted];
-    UIColor *ink = wave ? NoshiStripOnTile(key) : NoshiColorSecondary();
-    [_previous setImage:NoshiSymbolImage(NoshiSymbolPlayerPrevious, 24, ink) forState:UIControlStateNormal];
-    [_next setImage:NoshiSymbolImage(NoshiSymbolPlayerNext, 24, ink) forState:UIControlStateNormal];
-    [_close setImage:NoshiSymbolImage(NoshiSymbolPlayerClose, 24, ink) forState:UIControlStateNormal];
-    [self refresh];
 }
 
 - (void)setTone:(UIColor *)tone surface:(UIColor *)surface animated:(BOOL)animated {
@@ -187,84 +139,29 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
     self.clipsToBounds = YES;
-    if (classic) {
-        /* a plain black or white ground, as the pinned message has, and not the purple of the bars: the chat showed through the strip and the plate made a stripe */
-        self.backgroundColor = NoshiClassicStripGround();
-    } else {
-        /* the rounded card stands alone, so the wallpaper shows in the gutter below it and not a plate */
-        self.backgroundColor = [UIColor clearColor];
-    }
-    if (!classic) {
-        _card = [[UIView alloc] init];
-        _card.backgroundColor = NoshiStripContainer(NoshiColorCard(), NoshiColorAccent());
-        [self addSubview:_card];
-        _lead = [[UIView alloc] init];
-        _lead.backgroundColor = NoshiStripTile(NoshiColorAccent());
-        _lead.layer.cornerRadius = LEAD_RADIUS;
-        _lead.clipsToBounds = YES;
-        [_card addSubview:_lead];
-        _leadGlyph = [[UIImageView alloc] init];
-        _leadGlyph.contentMode = UIViewContentModeCenter;
-        [_lead addSubview:_leadGlyph];
-        _leadCover = [[UIImageView alloc] init];
-        _leadCover.contentMode = UIViewContentModeScaleAspectFill;
-        _leadCover.clipsToBounds = YES;
-        _leadCover.hidden = YES;
-        [_lead addSubview:_leadCover];
-        _subtitle = [[NoshiEmojiLabel alloc] init];
-        _subtitle.font = NoshiFontRegular(12);
-        _subtitle.textColor = NoshiColorSecondary();
-        _subtitle.dropsUndrawable = YES;
-        [_card addSubview:_subtitle];
-        _track = [[UIView alloc] init];
-        _track.backgroundColor = NoshiStripTile(NoshiColorAccent());
-        _track.layer.cornerRadius = PROGRESS_HEIGHT / 2;
-        [_card addSubview:_track];
-        _indicator = [[UIView alloc] init];
-        _indicator.backgroundColor = NoshiColorAccent();
-        _indicator.layer.cornerRadius = PROGRESS_HEIGHT / 2;
-        [_track addSubview:_indicator];
-        _waveClip = [[CALayer layer] retain];
-        _waveClip.masksToBounds = YES;
-        _waveClip.hidden = YES;
-        [_track.layer addSublayer:_waveClip];
-        _wave = [[CAShapeLayer layer] retain];
-        _wave.fillColor = NULL;
-        _wave.lineWidth = WAVE_STROKE;
-        _wave.lineCap = kCALineCapRound;
-        [_waveClip addSublayer:_wave];
-        _rest = [[CALayer layer] retain];
-        _rest.cornerRadius = WAVE_STROKE / 2;
-        _rest.hidden = YES;
-        [_track.layer addSublayer:_rest];
-    }
+    /* a plain black or white ground, as the pinned message has, and not the purple of the bars: the chat showed through the strip and the plate made a stripe */
+    self.backgroundColor = NoshiClassicStripGround();
     _title = [[NoshiEmojiLabel alloc] init];
-    _title.font = classic ? [UIFont boldSystemFontOfSize:14] : NoshiFontSemibold(14);
-    _title.textColor = classic ? NoshiClassicStripInk() : NoshiColorTitle();
-    if (classic && NoshiThemeIsDark()) {
+    _title.font = [UIFont boldSystemFontOfSize:14];
+    _title.textColor = NoshiClassicStripInk();
+    if (NoshiThemeIsDark()) {
         _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
         _title.shadowOffset = CGSizeMake(0, -1);
     }
     _title.dropsUndrawable = YES;
-    [classic ? (UIView *)self : _card addSubview:_title];
+    [self addSubview:_title];
     _title.userInteractionEnabled = YES;
     [_title addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openPlayer)] autorelease]];
-    _previous = [NoshiStripButton(classic ? NoshiSymbolPrevious : NoshiSymbolPlayerPrevious, self, @selector(previousTapped), @"music.previous") retain];
+    _previous = [NoshiStripButton(NoshiSymbolPrevious, self, @selector(previousTapped), @"music.previous") retain];
     _toggle = [NoshiStripButton(NoshiSymbolPlay, self, @selector(toggleTapped), @"music.play") retain];
-    _next = [NoshiStripButton(classic ? NoshiSymbolNext : NoshiSymbolPlayerNext, self, @selector(nextTapped), @"music.next") retain];
-    _close = [NoshiStripButton(classic ? NoshiSymbolClose : NoshiSymbolPlayerClose, self, @selector(closeTapped), @"music.stop") retain];
-    for (UIView *view in [NSArray arrayWithObjects:_previous, _toggle, _next, _close, nil]) [classic ? (UIView *)self : _card addSubview:view];
-    if (!classic) {
-        /* the play key is the filled one: the accent with the light or dark ink of the scheme on it */
-        [_toggle setBackgroundImage:NoshiStripDisc(NoshiColorAccent()) forState:UIControlStateNormal];
-        [_toggle setBackgroundImage:NoshiStripDisc(NoshiMixedColor(NoshiColorAccent(), NoshiStripOnPrimary(NoshiColorAccent()), 0.14)) forState:UIControlStateHighlighted];
-    }
+    _next = [NoshiStripButton(NoshiSymbolNext, self, @selector(nextTapped), @"music.next") retain];
+    _close = [NoshiStripButton(NoshiSymbolClose, self, @selector(closeTapped), @"music.stop") retain];
+    for (UIView *view in [NSArray arrayWithObjects:_previous, _toggle, _next, _close, nil]) [self addSubview:view];
     _line = [[UIView alloc] init];
-    _line.backgroundColor = classic ? NoshiClassicStripEdge() : NoshiColorHairline();
+    _line.backgroundColor = NoshiClassicStripEdge();
     /* the card floats between its gutters, so it has no line under it */
-    _line.hidden = !classic;
+    _line.hidden = NO;
     [self addSubview:_line];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playerChanged:) name:NoshiMusicPlayerDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playerChanged:) name:NoshiRoundPlaybackDidChangeNotification object:nil];
@@ -311,12 +208,8 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
     BOOL showing = [NoshiMiniPlayer isActive];
     if (showing) {
         BOOL playing = round.active ? round.playing : (player.state == NoshiMusicStatePlaying || player.state == NoshiMusicStateLoading);
-        if (NoshiThemeIsClassic()) {
-            _title.text = round.active ? NSLocalizedString(@"round.title", nil) : NoshiTrackLine(player.track);
-            [_toggle setImage:NoshiSymbolImage(playing ? NoshiSymbolPause : NoshiSymbolPlay, 22, NoshiClassicStripInk()) forState:UIControlStateNormal];
-        } else {
-            [self showModernPlaying:playing round:round.active];
-        }
+        _title.text = round.active ? NSLocalizedString(@"round.title", nil) : NoshiTrackLine(player.track);
+        [_toggle setImage:NoshiSymbolImage(playing ? NoshiSymbolPause : NoshiSymbolPlay, 22, NoshiClassicStripInk()) forState:UIControlStateNormal];
         _toggle.accessibilityLabel = NSLocalizedString(playing ? @"music.pause" : @"music.play", nil);
     }
     if (showing != _showing) {
@@ -366,31 +259,6 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
 
 /* the line under the title and the thin bar along the foot of the card follow the sound; a song names its performer, and a voice or video message tells how far it is */
 - (void)updateProgress {
-    if (NoshiThemeIsClassic()) return;
-    NoshiMusicPlayer *player = [NoshiMusicPlayer sharedPlayer];
-    NoshiRoundPlayback *round = [NoshiRoundPlayback sharedPlayback];
-    NSTimeInterval duration, position;
-    NSString *line;
-    if (round.active) {
-        duration = round.duration;
-        _fraction = round.progress;
-        position = duration * _fraction;
-        line = duration > 0 ? [NSString stringWithFormat:@"%@ / %@", NoshiStripClock(position), NoshiStripClock(duration)] : @"";
-    } else {
-        duration = player.duration;
-        position = player.position;
-        _fraction = duration > 0 ? (CGFloat)(position / duration) : 0;
-        NSString *performer = NoshiTrackPerformer(player.track);
-        BOOL voice = player.track.kind == NOSHI_PREVIEW_VOICE;
-        line = performer.length && !voice ? performer : (duration > 0 ? [NSString stringWithFormat:@"%@ / %@", NoshiStripClock(position), NoshiStripClock(duration)] : @"");
-    }
-    _fraction = MIN(1, MAX(0, _fraction));
-    if (![_subtitle.text isEqualToString:line]) {
-        BOOL appears = (line.length > 0) != (_subtitle.text.length > 0);
-        _subtitle.text = line;
-        if (appears) [self setNeedsLayout];
-    }
-    [self layoutProgress];
 }
 
 - (void)layoutProgress {
@@ -436,7 +304,7 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
 
 /* the timer lives only while the card is on a screen and has a sound to follow, since it holds the card; a card taken off the screen lets it go */
 - (void)updateTimer {
-    BOOL want = !NoshiThemeIsClassic() && _showing && self.window != nil;
+    BOOL want = NO;
     if (want && !_timer) {
         _timer = [NSTimer scheduledTimerWithTimeInterval:0.25 target:self selector:@selector(tick:) userInfo:nil repeats:YES];
     } else if (!want && _timer) {
@@ -483,10 +351,6 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
     [super layoutSubviews];
     CGFloat width = self.bounds.size.width, height = self.bounds.size.height;
     _backdrop.frame = self.bounds;
-    if (!NoshiThemeIsClassic()) {
-        [self layoutCard];
-        return;
-    }
     _line.frame = CGRectMake(0, height - 1.0 / NoshiScreenScale(), width, 1.0 / NoshiScreenScale());
     CGFloat x = width - 4 - BUTTON_WIDTH;
     _close.frame = CGRectMake(x, 0, BUTTON_WIDTH, STRIP_HEIGHT);

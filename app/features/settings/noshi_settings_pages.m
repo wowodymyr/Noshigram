@@ -193,25 +193,6 @@
     return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.chatlist.header", nil) footer:nil rows:rows];
 }
 
-/* what falls over the lists and the chats: snowflakes, the foxes of Senko, and the boykissers that take the place of the waves of the background */
-- (NoshiSettingsSection *)effectsSection {
-    NoshiWeakReference *weak = _weak;
-    NSMutableArray *rows = [NSMutableArray array];
-    [rows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"look.snow", nil) subtitle:nil on:NoshiChatFlagGet(NoshiChatFlagSnow) toggle:^(BOOL on) {
-        NoshiChatFlagSet(NoshiChatFlagSnow, on);
-        [(NoshiAppearanceSettingsController *)weak.target apply];
-    }]];
-    [rows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"look.foxes", nil) subtitle:nil on:NoshiChatFlagGet(NoshiChatFlagFoxes) toggle:^(BOOL on) {
-        NoshiChatFlagSet(NoshiChatFlagFoxes, on);
-        [(NoshiAppearanceSettingsController *)weak.target apply];
-    }]];
-    [rows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"more.boykisser", nil) subtitle:nil on:NoshiChatFlagGet(NoshiChatFlagBoykisser) toggle:^(BOOL on) {
-        NoshiChatFlagSet(NoshiChatFlagBoykisser, on);
-        [(NoshiAppearanceSettingsController *)weak.target apply];
-    }]];
-    return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.effects.header", nil) footer:nil rows:rows];
-}
-
 - (NoshiSettingsSection *)foldersSection {
     NoshiWeakReference *weak = _weak;
     NoshiSettingsRow *hide = [NoshiSettingsRow switchRowWithTitle:[NSString stringWithFormat:NSLocalizedString(@"look.hidealltab", nil), NSLocalizedString(@"folders.all", nil)]
@@ -251,7 +232,7 @@
 }
 
 - (void)rebuild {
-    self.sections = [NSArray arrayWithObjects:[self layoutSection], [self avatarSection], [self chatListSection], [self effectsSection], [self foldersSection], [self cardsSection], nil];
+    self.sections = [NSArray arrayWithObjects:[self layoutSection], [self avatarSection], [self chatListSection], [self foldersSection], [self cardsSection], nil];
     [self reloadSettings];
 }
 

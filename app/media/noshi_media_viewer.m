@@ -252,8 +252,7 @@ static char NoshiMediaPlayerStatusContext;
     [_page addSubview:_video];
     _top = [[UIView alloc] init]; _bottom = [[UIView alloc] init];
     /* the picture runs under both plates, so the top one lets it show through as the bottom one does */
-    _top.backgroundColor = _bottom.backgroundColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsClassic() ? 0.7 : 0.62];
-    if (!NoshiThemeIsClassic()) _bottom.layer.cornerRadius = 12;
+    _top.backgroundColor = _bottom.backgroundColor = [UIColor colorWithWhite:0 alpha:0.7];
     [self.view addSubview:_top]; [self.view addSubview:_bottom];
     UIButton *close = [self button:NoshiSymbolBack action:@selector(close) host:_top];
     close.frame = CGRectMake(0, 4, 48, 48);
@@ -411,11 +410,6 @@ static char NoshiMediaPlayerStatusContext;
     CGFloat pad = (bottom > 0 && _keyboardHeight == 0) ? insets.bottom : 0;
     _bottom.frame = CGRectMake(0, MAX(header, height - bottom - pad - _keyboardHeight), width, bottom + pad);
     _play.frame = CGRectMake(left + 2, 0, 48, 44); _mute.frame = CGRectMake(width - right - 50, 0, 48, 44);
-    if (!NoshiThemeIsClassic()) {
-        _play.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
-        _play.layer.cornerRadius = 20;
-        _play.frame = CGRectMake(left + 6, 2, 40, 40);
-    }
     _playGlyph.frame = _play.bounds;
     _seek.frame = CGRectMake(left + 54, 0, MAX(0, inner - 108), 44);
     _time.frame = CGRectMake(left + 54, 44, MAX(0, inner - 108), 24);

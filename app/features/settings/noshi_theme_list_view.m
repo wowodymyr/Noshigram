@@ -3,7 +3,6 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 #import "noshi_wallpaper.h"
 #import "noshi_blur.h"
 #import "noshi_symbol.h"
@@ -17,22 +16,19 @@
 #define SIDE_PAD 16.0
 #define TOP_PAD 14.0
 #define RING 3.0
-#define THEME_COUNT 4
+#define THEME_COUNT 2
 /* the scrolling area stops this far from the edges of the rounded list, so a card that slides out is cut inside the corner and never shows beside it */
 #define EDGE 8.0
 
 @interface NoshiThemeCard : UIControl {
-    BOOL _classic;
     BOOL _dark;
 }
-- (id)initWithClassic:(BOOL)classic dark:(BOOL)dark;
-@property (nonatomic, readonly) BOOL classic;
+- (id)initWithDark:(BOOL)dark;
 @property (nonatomic, readonly) BOOL dark;
 @end
 
 @implementation NoshiThemeCard
 
-@synthesize classic = _classic;
 @synthesize dark = _dark;
 
 static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFloat radius) {
@@ -44,10 +40,9 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
     return bubble;
 }
 
-- (id)initWithClassic:(BOOL)classic dark:(BOOL)dark {
+- (id)initWithDark:(BOOL)dark {
     self = [super initWithFrame:CGRectMake(0, 0, CARD_WIDTH, CARD_HEIGHT + LABEL_HEIGHT)];
     if (!self) return nil;
-    _classic = classic;
     _dark = dark;
     UIView *picture = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, CARD_WIDTH, CARD_HEIGHT)] autorelease];
     picture.layer.cornerRadius = CARD_RADIUS;
@@ -59,35 +54,23 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
     picture.tag = 1;
     [self addSubview:picture];
     UIImageView *wallpaper = [[[UIImageView alloc] initWithFrame:picture.bounds] autorelease];
-    NoshiImportedThemeSuspend(YES);
-    NoshiApplyWallpaperStyle(wallpaper, classic, dark);
+    NoshiApplyWallpaperStyle(wallpaper, dark);
     [picture addSubview:wallpaper];
     UIColor *incoming = nil, *outgoing = nil;
-    NoshiThemePreviewColors(classic, dark, &incoming, &outgoing, NULL, NULL);
+    NoshiThemePreviewColors(dark, &incoming, &outgoing, NULL, NULL);
     /* two bubbles of the theme: theirs on the left, ours on the right, and a shorter reply under them */
     NoshiThemeBubble(picture, incoming, CGRectMake(10, 18, 58, 26), 11);
     NoshiThemeBubble(picture, outgoing, CGRectMake(CARD_WIDTH - 10 - 62, 52, 62, 26), 11);
     NoshiThemeBubble(picture, incoming, CGRectMake(10, 86, 44, 22), 10);
-    NoshiImportedThemeSuspend(NO);
-    if (classic && !NoshiClassicThemeAvailable()) {
-        UIView *blur = NoshiBlurBackdrop(picture, picture.bounds);
-        blur.alpha = 0.65;
-        blur.userInteractionEnabled = NO;
-        if (blur) [picture addSubview:blur];
-        UIImageView *lock = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolLock, 24, [UIColor whiteColor])] autorelease];
-        lock.frame = CGRectMake((CARD_WIDTH - 24) / 2, (CARD_HEIGHT - 24) / 2, 24, 24);
-        [picture addSubview:lock];
-    }
     UILabel *name = [[[UILabel alloc] initWithFrame:CGRectMake(-6, CARD_HEIGHT + 4, CARD_WIDTH + 12, LABEL_HEIGHT - 4)] autorelease];
     name.backgroundColor = [UIColor clearColor];
     name.textAlignment = NoshiTextAlignmentCenter;
-    name.numberOfLines = 2;
+    name.numberOfLines = 1;
     name.font = NoshiFontMedium(12);
     name.tag = 2;
-    name.text = [NSString stringWithFormat:@"%@\n%@", NSLocalizedString(classic ? @"chatset.theme.classic" : @"chatset.theme.modern", nil),
-                 NSLocalizedString(dark ? @"chatset.theme.night.short" : @"chatset.theme.day.short", nil)];
+    name.text = NSLocalizedString(dark ? @"chatset.theme.night.short" : @"chatset.theme.day.short", nil);
     [self addSubview:name];
-    self.accessibilityLabel = [name.text stringByReplacingOccurrencesOfString:@"\n" withString:@", "];
+    self.accessibilityLabel = name.text;
     return self;
 }
 
@@ -111,7 +94,7 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
 @interface NoshiThemeListView () {
     UIScrollView *_scroll;
     NSMutableArray *_cards;
-    void (^_chooseHandler)(BOOL classic, BOOL dark);
+    void (^_chooseHandler)(BOOL dark);
     CGPoint _tapPoint;
 }
 @end
@@ -135,10 +118,9 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
     _scroll.showsHorizontalScrollIndicator = NO;
     [self addSubview:_scroll];
     _cards = [[NSMutableArray alloc] init];
-    /* modern by day and by night, then classic by day and by night */
-    static const BOOL styles[THEME_COUNT][2] = {{NO, NO}, {NO, YES}, {YES, NO}, {YES, YES}};
+    /* the day, then the night */
     for (int i = 0; i < THEME_COUNT; ++i) {
-        NoshiThemeCard *card = [[[NoshiThemeCard alloc] initWithClassic:styles[i][0] dark:styles[i][1]] autorelease];
+        NoshiThemeCard *card = [[[NoshiThemeCard alloc] initWithDark:i == 1] autorelease];
         [card addTarget:self action:@selector(cardTapped:) forControlEvents:UIControlEventTouchUpInside];
         [_scroll addSubview:card];
         [_cards addObject:card];
@@ -155,18 +137,13 @@ static UIView *NoshiThemeBubble(UIView *host, UIColor *color, CGRect frame, CGFl
 }
 
 - (void)refreshSelection {
-    for (NoshiThemeCard *card in _cards) [card showSelected:card.classic == NoshiThemeIsClassic() && card.dark == NoshiThemeIsDark() && (card.classic || !NoshiImportedThemeSelected(card.dark))];
+    for (NoshiThemeCard *card in _cards) [card showSelected:card.dark == NoshiThemeIsDark()];
 }
 
 - (void)cardTapped:(NoshiThemeCard *)card {
-    if (card.classic && !NoshiClassicThemeAvailable()) {
-        NoshiShowAlert(nil, NSLocalizedString(@"chatset.theme.classic.unavailable", nil),
-                         [NSArray arrayWithObject:NSLocalizedString(@"notice.ok", nil)], 0, NO, nil);
-        return;
-    }
-    if (card.classic == NoshiThemeIsClassic() && card.dark == NoshiThemeIsDark() && (card.classic || !NoshiImportedThemeSelected(card.dark))) return;
+    if (card.dark == NoshiThemeIsDark()) return;
     _tapPoint = [card.superview convertPoint:card.center toView:nil];
-    if (_chooseHandler) _chooseHandler(card.classic, card.dark);
+    if (_chooseHandler) _chooseHandler(card.dark);
 }
 
 - (void)layoutSubviews {

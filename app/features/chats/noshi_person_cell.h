@@ -10,8 +10,6 @@ UIColor *NoshiMemberTagColor(BOOL owner);
 @interface NoshiPersonCell : UITableViewCell
 
 + (CGFloat)rowHeight;
-/* set just before configureWithName: for a person who took part in the development: the name gets the hammer */
-@property (nonatomic, assign) NSUInteger developer;
 /* set just before configureWithName: for a Telegram Premium user: the Premium star stands after the name. The status picture is not fetched by these rows, so the star is
    what shows for them all */
 @property (nonatomic, assign) BOOL premium;

@@ -42,11 +42,9 @@
 - (id)initWithTitle:(NSString *)title {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
-    if (NoshiThemeIsClassic()) {
-        _plate = [[UIImageView alloc] init];
-        _plate.userInteractionEnabled = NO;
-        [self addSubview:_plate];
-    }
+    _plate = [[UIImageView alloc] init];
+    _plate.userInteractionEnabled = NO;
+    [self addSubview:_plate];
     self.layer.cornerRadius = CHIP_HEIGHT / 2;
     self.isAccessibilityElement = YES;
     self.accessibilityLabel = title;

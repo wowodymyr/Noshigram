@@ -6,7 +6,6 @@
 #import "noshi_chat_settings.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_emoji_label.h"
-#import "noshi_developers.h"
 #import "noshi_image_decoder.h"
 #import "noshi_name_badge.h"
 #import "noshi_platform.h"
@@ -76,7 +75,7 @@ static NoshiInAppBanner *NoshiShownBanner;
        on the device is left out instead of drawn as a box */
     NSArray *titleEntities = nil;
     banner->_title.dropsUndrawable = YES;
-    banner->_title.text = NoshiNameWithBadges(title.length ? title : @"Telegram", dialog ? NoshiDialogBadgeDocument(dialog) : 0, NoshiDialogIsDeveloper(dialog), &titleEntities);
+    banner->_title.text = NoshiNameWithBadge(title.length ? title : @"Telegram", dialog ? NoshiDialogBadgeDocument(dialog) : 0, &titleEntities);
     banner->_title.entities = titleEntities;
     banner->_body.text = body;
     if (dialog) {
@@ -98,24 +97,15 @@ static NoshiInAppBanner *NoshiShownBanner;
     UIEdgeInsets insets = NoshiSafeInsets(window);
     CGFloat width = MIN(CARD_MAX_WIDTH, window.bounds.size.width - 2 * CARD_SIDE - insets.left - insets.right);
     CGFloat top = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20) + 4;
-    BOOL classic = NoshiThemeIsClassic();
     CGFloat height = picture ? 132 : CARD_HEIGHT;
-    if (classic) {
-        /* the ios 5 banner is a full width bar that covers the status bar, not a floating card */
-        banner->_contentTop = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20);
-        height = banner->_contentTop + (picture ? 132 : CLASSIC_BAND);
-        banner.frame = CGRectMake(0, 0, window.bounds.size.width, height);
-    } else {
-        banner.frame = CGRectMake(floor((window.bounds.size.width - width) / 2), top, width, height);
-    }
+    /* the ios 5 banner is a full width bar that covers the status bar, not a floating card */
+    banner->_contentTop = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20);
+    height = banner->_contentTop + (picture ? 132 : CLASSIC_BAND);
+    banner.frame = CGRectMake(0, 0, window.bounds.size.width, height);
     [window addSubview:banner];
     NoshiShownBanner = [banner retain];
-    if (classic && !NoshiReduceMotionEnabled()) {
+    if (!NoshiReduceMotionEnabled()) {
         [banner dropWithBounce];
-    } else if (!classic) {
-        banner.transform = CGAffineTransformMakeTranslation(0, -(top + height + 20));
-        [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : SLIDE_SECONDS delay:0 options:UIViewAnimationOptionCurveEaseOut
-                         animations:^{ banner.transform = CGAffineTransformIdentity; } completion:nil];
     }
     [banner performSelector:@selector(leave) withObject:nil afterDelay:SHOW_SECONDS];
 }
@@ -123,76 +113,62 @@ static NoshiInAppBanner *NoshiShownBanner;
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the bar of the navigation bars, so the notice wears the accent of the theme on both tones. the glass over its upper half has a hard edge like the keys of the
+    /* the bar of the navigation bars, so the notice wears the accent of the theme on both tones. the glass over its upper half has a hard edge like the keys of the
            old chrome, and the dark lip under it and the lit line over it set the bar off the screen */
-        _backdrop = [NoshiClassicStripBackdrop() retain];
-        [self addSubview:_backdrop];
-        _glass = [[CAGradientLayer layer] retain];
-        _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.30].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.08].CGColor, nil];
-        [self.layer addSublayer:_glass];
-        _lip = [[CALayer layer] retain];
-        _lip.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55].CGColor;
-        [self.layer addSublayer:_lip];
-        /* the sheen that runs over the bar once it has landed lives in a clipped view, as the shadow of the bar needs the bar itself to stay unclipped */
-        _shine = [[UIView alloc] init];
-        _shine.userInteractionEnabled = NO;
-        _shine.clipsToBounds = YES;
-        _sweep = [[CAGradientLayer layer] retain];
-        _sweep.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.38].CGColor,
-                         (id)[UIColor colorWithWhite:1 alpha:0].CGColor, nil];
-        _sweep.startPoint = CGPointMake(0, 0.5);
-        _sweep.endPoint = CGPointMake(1, 0.5);
-        _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, 10);
-        _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH, 0);
-        [_shine.layer addSublayer:_sweep];
-        [self addSubview:_shine];
-        /* a touch lights the bar like a pressed row of the old tables */
-        _press = [[CALayer layer] retain];
-        _press.backgroundColor = [UIColor colorWithWhite:1 alpha:0.2].CGColor;
-        _press.opacity = 0;
-        [self.layer addSublayer:_press];
-        self.layer.shadowColor = [UIColor blackColor].CGColor;
-        self.layer.shadowOpacity = 0.55f;
-        self.layer.shadowRadius = 5;
-        self.layer.shadowOffset = CGSizeMake(0, 2);
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = 16;
-        self.layer.shadowColor = [UIColor blackColor].CGColor;
-        self.layer.shadowOpacity = 0.25f;
-        self.layer.shadowRadius = 8;
-        self.layer.shadowOffset = CGSizeMake(0, 3);
-    }
+    _backdrop = [NoshiClassicStripBackdrop() retain];
+    [self addSubview:_backdrop];
+    _glass = [[CAGradientLayer layer] retain];
+    _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.30].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.08].CGColor, nil];
+    [self.layer addSublayer:_glass];
+    _lip = [[CALayer layer] retain];
+    _lip.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55].CGColor;
+    [self.layer addSublayer:_lip];
+    /* the sheen that runs over the bar once it has landed lives in a clipped view, as the shadow of the bar needs the bar itself to stay unclipped */
+    _shine = [[UIView alloc] init];
+    _shine.userInteractionEnabled = NO;
+    _shine.clipsToBounds = YES;
+    _sweep = [[CAGradientLayer layer] retain];
+    _sweep.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.38].CGColor,
+                     (id)[UIColor colorWithWhite:1 alpha:0].CGColor, nil];
+    _sweep.startPoint = CGPointMake(0, 0.5);
+    _sweep.endPoint = CGPointMake(1, 0.5);
+    _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, 10);
+    _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH, 0);
+    [_shine.layer addSublayer:_sweep];
+    [self addSubview:_shine];
+    /* a touch lights the bar like a pressed row of the old tables */
+    _press = [[CALayer layer] retain];
+    _press.backgroundColor = [UIColor colorWithWhite:1 alpha:0.2].CGColor;
+    _press.opacity = 0;
+    [self.layer addSublayer:_press];
+    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.layer.shadowOpacity = 0.55f;
+    self.layer.shadowRadius = 5;
+    self.layer.shadowOffset = CGSizeMake(0, 2);
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = !classic;
+    _avatar.circular = NO;
     _avatar.hidden = YES;
     [self addSubview:_avatar];
-    if (classic) {
-        /* the picture sits on the bar like an app icon: a pale rim and a drop shadow */
-        _avatar.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.7].CGColor;
-        _avatar.layer.borderWidth = 1;
-        /* the rim follows the corner the person chose for pictures, as the avatar draws itself with it */
-        _avatar.layer.cornerRadius = CLASSIC_ICON * MIN(100, NoshiAvatarCornerPercent()) / 200.0;
-        _avatar.layer.shadowColor = [UIColor blackColor].CGColor;
-        _avatar.layer.shadowOpacity = 0.6f;
-        _avatar.layer.shadowRadius = 1.5f;
-        _avatar.layer.shadowOffset = CGSizeMake(0, 1);
-    }
+    /* the picture sits on the bar like an app icon: a pale rim and a drop shadow */
+    _avatar.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.7].CGColor;
+    _avatar.layer.borderWidth = 1;
+    /* the rim follows the corner the person chose for pictures, as the avatar draws itself with it */
+    _avatar.layer.cornerRadius = CLASSIC_ICON * MIN(100, NoshiAvatarCornerPercent()) / 200.0;
+    _avatar.layer.shadowColor = [UIColor blackColor].CGColor;
+    _avatar.layer.shadowOpacity = 0.6f;
+    _avatar.layer.shadowRadius = 1.5f;
+    _avatar.layer.shadowOffset = CGSizeMake(0, 1);
     _title = [[NoshiEmojiLabel alloc] init];
-    _title.font = classic ? [UIFont boldSystemFontOfSize:15] : NoshiFontSemibold(15);
-    _title.textColor = classic ? [UIColor whiteColor] : NoshiColorTitle();
+    _title.font = [UIFont boldSystemFontOfSize:15];
+    _title.textColor = [UIColor whiteColor];
     [self addSubview:_title];
     /* the body names who wrote, and a UILabel shows a box for every letter of a styled name that the system font lacks */
     _body = [[NoshiEmojiLabel alloc] init];
-    _body.font = classic ? [UIFont systemFontOfSize:13] : NoshiFontRegular(14);
-    _body.textColor = classic ? [UIColor colorWithWhite:1 alpha:0.9] : NoshiColorSecondary();
-    if (classic) {
-        /* the text is stamped into the bar, as the titles of the navigation bar are */
-        _title.shadowColor = _body.shadowColor = [UIColor colorWithWhite:0 alpha:0.55];
-        _title.shadowOffset = _body.shadowOffset = CGSizeMake(0, -1);
-    }
+    _body.font = [UIFont systemFontOfSize:13];
+    _body.textColor = [UIColor colorWithWhite:1 alpha:0.9];
+    /* the text is stamped into the bar, as the titles of the navigation bar are */
+    _title.shadowColor = _body.shadowColor = [UIColor colorWithWhite:0 alpha:0.55];
+    _title.shadowOffset = _body.shadowOffset = CGSizeMake(0, -1);
     _body.numberOfLines = 2;
     /* the body starts with the sender of a group message, so a styled nick that no font draws is left out of it as it is out of the title, not drawn as a box */
     _body.dropsUndrawable = YES;
@@ -221,33 +197,30 @@ static NoshiInAppBanner *NoshiShownBanner;
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    BOOL classic = NoshiThemeIsClassic();
     CGSize size = self.bounds.size;
     CGFloat band = size.height - _contentTop;
-    CGFloat icon = classic ? CLASSIC_ICON : AVATAR_SIDE;
-    CGFloat edge = classic ? 10 : PADDING;
-    if (classic) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        _backdrop.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height + CLASSIC_BLEED);
-        _glass.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height / 2 + CLASSIC_BLEED);
-        CGFloat line = 1.0 / NoshiScreenScale();
-        _lip.frame = CGRectMake(0, size.height - line, size.width, line);
-        _press.frame = self.bounds;
-        _shine.frame = self.bounds;
-        _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, size.height);
-        _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH / 2, size.height / 2);
-        self.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.bounds].CGPath;
-        [CATransaction commit];
-    }
+    CGFloat icon = CLASSIC_ICON;
+    CGFloat edge = 10;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _backdrop.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height + CLASSIC_BLEED);
+    _glass.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height / 2 + CLASSIC_BLEED);
+    CGFloat line = 1.0 / NoshiScreenScale();
+    _lip.frame = CGRectMake(0, size.height - line, size.width, line);
+    _press.frame = self.bounds;
+    _shine.frame = self.bounds;
+    _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, size.height);
+    _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH / 2, size.height / 2);
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.bounds].CGPath;
+    [CATransaction commit];
     /* the text starts after the picture, and at the old edge when the card has none */
     CGFloat left = _picture ? 122 : (_avatar.hidden ? 14 : edge + icon + 10);
     CGFloat width = MAX(0, size.width - left - 14);
     if (_picture) _picture.frame = CGRectMake(8, _contentTop + 6, 104, band - 12);
     _avatar.frame = CGRectMake(edge, _contentTop + floor((band - icon) / 2), icon, icon);
-    CGFloat textTop = _contentTop + (_picture ? floor((band - 60) / 2) : (classic ? 6 : 8));
-    _title.frame = CGRectMake(left, textTop, width, classic ? 18 : 20);
-    _body.frame = CGRectMake(left, textTop + (classic ? 18 : 20), width, _picture ? 40 : (classic ? 32 : 28));
+    CGFloat textTop = _contentTop + (_picture ? floor((band - 60) / 2) : (6));
+    _title.frame = CGRectMake(left, textTop, width, 18);
+    _body.frame = CGRectMake(left, textTop + (18), width, _picture ? 40 : (32));
 }
 
 /* the classic bar falls from the top edge, sinks a little past its place and rises back, then the picture pops and a sheen runs over the bar */

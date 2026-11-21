@@ -226,14 +226,11 @@ typedef enum {
     NoshiChatFlagReplyBackground,             /* the quote of a reply has a plate under it; default on */                 /* deleting a message in a private chat or a group leaves it with the others */
     NoshiChatFlagLocalPremium,                /* the client shows the Premium features that need no server (custom emoji and reactions, the full animations) */
     NoshiChatFlagCrashReports,                /* a crash or a failed call is told to the developer in a private message */
-    NoshiChatFlagBoykisser,                   /* the waves in the corners of the screens give way to boykissers falling over them */
-    NoshiChatFlagSnow,                        /* snow falls over the chat list and the background of a chat */
     NoshiChatFlagSenderAvatars,               /* a small picture of who wrote the last message stands before the preview of a group */
     NoshiChatFlagHideSearchBar,               /* the chat list has no field of search over it */
     NoshiChatFlagHideStories,                 /* the chat list has no strip of stories */
     NoshiChatFlagHideAllChatsTab,             /* the folders of the chat list do not offer the tab of all chats */
     NoshiChatFlagNoUnarchiveSwipe,            /* the swipe of a chat in the archive does nothing, so a chat does not leave it by a slip of the finger */
-    NoshiChatFlagFoxes,                       /* foxes fall over the chat list and the background of a chat */
     NoshiChatFlagHideWaves,                   /* the modern look draws no waves in the corners of the screens */
     NoshiChatFlagShowMessageEmojiStatus,
     NoshiChatFlagShowReplyCustomEmoji,

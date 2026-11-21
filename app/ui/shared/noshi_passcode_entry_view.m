@@ -169,7 +169,7 @@ static CGPathRef NoshiKeyPathCreate(const CGPoint *points) {
         [_dots addObject:dot];
     }
     _keys = [[NSMutableArray alloc] init];
-    _shapeKeys = !NoshiThemeIsClassic();
+    _shapeKeys = NO;
     _plates = [[NSMutableArray alloc] init];
     for (NSInteger i = 0; i < 10; ++i) {
         UIButton *key = [UIButton buttonWithType:UIButtonTypeCustom];

@@ -12,10 +12,8 @@
 #import "noshi_chat_settings.h"
 #import "noshi_peer_colors.h"
 #import "noshi_theme.h"
-#import "noshi_imported_theme.h"
 #import "noshi_emoji_store.h"
 #import "noshi_music_player.h"
-#import "noshi_developers.h"
 #import "noshi_name_badge.h"
 #import "noshi_time.h"
 
@@ -142,7 +140,6 @@
 @synthesize height = _height;
 @synthesize bubbleFrame = _bubbleFrame;
 @synthesize senderPerson = _senderPerson;
-@synthesize senderDeveloper = _senderDeveloper;
 @synthesize pictureFrame = _pictureFrame;
 @synthesize reactionFrame = _reactionFrame;
 @synthesize reactionsInside = _reactionsInside;
@@ -181,7 +178,6 @@ NSString *NoshiFileSizeText(long long bytes) {
 /* the names of the people in a group take the color each person chose, or the one their id gives them (the classic theme keeps to the app's purple
    family, so no name comes out green or orange there) */
 static UIColor *NoshiSenderColor(NoshiPerson *person, long long userId) {
-    if (!NoshiThemeIsClassic()) return NoshiNameColor(person.nameColor, userId, NoshiThemeIsDark());
     static const CGFloat purples[][3] = {{0.52, 0.30, 0.78}, {0.68, 0.32, 0.74}, {0.42, 0.38, 0.84}, {0.78, 0.36, 0.64},
                                          {0.58, 0.26, 0.62}, {0.38, 0.44, 0.78}, {0.64, 0.44, 0.84}};
     NSUInteger index = (NSUInteger)NoshiDefaultNameColorId(userId);
@@ -346,7 +342,7 @@ static NSString *NoshiViaLine(NoshiMessage *message, NSDictionary *people) {
     NoshiPerson *sender = [people objectForKey:[NSNumber numberWithLongLong:_message.senderKey]];
     return NoshiSameString(_senderTag, NoshiSenderTag(_message, sender, role)) &&
            NoshiSameString(_senderPerson.name, sender.name) && NoshiSameString(_senderPerson.initials, sender.initials) &&
-           _senderBadge == NoshiBadgeDocument(NoshiChatFlagGet(NoshiChatFlagShowMessageEmojiStatus) ? sender.emojiStatus : 0, sender.premium) && _senderDeveloper == NoshiPersonIsDeveloper(sender) &&
+           _senderBadge == NoshiBadgeDocument(NoshiChatFlagGet(NoshiChatFlagShowMessageEmojiStatus) ? sender.emojiStatus : 0, sender.premium) &&
            NoshiSameString(_senderPerson.photo.key, sender.photo.key);
 }
 
@@ -552,7 +548,6 @@ static NSString *NoshiAlbumKey(NSArray *messages) {
         if (person.name.length) {
             item->_senderName = [person.name copy];
             item->_senderBadge = NoshiBadgeDocument(NoshiChatFlagGet(NoshiChatFlagShowMessageEmojiStatus) ? person.emojiStatus : 0, person.premium);
-            item->_senderDeveloper = NoshiPersonIsDeveloper(person);
             item->_senderTag = [NoshiSenderTag(message, person, role) copy];
             item->_senderTagColor = [NoshiSenderTagColor(role) retain];
             item->_senderColor = [NoshiSenderColor(person, llabs(message.senderKey)) retain];
@@ -1143,7 +1138,7 @@ static NSUInteger NoshiCustomEmojiOnlyCount(NoshiMessage *message) {
         /* the name takes the whole line it needs, and the tag after it takes what is left, cut to fit or left out when there is hardly any: a long nick that was
            cut to make room for a tag lost its end to dots */
         NSArray *badge = nil;
-        NSString *named = NoshiNameWithBadges(_senderName, _senderBadge, _senderDeveloper, &badge);
+        NSString *named = NoshiNameWithBadge(_senderName, _senderBadge, &badge);
         _senderLayout = [[NoshiTextLayout layoutForName:named entities:badge font:NoshiFontSemibold(NAME_SIZE) color:_senderColor
                                                     width:MAX(1, textMax)] retain];
         CGFloat room = textMax - _senderLayout.size.width - 6;
@@ -1208,14 +1203,14 @@ static NSUInteger NoshiCustomEmojiOnlyCount(NoshiMessage *message) {
         y = pictureTop + pictureSize.height + (hasText && !_captionAbove ? 5 : PICTURE_INSET);
         contentWidth = MAX(contentWidth, pictureSize.width + 2 * PICTURE_INSET - 2 * PAD_X);
     } else if (file) {
-        UIColor *fileTitleColor = NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.fileTitle" : "chat.message.incoming.fileTitle") ?: textColor;
+        UIColor *fileTitleColor = textColor;
         [_fileTitleLayout release];
         _fileTitleLayout = [[NoshiTextLayout layoutForText:_fileTitle entities:nil font:NoshiFontMedium(15) color:fileTitleColor
                                                    linkColor:fileTitleColor width:MAX(40, textMax - 54) maxLines:1 flush:0] retain];
         [_fileDetailLayout release];
         _fileDetailLayout = nil;
         if (_message.media.kind == NOSHI_PREVIEW_AUDIO) {
-            UIColor *detailColor = NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.fileDescription" : "chat.message.incoming.fileDescription") ?: NoshiColorBubbleMeta(outgoing);
+            UIColor *detailColor = NoshiColorBubbleMeta(outgoing);
             _fileDetailLayout = [[NoshiTextLayout layoutForText:_fileDetail entities:nil font:NoshiFontRegular(13) color:detailColor
                 linkColor:detailColor width:MAX(40, textMax - 54) maxLines:1 flush:0] retain];
         }

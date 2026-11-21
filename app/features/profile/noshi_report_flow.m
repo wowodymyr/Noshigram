@@ -42,15 +42,6 @@ static NSString *const NoshiReportReasonKeys[NOSHI_REPORT_REASON_COUNT] = {
 + (void)startForDialog:(NoshiDialog *)dialog session:(NoshiSession *)session host:(UIViewController *)host done:(void (^)(void))done {
     NSMutableArray *reasons = [NSMutableArray arrayWithCapacity:NOSHI_REPORT_REASON_COUNT];
     for (int reason = 0; reason < NOSHI_REPORT_REASON_COUNT; ++reason) [reasons addObject:NSLocalizedString(NoshiReportReasonKeys[reason], nil)];
-    if (!NoshiThemeIsClassic() && host.view) {
-        /* the modern style lists the reasons on a sheet; the flow exists once one is picked, so a cancel leaves nothing behind */
-        [NoshiSheet presentInView:host.view title:NSLocalizedString(@"report.title", nil) message:nil options:reasons destructive:nil
-                        cancelTitle:NSLocalizedString(@"picker.cancel", nil) handler:^(NSUInteger index) {
-            NoshiReportFlow *flow = [[NoshiReportFlow alloc] initWithDialog:dialog session:session done:done];
-            [flow choseReason:(NSInteger)index];
-        }];
-        return;
-    }
     NoshiReportFlow *flow = [[NoshiReportFlow alloc] initWithDialog:dialog session:session done:done];
     UIActionSheet *sheet = [[UIActionSheet alloc] initWithTitle:NSLocalizedString(@"report.title", nil) delegate:flow cancelButtonTitle:nil
                                               destructiveButtonTitle:nil otherButtonTitles:nil];

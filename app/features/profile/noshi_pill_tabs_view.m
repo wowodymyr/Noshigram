@@ -26,26 +26,14 @@
 - (id)initWithTitles:(NSArray *)titles {
     self = [super initWithFrame:CGRectMake(0, 0, 320, TABS_HEIGHT)];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        /* the classic tabs are a metal plate with a glossy key under the chosen one, not a pill */
-        NoshiClassicApplyMenuPlate(self, 10);
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = TABS_HEIGHT / 2;
-    }
+    /* the classic tabs are a metal plate with a glossy key under the chosen one, not a pill */
+    NoshiClassicApplyMenuPlate(self, 10);
     _scroll = [[UIScrollView alloc] initWithFrame:self.bounds];
     _scroll.showsHorizontalScrollIndicator = NO;
     _scroll.showsVerticalScrollIndicator = NO;
     _scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self addSubview:_scroll];
-    if (classic) {
-        _chosen = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
-    } else {
-        _chosen = [[UIView alloc] init];
-        _chosen.backgroundColor = NoshiColorField();
-        _chosen.layer.cornerRadius = (TABS_HEIGHT - 8) / 2;
-    }
+    _chosen = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
     [_scroll addSubview:_chosen];
     _labels = [[NSMutableArray alloc] init];
     for (NSString *title in titles) {
@@ -77,11 +65,9 @@
 - (void)refresh {
     for (NSUInteger i = 0; i < _labels.count; ++i) {
         UILabel *label = [_labels objectAtIndex:i];
-        label.textColor = NoshiThemeIsClassic() ? (i == _selectedIndex ? [UIColor whiteColor] : NoshiColorSecondary()) : (i == _selectedIndex ? NoshiColorAccent() : NoshiColorSecondary());
-        if (NoshiThemeIsClassic()) {
-            label.shadowColor = i == _selectedIndex ? [UIColor colorWithWhite:0 alpha:0.5] : nil;
-            label.shadowOffset = CGSizeMake(0, -1);
-        }
+        label.textColor = (i == _selectedIndex ? [UIColor whiteColor] : NoshiColorSecondary());
+        label.shadowColor = i == _selectedIndex ? [UIColor colorWithWhite:0 alpha:0.5] : nil;
+        label.shadowOffset = CGSizeMake(0, -1);
     }
     [self setNeedsLayout];
 }
@@ -95,9 +81,9 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat width = self.bounds.size.width, height = self.bounds.size.height;
-    if (NoshiThemeIsClassic()) NoshiClassicFitPlate(self, 0);
+    NoshiClassicFitPlate(self, 0);
     /* the classic key sits 2 points inside the plate, so its radius of 8 stays concentric with the plate's 10; the modern pill is 4 inside */
-    CGFloat inset = NoshiThemeIsClassic() ? 2 : 4;
+    CGFloat inset = 2;
     CGFloat natural = 0;
     for (UILabel *label in _labels) natural += ceil(NoshiStringSize(label.text, NoshiFontMedium(15)).width) + 28;
     /* two tabs always fit the width, since a scroll of two keys leaves the chosen one cut off by the plate (the testers tab on a 320 point screen); more tabs scroll */

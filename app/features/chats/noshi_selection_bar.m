@@ -40,9 +40,8 @@
 
 - (UIButton *)iconButton:(NoshiSymbol)symbol label:(NSString *)label action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    BOOL classic = NoshiThemeIsClassic();
-    [button setImage:NoshiSymbolImage(symbol, 24, classic ? [UIColor whiteColor] : NoshiColorAccent()) forState:UIControlStateNormal];
-    [button setImage:NoshiSymbolImage(symbol, 24, classic ? [UIColor colorWithWhite:1 alpha:0.35] : NoshiColorMuted()) forState:UIControlStateDisabled];
+    [button setImage:NoshiSymbolImage(symbol, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [button setImage:NoshiSymbolImage(symbol, 24, [UIColor colorWithWhite:1 alpha:0.35]) forState:UIControlStateDisabled];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     button.accessibilityLabel = label;
     [self addSubview:button];
@@ -52,31 +51,22 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        _backdrop = [NoshiClassicStripBackdrop() retain];
-        [self addSubview:_backdrop];
-    } else {
-        self.backgroundColor = NoshiColorBar();
-    }
+    _backdrop = [NoshiClassicStripBackdrop() retain];
+    [self addSubview:_backdrop];
     _cancel = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_cancel setTitle:NSLocalizedString(@"chat.msg.cancel", nil) forState:UIControlStateNormal];
-    [_cancel setTitleColor:classic ? [UIColor whiteColor] : NoshiColorAccent() forState:UIControlStateNormal];
-    _cancel.titleLabel.font = classic ? [UIFont boldSystemFontOfSize:16] : NoshiFontMedium(16);
-    if (classic) {
-        [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-        [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-    }
+    [_cancel setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+    _cancel.titleLabel.font = [UIFont boldSystemFontOfSize:16];
+    [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
+    [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
     [_cancel addTarget:self action:@selector(cancelTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_cancel];
     _count = [[UILabel alloc] init];
     _count.backgroundColor = [UIColor clearColor];
-    _count.textColor = classic ? [UIColor whiteColor] : NoshiColorTitle();
-    _count.font = classic ? [UIFont boldSystemFontOfSize:15] : NoshiFontSemibold(15);
-    if (classic) {
-        _count.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _count.shadowOffset = CGSizeMake(0, -1);
-    }
+    _count.textColor = [UIColor whiteColor];
+    _count.font = [UIFont boldSystemFontOfSize:15];
+    _count.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+    _count.shadowOffset = CGSizeMake(0, -1);
     _count.textAlignment = NoshiTextAlignmentCenter;
     _count.adjustsFontSizeToFitWidth = YES;
     [self addSubview:_count];
@@ -85,7 +75,7 @@
     _delete = [[self iconButton:NoshiSymbolTrash label:NSLocalizedString(@"chat.msg.delete", nil) action:@selector(deleteTapped)] retain];
     _range = [[self iconButton:NoshiSymbolCheckDouble label:NSLocalizedString(@"chat.select.range", nil) action:@selector(rangeTapped)] retain];
     _line = [[UIView alloc] init];
-    _line.backgroundColor = classic ? [UIColor colorWithWhite:0 alpha:0.55] : NoshiColorHairline();
+    _line.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55];
     [self addSubview:_line];
     return self;
 }
@@ -128,7 +118,7 @@
     CGFloat row = MIN(HEIGHT, size.height);
     _backdrop.frame = self.bounds;
     _line.frame = CGRectMake(0, 0, size.width, 1.0 / NoshiScreenScale());
-    _cancel.frame = NoshiThemeIsClassic() ? CGRectMake(8, (row - 30) / 2, CANCEL_WIDTH - 8, 30) : CGRectMake(4, 0, CANCEL_WIDTH, row);
+    _cancel.frame = CGRectMake(8, (row - 30) / 2, CANCEL_WIDTH - 8, 30);
     CGFloat right = size.width - 4;
     _delete.frame = CGRectMake(right - BUTTON_WIDTH, 0, BUTTON_WIDTH, row);
     _copy.frame = CGRectMake(right - 2 * BUTTON_WIDTH, 0, BUTTON_WIDTH, row);

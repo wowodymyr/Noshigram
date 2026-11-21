@@ -102,7 +102,7 @@ static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius) {
 
 /* the soft shadow of the classic customization falls under the picture, along its outline; a path keeps it from being worked out from the pixels at every frame */
 - (void)applyClassicShadow {
-    BOOL on = NoshiThemeIsClassic() && NoshiClassicAvatarShadow() && !CGRectIsEmpty(self.bounds);
+    BOOL on = NoshiClassicAvatarShadow() && !CGRectIsEmpty(self.bounds);
     if (!on) {
         if (self.layer.shadowOpacity > 0) self.layer.shadowOpacity = 0;
         return;
@@ -203,13 +203,13 @@ static void NoshiAccentGradient(CGFloat out[8]) {
     CGFloat side = MIN(bounds.size.width, bounds.size.height);
     /* a photo that is a round shape on white or on nothing is cut to its circle in every shape of avatar, or the white of the corners shows */
     /* the shape the person chose in the customization; the classic style keeps its rounded squares, and a round picture keeps its circle */
-    NoshiShape shape = NoshiThemeIsClassic() ? NoshiShapeRounded : (NoshiShape)NoshiAvatarShapeStored();
+    NoshiShape shape = NoshiShapeRounded;
     /* a view that asks to be circular is a circle only in the classic style, which keeps its look; in the others it takes the shape the person chose, so the picture in the profile, in the
        bar, in the chat and in the profile of another person all change with the list */
-    BOOL forcedRound = (_circular && NoshiThemeIsClassic()) || (_image && _imageIsRound);
+    BOOL forcedRound = (_circular) || (_image && _imageIsRound);
     BOOL outline = !forcedRound && NoshiShapeIsOutline(shape);
     CGFloat radius = side * (forcedRound || shape == NoshiShapeCircle ? 0.5 : (CGFloat)NoshiAvatarCornerPercent() / 200.0);
-    BOOL classicSymbol = NoshiThemeIsClassic() && _showsSymbol && !_image &&
+    BOOL classicSymbol = _showsSymbol && !_image &&
                          (_symbol == NoshiSymbolArchive || _symbol == NoshiSymbolBookmark || _symbol == NoshiSymbolReply);
     CGContextSaveGState(context);
     if (outline) {
@@ -240,7 +240,7 @@ static void NoshiAccentGradient(CGFloat out[8]) {
     }
     /* the classic style lights every picture like a glass button: a gloss over the top half and a lit rim. a list has dozens of pictures, and the gloss, the two outlines and their
        clips were worked out again for each at every redraw, so they are drawn once for a size and a corner and the picture is laid over */
-    if (NoshiThemeIsClassic() && NoshiClassicAvatarGloss()) [NoshiAvatarGlossOverlay(bounds.size, radius) drawInRect:bounds];
+    if (NoshiClassicAvatarGloss()) [NoshiAvatarGlossOverlay(bounds.size, radius) drawInRect:bounds];
     CGContextRestoreGState(context);
 
     if (_showsSymbol && !_image) {

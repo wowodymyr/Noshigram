@@ -122,7 +122,7 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     [_dim addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)] autorelease]];
     [self addSubview:_dim];
     _panel = [[UIView alloc] init];
-    _panel.backgroundColor = NoshiThemeIsClassic() ? NoshiColorScreen() : NoshiColorCard();
+    _panel.backgroundColor = NoshiColorScreen();
     _panelMask = [[CAShapeLayer alloc] init];
     _panel.layer.mask = _panelMask;
     [self addSubview:_panel];
@@ -137,44 +137,38 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     _grabber.userInteractionEnabled = NO;
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
-    _title.font = NoshiThemeIsClassic() ? [UIFont boldSystemFontOfSize:19] : NoshiFontBold(20);
-    _title.textColor = NoshiThemeIsClassic() ? [UIColor whiteColor] : NoshiColorTitle();
-    if (NoshiThemeIsClassic()) {
-        _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _title.shadowOffset = CGSizeMake(0, -1);
-    }
+    _title.font = [UIFont boldSystemFontOfSize:19];
+    _title.textColor = [UIColor whiteColor];
+    _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+    _title.shadowOffset = CGSizeMake(0, -1);
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, NoshiThemeIsClassic() ? [UIColor whiteColor] : NoshiColorTitle()) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     _more.accessibilityLabel = NSLocalizedString(@"attach.more", nil);
     _more.hidden = YES;
     _grid = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
-    _grid.backgroundColor = NoshiThemeIsClassic() ? NoshiColorScreen() : NoshiColorField();
+    _grid.backgroundColor = NoshiColorScreen();
     _grid.separatorStyle = UITableViewCellSeparatorStyleNone;
     _grid.dataSource = self; _grid.delegate = self;
     _grid.scrollsToTop = NO;
     [_panel addSubview:_grid];
     /* the header of the classic sheet is a bar of its own, lit like the navigation bar, and the pill that says it can be pulled is left out of it */
-    if (NoshiThemeIsClassic()) {
-        UIView *header = [[[UIView alloc] init] autorelease];
-        _headerPlate = [NoshiAttachClassicBackdrop(header) retain];
-        header.tag = HEADER_TAG;
-        [_panel addSubview:header];
-        _grabber.hidden = YES;
-    }
+    UIView *header = [[[UIView alloc] init] autorelease];
+    _headerPlate = [NoshiAttachClassicBackdrop(header) retain];
+    header.tag = HEADER_TAG;
+    [_panel addSubview:header];
+    _grabber.hidden = YES;
     [_panel addSubview:_title];
     [_panel addSubview:_more];
     [_panel addSubview:_grabber];
     _bar = [[UIView alloc] init];
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) _barPlate = [NoshiAttachClassicBackdrop(_bar) retain];
-    else _bar.backgroundColor = NoshiColorCard();
+    _barPlate = [NoshiAttachClassicBackdrop(_bar) retain];
     [_panel addSubview:_bar];
     _line = [[UIView alloc] init];
     _line.backgroundColor = NoshiColorSecondary();
     _line.alpha = 0.25;
     /* the plate of the classic bar has its own lit top edge, and a black line over it made a second stripe */
-    _line.hidden = classic;
+    _line.hidden = YES;
     [_bar addSubview:_line];
     NSArray *titles = [NSArray arrayWithObjects:NSLocalizedString(@"attach.gallery", nil), NSLocalizedString(@"attach.file", nil),
         NSLocalizedString(@"attach.location", nil), NSLocalizedString(@"attach.gift", nil), NSLocalizedString(@"attach.contact", nil), nil];
@@ -182,19 +176,17 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     NSMutableArray *buttons = [NSMutableArray array], *labels = [NSMutableArray array];
     for (NSUInteger i = 0; i < titles.count; ++i) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-        [button setImage:NoshiSymbolImage(symbols[i], 25, classic ? [UIColor whiteColor] : (i == 0 ? NoshiColorAccent() : NoshiColorSecondary())) forState:UIControlStateNormal];
+        [button setImage:NoshiSymbolImage(symbols[i], 25, [UIColor whiteColor]) forState:UIControlStateNormal];
         button.tag = (NSInteger)i;
         button.accessibilityLabel = [titles objectAtIndex:i];
         [button addTarget:self action:@selector(chosen:) forControlEvents:UIControlEventTouchUpInside];
         [_bar addSubview:button]; [buttons addObject:button];
         UILabel *label = [[[UILabel alloc] init] autorelease];
         label.backgroundColor = [UIColor clearColor];
-        label.font = classic ? [UIFont boldSystemFontOfSize:11] : NoshiFontRegular(11);
-        label.textColor = classic ? [UIColor whiteColor] : (i == 0 ? NoshiColorAccent() : NoshiColorTitle());
-        if (classic) {
-            label.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-            label.shadowOffset = CGSizeMake(0, -1);
-        }
+        label.font = [UIFont boldSystemFontOfSize:11];
+        label.textColor = [UIColor whiteColor];
+        label.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+        label.shadowOffset = CGSizeMake(0, -1);
         label.textAlignment = NoshiTextAlignmentCenter;
         /* the five labels keep one size, and one that is too long for its column is cut instead of shrunk */
         label.lineBreakMode = UILineBreakModeTailTruncation;
@@ -205,17 +197,14 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
 
     /* once something is picked the bar of five buttons gives way to the words for the pictures and the round button that sends them */
     _captionBar = [[UIView alloc] init];
-    if (classic) _captionPlate = [NoshiAttachClassicBackdrop(_captionBar) retain];
-    else _captionBar.backgroundColor = NoshiColorCard();
+    _captionPlate = [NoshiAttachClassicBackdrop(_captionBar) retain];
     _captionBar.hidden = YES;
     [_panel addSubview:_captionBar];
     UIView *field = [[[UIView alloc] init] autorelease];
-    field.backgroundColor = classic ? NoshiClassicInputFill() : NoshiColorField();
+    field.backgroundColor = NoshiClassicInputFill();
     field.layer.cornerRadius = SEND_SIDE / 2;
-    if (classic) {
-        field.layer.borderWidth = 1;
-        field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
-    }
+    field.layer.borderWidth = 1;
+    field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
     field.tag = 1;
     [_captionBar addSubview:field];
     _caption = [[NoshiCaptionView alloc] init];
@@ -229,14 +218,8 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     _caption.keyboardAppearance = NoshiThemeIsDark() ? UIKeyboardAppearanceAlert : UIKeyboardAppearanceDefault;
     [field addSubview:_caption];
     _send = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    if (classic) {
-        [_send setImage:NoshiClassicRoundButtonImage(NoshiSymbolSendArrow, SEND_SIDE, NO) forState:UIControlStateNormal];
-        [_send setImage:NoshiClassicRoundButtonImage(NoshiSymbolSendArrow, SEND_SIDE, YES) forState:UIControlStateHighlighted];
-    } else {
-        _send.backgroundColor = NoshiColorAccent();
-        _send.layer.cornerRadius = SEND_SIDE / 2;
-        [_send setImage:NoshiSymbolImage(NoshiSymbolSendArrow, 20, [UIColor whiteColor]) forState:UIControlStateNormal];
-    }
+    [_send setImage:NoshiClassicRoundButtonImage(NoshiSymbolSendArrow, SEND_SIDE, NO) forState:UIControlStateNormal];
+    [_send setImage:NoshiClassicRoundButtonImage(NoshiSymbolSendArrow, SEND_SIDE, YES) forState:UIControlStateHighlighted];
     _send.accessibilityLabel = NSLocalizedString(@"attach.send", nil);
     [_send addTarget:self action:@selector(sendSelected) forControlEvents:UIControlEventTouchUpInside];
     [_captionBar addSubview:_send];
@@ -377,7 +360,7 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     }
     _grabber.frame = CGRectMake(floor((width - GRABBER_WIDTH) / 2), 7, GRABBER_WIDTH, GRABBER_HEIGHT);
     _more.frame = CGRectMake(width - 52, 14, 44, 44);
-    _title.frame = CGRectMake(20, NoshiThemeIsClassic() ? 8 : 16, width - 20 - 56, 40);
+    _title.frame = CGRectMake(20, 8, width - 20 - 56, 40);
     CGFloat bottom = _keyboard > 0 ? 0 : safe.bottom;
     BOOL picking = _selected.count > 0;
     /* the field grows with its lines up to five, and the bar with it */
@@ -402,10 +385,6 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     /* the round button stays at the bottom of the field as the field grows upward */
     _send.frame = CGRectMake(width - 12 - SEND_SIDE, CGRectGetMaxY(field.frame) - SEND_SIDE, SEND_SIDE, SEND_SIDE);
     /* the classic button is a picture with its own rim, a layer border would draw a square around it */
-    if (!NoshiThemeIsClassic()) {
-        _send.layer.borderWidth = 3;
-        _send.layer.borderColor = NoshiColorField().CGColor;
-    }
     _count.frame = CGRectMake(CGRectGetMaxX(_send.frame) - 14, CGRectGetMinY(_send.frame) - 4, MAX(18, ceil([_count.text sizeWithFont:_count.font].width) + 8), 18);
     NSInteger columns = MAX(3, (NSInteger)(width / 120));
     CGFloat cellSide = floor(width / columns);

@@ -47,7 +47,6 @@ CGFloat NoshiPollVotersWidth(NSUInteger count);
     NSString *_senderName;
     /* the document drawn after the sender name: their status, or the Premium star, zero for none */
     long long _senderBadge;
-    NSUInteger _senderDeveloper;
     NSString *_transcript;
     NSString *_senderTag;
     UIColor *_senderTagColor;
@@ -294,8 +293,6 @@ NSString *NoshiForwardName(NoshiMessage *message, NSDictionary *people);
 @property (nonatomic, readonly) BOOL callFailed;
 @property (nonatomic, readonly) BOOL callVideo;
 @property (nonatomic, readonly) CGPoint senderOrigin;
-/* the name over the bubble ends in the hammer of the developers */
-@property (nonatomic, readonly) NSUInteger senderDeveloper;
 @property (nonatomic, readonly) CGPoint forwardOrigin;
 @property (nonatomic, readonly) CGPoint viaOrigin;
 @property (nonatomic, readonly) CGPoint textOrigin;

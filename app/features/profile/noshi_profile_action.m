@@ -12,30 +12,22 @@
 - (id)initWithSymbol:(NoshiSymbol)symbol title:(NSString *)title {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
     NoshiAttachBounce(self, 0.06);
-    if (classic) {
-        /* the classic card is a glossy metal key: the slate plate of the app's buttons under a white symbol and word */
-        _plate = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
-        _plate.userInteractionEnabled = NO;
-        [self addSubview:_plate];
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = 14;
-    }
+    /* the classic card is a glossy metal key: the slate plate of the app's buttons under a white symbol and word */
+    _plate = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
+    _plate.userInteractionEnabled = NO;
+    [self addSubview:_plate];
     _symbol = symbol;
-    _icon = [[UIImageView alloc] initWithImage:NoshiSymbolImage(symbol, 24, classic ? [UIColor whiteColor] : NoshiColorAccent())];
+    _icon = [[UIImageView alloc] initWithImage:NoshiSymbolImage(symbol, 24, [UIColor whiteColor])];
     _icon.contentMode = UIViewContentModeCenter;
     [self addSubview:_icon];
     _caption = [[UILabel alloc] init];
     _caption.backgroundColor = [UIColor clearColor];
     _caption.textAlignment = NoshiTextAlignmentCenter;
-    _caption.font = classic ? [UIFont boldSystemFontOfSize:12] : NoshiFontMedium(13);
-    _caption.textColor = classic ? [UIColor whiteColor] : NoshiColorTitle();
-    if (classic) {
-        _caption.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _caption.shadowOffset = CGSizeMake(0, -1);
-    }
+    _caption.font = [UIFont boldSystemFontOfSize:12];
+    _caption.textColor = [UIColor whiteColor];
+    _caption.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
+    _caption.shadowOffset = CGSizeMake(0, -1);
     _caption.adjustsFontSizeToFitWidth = YES;
     _caption.text = title;
     [self addSubview:_caption];

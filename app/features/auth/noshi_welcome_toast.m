@@ -57,40 +57,25 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    BOOL classic = NoshiThemeIsClassic();
-    if (classic) {
-        NoshiClassicApplyMenuPlate(self, CLASSIC_RADIUS);
-    } else {
-        self.backgroundColor = NoshiColorCard();
-        self.layer.cornerRadius = CARD_RADIUS;
-        self.layer.shadowColor = [UIColor blackColor].CGColor;
-        self.layer.shadowOpacity = 0.22f;
-        self.layer.shadowRadius = 14;
-        self.layer.shadowOffset = CGSizeMake(0, 6);
-    }
+    NoshiClassicApplyMenuPlate(self, CLASSIC_RADIUS);
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
-    _title.textColor = classic ? NoshiClassicMenuTextColor() : NoshiColorTitle();
+    _title.textColor = NoshiClassicMenuTextColor();
     _title.font = NoshiFontBold(17);
     /* a long title wraps onto as many lines as it needs, rather than ending in dots */
     _title.numberOfLines = 0;
     [self addSubview:_title];
     _message = [[UILabel alloc] init];
     _message.backgroundColor = [UIColor clearColor];
-    _message.textColor = classic ? [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7] : NoshiColorMessage();
+    _message.textColor = [NoshiClassicMenuTextColor() colorWithAlphaComponent:0.7];
     _message.font = NoshiFontRegular(14);
     _message.numberOfLines = 0;
     [self addSubview:_message];
     _primary = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _primary.titleLabel.font = NoshiFontBold(15);
-    if (classic) {
-        [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-        [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-        [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateDisabled];
-    } else {
-        _primary.layer.cornerRadius = BUTTON_HEIGHT / 2;
-        _primary.backgroundColor = NoshiColorAccent();
-    }
+    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
+    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateDisabled];
     [_primary setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_primary setTitleColor:[UIColor colorWithWhite:1 alpha:0.7] forState:UIControlStateDisabled];
     [_primary addTarget:self action:@selector(primaryTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -182,11 +167,7 @@
 
 /* the classic plate is a layer that has to follow the card as it grows with its text */
 - (void)fitShadow {
-    if (NoshiThemeIsClassic()) {
-        NoshiClassicFitPlate(self, 0);
-        return;
-    }
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:CARD_RADIUS].CGPath;
+    NoshiClassicFitPlate(self, 0);
 }
 
 - (void)refresh {

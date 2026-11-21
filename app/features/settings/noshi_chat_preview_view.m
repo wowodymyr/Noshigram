@@ -132,14 +132,14 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
     if (!self) return nil;
     _lines = talk == NoshiChatPreviewTalkNoshigram ? NoshiPreviewNoshigram : (talk == NoshiChatPreviewTalkQuickReaction ? NoshiPreviewQuickReaction : NoshiPreviewSettings);
     _stickerName = talk == NoshiChatPreviewTalkNoshigram ? @"preview_fox" : (talk == NoshiChatPreviewTalkQuickReaction ? @"preview_quick_fox" : @"preview_sticker");
-    self.layer.cornerRadius = NoshiThemeIsClassic() ? 0 : PREVIEW_RADIUS;
+    self.layer.cornerRadius = 0;
     self.layer.masksToBounds = YES;
     /* the rounded clip is drawn once and kept while the preview scrolls with its table; a change of a slider draws it again */
     self.layer.shouldRasterize = YES;
     self.layer.rasterizationScale = [UIScreen mainScreen].scale;
     self.accessibilityElementsHidden = YES;
     _wallpaper = [[UIImageView alloc] init];
-    NoshiApplyWallpaperStyle(_wallpaper, NoshiThemeIsClassic(), NoshiThemeIsDark());
+    NoshiApplyWallpaperStyle(_wallpaper, NoshiThemeIsDark());
     [self addSubview:_wallpaper];
 
     _bubbles = [[NSMutableArray alloc] init];
@@ -191,7 +191,7 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
             bubble->shape.opaque = NO;
             bubble->shape.contentMode = UIViewContentModeRedraw;
             bubble->shape.outgoing = _lines[i].outgoing;
-            bubble->shape.hidden = !NoshiThemeIsClassic();
+            bubble->shape.hidden = NO;
             [bubble->box insertSubview:bubble->shape atIndex:0];
             bubble->text = [[[NoshiEmojiLabel alloc] init] autorelease];
             bubble->text.numberOfLines = 0;
@@ -272,12 +272,8 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
             [self applyQuoteForBubble:bubble bubbleColor:out ? NoshiColorBubbleOut() : NoshiColorBubbleIn()];
             continue;
         }
-        if (NoshiThemeIsClassic()) {
-            [bubble->shape setNeedsDisplay];
-            bubble->box.backgroundColor = [UIColor clearColor];
-        } else {
-            bubble->box.backgroundColor = out ? NoshiColorBubbleOut() : NoshiColorBubbleIn();
-        }
+        [bubble->shape setNeedsDisplay];
+        bubble->box.backgroundColor = [UIColor clearColor];
         bubble->text.textColor = NoshiColorBubbleText(out);
         bubble->time.textColor = NoshiColorBubbleMeta(out);
         [self applyQuoteForBubble:bubble bubbleColor:out ? NoshiColorBubbleOut() : NoshiColorBubbleIn()];
@@ -367,13 +363,13 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
         BOOL beside = textWidth + 6 + timeWidth <= limit;
         CGFloat contentWidth = MAX(MAX(textWidth, quoteWidth), beside ? textWidth + 6 + timeWidth : timeWidth);
         /* the picture of a classic bubble keeps its tail on the side it leans to, and the words stand clear of it */
-        CGFloat tail = NoshiThemeIsClassic() ? NOSHI_CLASSIC_BUBBLE_TAIL : 0;
+        CGFloat tail = NOSHI_CLASSIC_BUBBLE_TAIL;
         CGFloat lead = bubble->outgoing ? 0 : tail, trail = bubble->outgoing ? tail : 0;
         CGFloat boxWidth = MIN(limit, contentWidth) + 2 * BUBBLE_PAD_X + tail;
         CGFloat reactionHeight = _quickReaction && bubble == [_bubbles objectAtIndex:0] ? 38 : 0;
         CGFloat boxHeight = BUBBLE_PAD_Y + quoteBlock + ceil(textSize.height) + (beside || reactionHeight ? 0 : meta - 2) + BUBBLE_PAD_Y + reactionHeight;
         if (apply) {
-            CGFloat corner = NoshiThemeIsClassic() ? 0 : MIN(radius, MIN(boxWidth, boxHeight) / 2);
+            CGFloat corner = 0;
             CGFloat x = bubble->outgoing ? width - PREVIEW_PAD - boxWidth : PREVIEW_PAD;
             bubble->box.layer.cornerRadius = corner;
             bubble->box.frame = CGRectMake(x, y, boxWidth, boxHeight);
