@@ -372,14 +372,9 @@
     }
     NoshiConnectingLabel *label = [[[NoshiConnectingLabel alloc] init] autorelease];
     label.backgroundColor = [UIColor clearColor];
-    label.textColor = [UIColor whiteColor];
+    label.textColor = NoshiColorTitle();
     label.font = [UIFont boldSystemFontOfSize:20];
     label.textAlignment = NoshiTextAlignmentLeft;
-    /* the engraved shadow is part of the look of the old bars; the flat ones have none */
-    if (!NoshiClassicIsFlatSystem()) {
-        label.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
-        label.shadowOffset = CGSizeMake(0, -1);
-    }
     label.updating = updating;
     label.connecting = YES;
     CGSize fit = [label sizeThatFits:CGSizeMake(320, 44)];

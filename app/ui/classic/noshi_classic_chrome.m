@@ -12,11 +12,6 @@
 #import "noshi_theme.h"
 #import "noshi_wave_background_view.h"
 
-/* both slices start at ios 7 and link against a current sdk, so the bars are always the flat ones; the glossy branches that ask this go next */
-BOOL NoshiClassicIsFlatSystem(void) {
-    return YES;
-}
-
 /* the blue of the bars of telegram: deep enough in the dark theme that the gloss of ios 5 and 6 still reads, lighter in the white
    theme where the deep one looks heavy next to white rows; both keep the white text */
 static UIColor *NoshiClassicBarColor(void) {
@@ -85,24 +80,18 @@ static void NoshiClassicApplyBarAppearance(UIView *bar) {
 }
 
 static void NoshiClassicTintBar(id bar) {
-    if (NoshiClassicIsFlatSystem()) {
-        NoshiClassicApplyBarAppearance(bar);
-        /* the bars of telegram for ios 4: the light ground of the bottom bar (dark at night), a dark title and the buttons in the accent */
-        [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
-        [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
-        [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
-    } else {
-        [bar setTintColor:NoshiClassicBarColor()];
-    }
+    NoshiClassicApplyBarAppearance(bar);
+    /* the bars of telegram for ios 4: the light ground of the bottom bar (dark at night), a dark title and the buttons in the accent */
+    [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
+    [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
+    [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
 }
 
 void NoshiClassicStyleNavigationBar(UINavigationBar *bar) {
     bar.barStyle = NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault;
     NoshiClassicTintBar(bar);
-    if (NoshiClassicIsFlatSystem()) {
-        [bar setBackgroundImage:nil forBarMetrics:UIBarMetricsDefault];
-        [bar setTitleTextAttributes:[NSDictionary dictionaryWithObject:NoshiColorTitle() forKey:NSForegroundColorAttributeName]];
-    }
+    [bar setBackgroundImage:nil forBarMetrics:UIBarMetricsDefault];
+    [bar setTitleTextAttributes:[NSDictionary dictionaryWithObject:NoshiColorTitle() forKey:NSForegroundColorAttributeName]];
 }
 
 void NoshiClassicStyleToolbar(UIToolbar *bar) {
@@ -147,7 +136,7 @@ static NSArray *NoshiClassicSearchFieldsIn(UIView *view) {
 }
 
 void NoshiClassicStyleSearchBar(UISearchBar *bar) {
-    bar.barStyle = NoshiClassicIsFlatSystem() ? UIBarStyleBlack : (NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault);
+    bar.barStyle = UIBarStyleBlack;
     NoshiClassicTintBar(bar);
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 1), NO, 0);
     UIImage *clear = UIGraphicsGetImageFromCurrentImageContext();
@@ -339,8 +328,8 @@ UIView *NoshiClassicSearchFacade(CGRect frame, NSString *placeholder) {
 @end
 
 void NoshiClassicStyleSegmented(UISegmentedControl *control) {
-    if (!NoshiClassicIsFlatSystem()) control.segmentedControlStyle = UISegmentedControlStyleBar;
-    control.tintColor = NoshiClassicIsFlatSystem() ? [UIColor whiteColor] : NoshiClassicBarColor();
+    /* the segments sit on the light bars, so they take the accent as the buttons beside them do */
+    control.tintColor = NoshiColorAccent();
 }
 
 static CGFloat NoshiClassicRealTabBarHeight = 0;
@@ -362,42 +351,14 @@ CGFloat NoshiClassicTabBarHeight(void) {
 }
 
 /* the bottom bar of telegram for ios of the 2014 to 2018 years: flat and light (dark at night), a hairline on top, grey pictures and the
-   accent on the chosen one. ios 5 and 6 draw it from a picture of their own, so the gloss and the black of the system never show */
+   accent on the chosen one */
 static UIColor *NoshiTabBarGround(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.11 green:0.11 blue:0.114 alpha:1] : [UIColor colorWithRed:0.969 green:0.969 blue:0.969 alpha:1]; }
-static UIColor *NoshiTabBarLine(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.24 green:0.24 blue:0.25 alpha:1] : [UIColor colorWithRed:0.698 green:0.698 blue:0.698 alpha:1]; }
 UIColor *NoshiTabBarRestingColor(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.5 green:0.5 blue:0.52 alpha:1] : [UIColor colorWithRed:0.573 green:0.573 blue:0.573 alpha:1]; }
 
-static UIImage *NoshiTabBarGroundImage(void) {
-    CGFloat scale = NoshiScreenScale(), hairline = 1.0f / scale;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 49), YES, scale);
-    [NoshiTabBarGround() setFill];
-    UIRectFill(CGRectMake(0, 0, 1, 49));
-    [NoshiTabBarLine() setFill];
-    UIRectFill(CGRectMake(0, 0, 1, hairline));
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
-
-static UIImage *NoshiClearImage(void) {
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 1), NO, 0);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
-
 void NoshiClassicStyleTabBar(UITabBar *bar) {
-    if (NoshiClassicIsFlatSystem()) {
-        [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
-        [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
-        [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
-        return;
-    }
-    [bar setBackgroundImage:NoshiTabBarGroundImage()];
-    [bar setSelectionIndicatorImage:NoshiClearImage()];
-    /* ios 6 lays a shadow of its own over the top edge, which the hairline already is */
-    if ([bar respondsToSelector:@selector(setShadowImage:)]) [bar setShadowImage:NoshiClearImage()];
-    [bar setSelectedImageTintColor:NoshiColorAccent()];
+    [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
+    [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
+    [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
 }
 
 UITableViewCellSeparatorStyle NoshiClassicListSeparatorStyle(BOOL hasRows) {
@@ -623,7 +584,6 @@ UIView *NoshiClassicTitleViewWithStatus(NSString *title, NSString *subtitle, int
 }
 
 UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle, int kind, CGFloat titleWidth) {
-    BOOL flat = NoshiClassicIsFlatSystem();
     UIView *view = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, titleWidth, 44)] autorelease];
     view.backgroundColor = [UIColor clearColor];
     BOOL hasSubtitle = subtitle.length > 0;
@@ -634,26 +594,17 @@ UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle
     top.text = title;
     top.textAlignment = NoshiTextAlignmentCenter;
     top.font = [UIFont boldSystemFontOfSize:hasSubtitle ? 17 : 20];
-    top.textColor = flat ? NoshiColorTitle() : [UIColor whiteColor];
+    top.textColor = NoshiColorTitle();
     top.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    /* the engraved shadow is part of the look of the old bars; the flat ones have none */
-    if (!flat) {
-        top.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
-        top.shadowOffset = CGSizeMake(0, -1);
-    }
     [view addSubview:top];
     if (hasSubtitle) {
         NoshiStatusLabel *bottom = [[[NoshiStatusLabel alloc] initWithFrame:CGRectMake(0, 25, titleWidth, 16)] autorelease];
         bottom.textAlignment = NoshiTextAlignmentCenter;
         bottom.backgroundColor = [UIColor clearColor];
         bottom.font = [UIFont systemFontOfSize:12];
-        bottom.plainColor = flat ? NoshiColorSecondary() : [UIColor colorWithWhite:0.92 alpha:1];
-        bottom.activeColor = flat ? NoshiColorAccent() : [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1];
+        bottom.plainColor = NoshiColorSecondary();
+        bottom.activeColor = NoshiColorAccent();
         [bottom setStatus:subtitle kind:(NoshiStatusKind)kind];
-        if (!flat) {
-            bottom.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
-            bottom.shadowOffset = CGSizeMake(0, -1);
-        }
         bottom.autoresizingMask = UIViewAutoresizingFlexibleWidth;
         [view addSubview:bottom];
     }

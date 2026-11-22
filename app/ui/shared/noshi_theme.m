@@ -195,18 +195,8 @@ void NoshiThemeApplyStored(void) {
         NoshiTintScale = 1;
         NoshiTintBrightness = 1;
     }
-    /* the bars of ios 6 are tinted in the blue of the app whatever the theme, so the status bar over them is the black one of that system; the flat bars of ios 7 and later
-       are light in the light theme */
-    UIApplication *application = [UIApplication sharedApplication];
-    if (![application respondsToSelector:@selector(setStatusBarStyle:animated:)]) return;
-    if (!NoshiThemeFlatSystem()) [application setStatusBarStyle:(UIStatusBarStyle)1 animated:NO];
-    else [application setStatusBarStyle:NoshiStatusBarStyle(NoshiDark) animated:NO];
-}
-
-BOOL NoshiThemeFlatSystem(void) {
-    static int flat = -1;
-    if (flat < 0) flat = [[[UIDevice currentDevice] systemVersion] integerValue] >= 7;
-    return flat == 1;
+    /* the bars are light in the light theme, so the status bar over them is dark there */
+    [[UIApplication sharedApplication] setStatusBarStyle:NoshiStatusBarStyle(NoshiDark) animated:NO];
 }
 
 /* an accent color of the palette: turned to the color of your own, then dimmed by its brightness */
@@ -281,37 +271,20 @@ UIColor *NoshiColorBubbleMeta(BOOL outgoing) {
     return outgoing ? NoshiRGB(89, 168, 55) : NoshiRGB(167, 167, 167);
 }
 
-/* the bubbles of Telegram: ios 7 and later draw them flat in one color with a faint rim, ios 6 lights them from above with a gloss and a darker rim, as the
-   bubbles of that system were. top is the lit edge, bottom the fill, outline the rim */
+/* the bubbles of Telegram, flat in one color with a faint rim. top is the lit edge, bottom the fill, outline the rim */
 void NoshiClassicBubbleColors(BOOL outgoing, UIColor **top, UIColor **bottom, UIColor **outline) {
     UIColor *fill = outgoing ? NoshiColorBubbleOut() : NoshiColorBubbleIn();
-    UIColor *white = [UIColor whiteColor], *black = [UIColor blackColor];
+    UIColor *black = [UIColor blackColor];
     /* the bubbles of an imported theme are lit and rimmed from their own fill, since the green and white ramps below belong to the palette */
     if (!NoshiImportedOff && NoshiImportedThemeColor(outgoing ? "chat.message.outgoing.bubble.withWp.bg" : "chat.message.incoming.bubble.withWp.bg")) {
-        *top = NoshiThemeFlatSystem() ? fill : NoshiMixedColor(fill, white, 0.3);
+        *top = fill;
         *bottom = fill;
         *outline = NoshiMixedColor(fill, black, 0.3);
         return;
     }
-    if (NoshiThemeFlatSystem()) {
-        *top = fill;
-        *bottom = fill;
-        *outline = NoshiDark ? NoshiMixedColor(fill, black, 0.3) : (outgoing ? NoshiRGB(178, 222, 153) : NoshiRGB(206, 214, 222));
-        return;
-    }
-    if (NoshiDark) {
-        *top = NoshiMixedColor(fill, white, 0.12);
-        *bottom = fill;
-        *outline = NoshiMixedColor(fill, black, 0.5);
-    } else if (outgoing) {
-        *top = NoshiMixedColor(fill, white, 0.55);
-        *bottom = NoshiMixedColor(fill, NoshiRGB(160, 224, 120), 0.35);
-        *outline = NoshiRGB(124, 178, 96);
-    } else {
-        *top = white;
-        *bottom = NoshiRGB(238, 241, 245);
-        *outline = NoshiRGB(160, 170, 182);
-    }
+    *top = fill;
+    *bottom = fill;
+    *outline = NoshiDark ? NoshiMixedColor(fill, black, 0.3) : (outgoing ? NoshiRGB(178, 222, 153) : NoshiRGB(206, 214, 222));
 }
 
 typedef enum { NoshiWeightRegular, NoshiWeightMedium, NoshiWeightSemibold, NoshiWeightBold } NoshiWeight;

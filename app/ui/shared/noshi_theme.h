@@ -9,7 +9,6 @@ extern NSString *const NoshiThemeDidChangeNotification;
    as the spot that was touched */
 extern NSString *const NoshiThemeOriginKey;
 /* ios 7 and later: UIKit draws flat bars for the app (it is linked against a current sdk), and the look follows them; ios 5 and 6 keep their glossy bars */
-BOOL NoshiThemeFlatSystem(void);
 BOOL NoshiThemeStoredDark(void);
 void NoshiThemeStoreDark(BOOL dark);
 BOOL NoshiThemeIsDark(void);

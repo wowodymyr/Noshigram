@@ -7,7 +7,6 @@
 /* the classic style leaves the drawing to UIKit */
 
 /* true when UIKit draws flat bars for this binary (the arm64 slice), where barTintColor colors the bar and tintColor the buttons */
-BOOL NoshiClassicIsFlatSystem(void);
 
 void NoshiClassicStyleNavigationBar(UINavigationBar *bar);
 void NoshiClassicStyleToolbar(UIToolbar *bar);
