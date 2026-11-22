@@ -42,6 +42,8 @@ Install on a device: `make package install THEOS_DEVICE_IP=<ip>`.
 
 ## Credits
 
+Noshigram: [wowodymyr](https://github.com/wowodymyr), [koke228666](https://github.com/koke228666), Claude (Anthropic).
+
 exteria developers: sqmrak, QWERTYU1OPZ, LimeDev, menstry, anazerka, loveiOS6, nestorvashenko, svcayon4ik, illyagif.
 
 ## License
