@@ -269,6 +269,8 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     NoshiStoryRing *_storyRing;
     NoshiEmojiLabel *_title;
     NoshiStatusLabel *_subtitle;
+    /* what the title view of the classic bar was made with, so it is made again only when one of these changes */
+    NSString *_shownTitleKey;
     NoshiInputBar *_input;
     NoshiInputPanel *_panel;
     UILabel *_status;
@@ -642,6 +644,7 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     [_storyRing release];
     [_title release];
     [_subtitle release];
+    [_shownTitleKey release];
     [_input release];
     [_panel release];
     [_status release];
@@ -842,7 +845,15 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
 
 /* the name and the status in the classic bar, as wide as the bar leaves beside the back arrow and its count */
 - (void)installClassicTitleView {
-    self.navigationItem.titleView = NoshiClassicTitleViewWithStatusWidth(_dialog.title, [self statusLine], (int)[self statusKind], [self classicTitleWidth]);
+    /* the screen asks again each time it appears, and a new view in the middle of the slide back from a profile was laid out at the left edge and jumped to the middle when
+       the slide ended; the same words and width keep the view that is there */
+    NSString *status = [self statusLine];
+    CGFloat width = [self classicTitleWidth];
+    NSString *key = [NSString stringWithFormat:@"%@\n%@\n%d\n%.1f", _dialog.title, status, (int)[self statusKind], width];
+    if (self.navigationItem.titleView && [key isEqualToString:_shownTitleKey]) return;
+    [_shownTitleKey release];
+    _shownTitleKey = [key copy];
+    self.navigationItem.titleView = NoshiClassicTitleViewWithStatusWidth(_dialog.title, status, (int)[self statusKind], width);
     self.navigationItem.titleView.userInteractionEnabled = YES;
     [self.navigationItem.titleView addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
 }
@@ -2236,6 +2247,8 @@ enum { NoshiChatAlertClear = 9101, NoshiChatAlertDelete, NoshiChatAlertDeleteMes
         }
     }] autorelease];
     menu.bottomInset = _keyboardOverlap;
+    /* deleting the chat or leaving it is the red button of the sheet */
+    if (deleteTitle) menu.destructiveIndex = (NSInteger)titles.count - 1;
     CGPoint anchor;
     if (_menuButton) anchor = [_menuButton.superview convertPoint:CGPointMake(CGRectGetMaxX(_menuButton.frame) - 6, CGRectGetMaxY(_menuButton.frame) - 8) toView:self.view];
     else anchor = CGPointMake(self.view.bounds.size.width - 8, 4);
