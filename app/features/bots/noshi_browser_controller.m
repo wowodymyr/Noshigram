@@ -123,7 +123,7 @@ void NoshiPresentBrowser(NSURL *url, UIViewController *host) {
     [_card addSubview:_handle];
     _close = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_close setImage:NoshiSymbolImage(NoshiSymbolClose, 20, NoshiColorAccent()) forState:UIControlStateNormal];
-    _close.accessibilityLabel = NSLocalizedString(@"shiro.close", nil);
+    _close.accessibilityLabel = NSLocalizedString(@"common.close", nil);
     [_close addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
     [_card addSubview:_close];
     _pageTitle = [[UILabel alloc] init];
@@ -248,7 +248,7 @@ void NoshiPresentBrowser(NSURL *url, UIViewController *host) {
     [titles addObject:NSLocalizedString(@"browser.safari", nil)];
     [actions addObject:NSStringFromSelector(@selector(openInBrowser))];
     NoshiWeakReference *weak = _weak;
-    [NoshiSheet presentInView:self.view title:_current.host message:nil options:titles destructive:nil cancelTitle:NSLocalizedString(@"shiro.close", nil)
+    [NoshiSheet presentInView:self.view title:_current.host message:nil options:titles destructive:nil cancelTitle:NSLocalizedString(@"common.close", nil)
                         handler:^(NSUInteger index) {
         NoshiBrowserController *browser = weak.target;
         if (!browser || browser->_closing || index >= actions.count) return;

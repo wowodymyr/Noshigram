@@ -204,11 +204,11 @@ static void NoshiForwardMessagesNow(NoshiSession *session, NoshiMediaCache *cach
         NSMutableArray *copyable = [NSMutableArray arrayWithCapacity:messages.count];
         for (NoshiMessage *message in messages) if (NoshiCanCopyForward(message)) [copyable addObject:message];
         long skipped = (long)(messages.count - copyable.count);
-        if (!copyable.count) { completion(NSLocalizedString(@"ayu.copyprotected.failed", nil)); return; }
+        if (!copyable.count) { completion(NSLocalizedString(@"forward.copy.failed", nil)); return; }
         NoshiCopyMessagesWithLines(session, cache, copyable, 0, target, authorLines, ^(NSUInteger sent, NSString *error) {
-            if (error && sent) completion([NSString stringWithFormat:NSLocalizedString(@"ayu.copyprotected.partial", nil), (long)sent, NoshiGiftErrorText(error)]);
+            if (error && sent) completion([NSString stringWithFormat:NSLocalizedString(@"forward.copy.partial", nil), (long)sent, NoshiGiftErrorText(error)]);
             else if (error) completion(NoshiGiftErrorText(error));
-            else completion(skipped ? [NSString stringWithFormat:NSLocalizedString(@"ayu.copyprotected.skipped", nil), (long)copyable.count, skipped] : nil);
+            else completion(skipped ? [NSString stringWithFormat:NSLocalizedString(@"forward.copy.skipped", nil), (long)copyable.count, skipped] : nil);
         });
     };
     /* without the author, and the person asked for his name: the messages go as copies that open with the name and the @username of whoever wrote them */

@@ -15,6 +15,12 @@
 
 static NSString *const NoshiSourceAddress = @"https://github.com/wowodymyr/Noshigram";
 static NSString *const NoshiUpstreamAddress = @"https://github.com/sqmrak/exteria";
+static NSString *const NoshiClaudeAddress = @"https://www.anthropic.com/claude";
+
+/* the people who made noshigram out of exteria, by their telegram names */
+static NSString *const NoshiAuthors[] = {
+    @"wowodymyr", @"BOP_COCICOK",
+};
 
 /* the developers of exteria, which noshigram is a fork of; its license asks every fork to name them */
 static NSString *const NoshiUpstreamDevelopers[] = {
@@ -135,6 +141,13 @@ static UIImage *NoshiAppIcon(CGFloat side) {
     }];
 }
 
+/* a person of the credits by the @name, which opens their profile in the app */
+- (NoshiSettingsRow *)personRow:(NSString *)username {
+    NoshiWeakReference *weak = _weak;
+    NSString *address = [@"https://t.me/" stringByAppendingString:username];
+    return [NoshiSettingsRow rowWithTitle:[@"@" stringByAppendingString:username] value:nil tap:^{ [(NoshiAboutController *)weak.target open:address]; }];
+}
+
 - (void)rebuild {
     self.headerView = [self makeHeader];
     [self rebuildSections];
@@ -158,27 +171,29 @@ static UIImage *NoshiAppIcon(CGFloat side) {
             return [[[NoshiMoreSettingsController alloc] initWithSession:session] autorelease];
         }], nil];
 
-    NoshiSettingsRow *source = [NoshiSettingsRow rowWithSymbol:NoshiSymbolExternalLink tone:NoshiSettingsTonePurple title:NSLocalizedString(@"about.source", nil)
-                                                          subtitle:[NoshiSourceAddress substringFromIndex:[@"https://" length]] value:nil
-                                                               tap:^{ [(NoshiAboutController *)weak.target open:NoshiSourceAddress]; }];
-    NoshiSettingsRow *upstream = [NoshiSettingsRow rowWithSymbol:NoshiSymbolExternalLink tone:NoshiSettingsToneGray title:NSLocalizedString(@"about.upstream", nil)
-                                                            subtitle:[NoshiUpstreamAddress substringFromIndex:[@"https://" length]] value:nil
-                                                                 tap:^{ [(NoshiAboutController *)weak.target open:NoshiUpstreamAddress]; }];
+    NoshiSettingsRow *source = [NoshiSettingsRow rowWithTitle:NSLocalizedString(@"about.source", nil) value:nil
+                                                          tap:^{ [(NoshiAboutController *)weak.target open:NoshiSourceAddress]; }];
+    NoshiSettingsRow *upstream = [NoshiSettingsRow rowWithTitle:NSLocalizedString(@"about.upstream", nil) value:nil
+                                                            tap:^{ [(NoshiAboutController *)weak.target open:NoshiUpstreamAddress]; }];
+    source.link = YES;
+    upstream.link = YES;
 
+    NSMutableArray *authors = [NSMutableArray array];
+    for (size_t i = 0; i < sizeof(NoshiAuthors) / sizeof(NoshiAuthors[0]); ++i) [authors addObject:[self personRow:NoshiAuthors[i]]];
+    /* claude has no telegram name, so its row opens the page of the model */
+    [authors addObject:[NoshiSettingsRow rowWithTitle:NSLocalizedString(@"about.claude", nil) value:nil
+                                                  tap:^{ [(NoshiAboutController *)weak.target open:NoshiClaudeAddress]; }]];
     NSMutableArray *credits = [NSMutableArray array];
-    for (size_t i = 0; i < sizeof(NoshiUpstreamDevelopers) / sizeof(NoshiUpstreamDevelopers[0]); ++i) {
-        NSString *username = NoshiUpstreamDevelopers[i];
-        NSString *address = [@"https://t.me/" stringByAppendingString:username];
-        [credits addObject:[NoshiSettingsRow rowWithTitle:[@"@" stringByAppendingString:username] value:nil
-                                                      tap:^{ [(NoshiAboutController *)weak.target open:address]; }]];
-    }
+    for (size_t i = 0; i < sizeof(NoshiUpstreamDevelopers) / sizeof(NoshiUpstreamDevelopers[0]); ++i) [credits addObject:[self personRow:NoshiUpstreamDevelopers[i]]];
 
-    NoshiSettingsSection *creditSection = [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.credits", nil)
-                                                                           footer:NSLocalizedString(@"about.credits.info", nil) rows:credits];
     self.sections = [NSArray arrayWithObjects:
         [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.categories", nil) footer:nil rows:categories],
-        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.links", nil) footer:nil rows:[NSArray arrayWithObjects:source, upstream, nil]],
-        creditSection, nil];
+        /* the addresses stand under the links in plain words, so the rows stay one line high */
+        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.links", nil)
+                                         footer:[NSString stringWithFormat:@"%@\n%@", [NoshiSourceAddress substringFromIndex:[@"https://" length]], [NoshiUpstreamAddress substringFromIndex:[@"https://" length]]]
+                                           rows:[NSArray arrayWithObjects:source, upstream, nil]],
+        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.authors", nil) footer:nil rows:authors],
+        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.credits", nil) footer:NSLocalizedString(@"about.credits.info", nil) rows:credits], nil];
 }
 
 @end

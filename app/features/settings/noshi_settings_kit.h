@@ -55,6 +55,7 @@ NSString *NoshiDeviceAnimationName(noshi_session_kind kind);
     BOOL _trailingImageUnclipped;
     BOOL _bold;
     BOOL _destructive;
+    BOOL _link;
     BOOL _hasSwitch;
     BOOL _on;
     BOOL _accentLine3;
@@ -123,6 +124,8 @@ NSString *NoshiDeviceAnimationName(noshi_session_kind kind);
 @property (nonatomic, assign) BOOL trailingImageUnclipped;
 @property (nonatomic, readonly) BOOL bold;
 @property (nonatomic, readonly) BOOL destructive;
+/* a link of the about pages: the title alone in the accent, with no tile and no arrow, as telegram drew the links of its settings */
+@property (nonatomic, assign) BOOL link;
 @property (nonatomic, readonly) BOOL hasSwitch;
 @property (nonatomic, assign) BOOL on;
 @property (nonatomic, readonly) BOOL accentLine3;

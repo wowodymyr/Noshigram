@@ -8084,10 +8084,6 @@ static UIImage *NoshiRoundTorchImage(UIColor *color) {
 /* a tap on the card of a one-time file: it opens in a viewer of its own, the server hears that it was opened when the picture is on the screen, and the card burns when the viewer is closed */
 - (void)messageCellDidTapViewOnce:(NoshiMessageCell *)cell {
     NoshiMessage *message = cell.item.message;
-    if (!message.outgoing && !noshi_read_action_allowed(0, NOSHI_READ_ONCE)) {
-        NoshiShowNotice(nil, NSLocalizedString(@"ayu.ghost.once", nil));
-        return;
-    }
     if (!NoshiMessageIsViewOnce(message)) return;
     /* the note that plays now pauses and resumes on a tap, even after the server has marked it opened */
     if (message.media.kind == NOSHI_PREVIEW_VOICE && _onceVoice && message.messageId == _onceVoiceId && [[NoshiMusicPlayer sharedPlayer] isCurrentTrack:_onceVoice]) {

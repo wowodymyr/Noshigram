@@ -238,6 +238,7 @@ NSString *NoshiDeviceAnimationName(noshi_session_kind kind) {
 @synthesize customHeight = _customHeight;
 @synthesize bold = _bold;
 @synthesize destructive = _destructive;
+@synthesize link = _link;
 @synthesize hasSwitch = _hasSwitch;
 @synthesize on = _on;
 @synthesize accentLine3 = _accentLine3;
@@ -1874,6 +1875,7 @@ static CGFloat NoshiClassicRowHeight(NoshiSettingsRow *row, CGFloat tableWidth) 
     cell.textLabel.lineBreakMode = UILineBreakModeWordWrap;
     cell.detailTextLabel.numberOfLines = subtitle ? 0 : 1;
     if (row.destructive) cell.textLabel.textColor = [UIColor redColor];
+    else if (row.link) cell.textLabel.textColor = NoshiColorAccent();
     NSInteger tag = indexPath.section * 1000 + indexPath.row + 1;
     if (subtitle) {
         cell.detailTextLabel.text = row.subtitle;
@@ -1941,7 +1943,7 @@ static CGFloat NoshiClassicRowHeight(NoshiSettingsRow *row, CGFloat tableWidth) 
         [(NoshiClassicSliderCell *)cell setSlider:slider];
     } else if (row.checked) {
         cell.accessoryType = UITableViewCellAccessoryCheckmark;
-    } else if (row.tap && !row.value.length && (!subtitle || row.tileImage)) {
+    } else if (row.tap && !row.link && !row.value.length && (!subtitle || row.tileImage)) {
         cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     }
     if (!row.tap && !row.hasSwitch && !row.hasSlider) cell.selectionStyle = UITableViewCellSelectionStyleNone;

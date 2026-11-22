@@ -519,7 +519,7 @@ static NSString *NoshiNightStateText(void) {
     NoshiWeakReference *weak = _weak;
     [NoshiSheet presentInView:self.view.window title:NoshiFontCustomName() message:nil
                         options:[NSArray arrayWithObjects:NSLocalizedString(@"font.change", nil), NSLocalizedString(@"font.remove", nil), nil]
-                    destructive:[NSIndexSet indexSetWithIndex:1] cancelTitle:NSLocalizedString(@"shiro.close", nil) handler:^(NSUInteger index) {
+                    destructive:[NSIndexSet indexSetWithIndex:1] cancelTitle:NSLocalizedString(@"common.close", nil) handler:^(NSUInteger index) {
         NoshiChatSettingsController *me = weak.target;
         if (!me) return;
         if (index == 0) {
