@@ -26,7 +26,7 @@ PYTHON  ?= python3
 SCHEMAS := schemas/api.tl schemas/mtproto.tl schemas/secret.tl
 TLGEN   := $(PYTHON) tools/tlgen.py
 
-.PHONY: test test-icons test-video sanitize generate check-generated credentials stage-resources
+.PHONY: test test-icons test-video sanitize generate check-generated credentials stage-resources clean-bundle
 
 test:
 	$(MAKE) -C tests test
@@ -57,7 +57,12 @@ stage-resources:
 	@bash scripts/stage_bundle.sh build/bundle
 	@cp packaging/Info.plist build/bundle/Info.plist
 
-before-all:: credentials stage-resources
+# theos copies the resources over the bundle of the last build and never takes a file away, so a picture removed from the
+# repository stayed in every incremental deb; the bundle is made anew from the staged files and the binaries of each arch
+clean-bundle:
+	@rm -rf $(THEOS_OBJ_DIR)/Noshigram.app
+
+before-all:: credentials stage-resources clean-bundle
 
 # ---- sources -------------------------------------------------------------------------------------------
 
