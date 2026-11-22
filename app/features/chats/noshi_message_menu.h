@@ -14,10 +14,10 @@
 + (NoshiMenuItem *)itemWithTitle:(NSString *)title symbol:(NoshiSymbol)symbol tag:(NSUInteger)tag destructive:(BOOL)destructive;
 @end
 
-/* the menu of a message, laid out as exteraGram lays it out */
+/* the menu of a message of telegram for ios 4: a black strip of one-tap actions over the message and a white sheet of buttons at the bottom */
 @interface NoshiMessageMenu : UIView
 
-/* the text rows, and the glyph buttons of the bottom row */
+/* the buttons of the sheet, and the actions of the strip */
 @property (nonatomic, copy) NSArray *rows;
 @property (nonatomic, copy) NSArray *icons;
 /* an entry was picked; the menu has left by the time this runs */

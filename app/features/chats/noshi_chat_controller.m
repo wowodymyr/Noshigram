@@ -6048,22 +6048,21 @@ static NSString *NoshiMessageSummary(NoshiMessage *message) {
 
 typedef struct { uint32_t action; NoshiSymbol symbol; NSString *key; BOOL destructive; } NoshiMessageActionRow;
 
-/* the glyph row at the bottom of the menu, in the order exteraGram has them, with the translation among them so it is one tap away; the row has five when the message can be translated */
+/* the black strip over the message, the actions of one tap as telegram for ios 4 had them, with the translation among them and the start of a selection at the end */
 static const NoshiMessageActionRow NoshiMessageActionIcons[] = {
     {NOSHI_ACTION_REPLY, NoshiSymbolReply, @"chat.msg.reply", NO},
     {NOSHI_ACTION_COPY, NoshiSymbolCopy, @"chat.msg.copy", NO},
     {NOSHI_ACTION_TRANSLATE, NoshiSymbolTranslate, @"tr.translate", NO},
-    {NOSHI_ACTION_DELETE, NoshiSymbolTrash, @"chat.msg.delete", YES},
-    {NOSHI_ACTION_FORWARD, NoshiSymbolForward, @"chat.msg.forward", NO},
+    {NOSHI_ACTION_SELECT, NoshiSymbolCheck, @"chat.msg.select", NO},
 };
 
-/* the text rows under the line about the message; the first few show and the rest wait behind "More" */
+/* the buttons of the white sheet at the bottom, forwarding, reporting and deleting last as in telegram for ios 4 */
 static const NoshiMessageActionRow NoshiMessageActionRows[] = {
     {NOSHI_ACTION_EDIT, NoshiSymbolCompose, @"chat.msg.edit", NO},
-    {NOSHI_ACTION_SAVE_MUSIC, NoshiSymbolMusic, @"music.add", NO},
-    {NOSHI_ACTION_STATISTICS, NoshiSymbolStatistics, @"chat.msg.stats", NO},
     {NOSHI_ACTION_PIN, NoshiSymbolPin, @"chat.msg.pin", NO},
     {NOSHI_ACTION_UNPIN, NoshiSymbolUnpin, @"chat.msg.unpin", NO},
+    {NOSHI_ACTION_SAVE_MUSIC, NoshiSymbolMusic, @"music.add", NO},
+    {NOSHI_ACTION_STATISTICS, NoshiSymbolStatistics, @"chat.msg.stats", NO},
     {NOSHI_ACTION_COPY_LINK, NoshiSymbolLink, @"profile.qr.copy", NO},
     {NOSHI_ACTION_GALLERY, NoshiSymbolGallery, @"media.save", NO},
     {NOSHI_ACTION_TRANSCRIBE, NoshiSymbolMicrophone, @"chat.msg.transcribe", NO},
@@ -6077,9 +6076,10 @@ static const NoshiMessageActionRow NoshiMessageActionRows[] = {
     {NOSHI_ACTION_SELECT_TEXT, NoshiSymbolCopy, @"chat.msg.selecttext", NO},
     {NOSHI_ACTION_REPLY_PRIVATE, NoshiSymbolChats, @"chat.msg.replyprivate", NO},
     {NOSHI_ACTION_REMIND, NoshiSymbolClock, @"chat.msg.remind", NO},
-    {NOSHI_ACTION_SELECT, NoshiSymbolCheck, @"chat.msg.select", NO},
     {NOSHI_ACTION_DETAILS, NoshiSymbolInfo, @"chat.msg.details", NO},
+    {NOSHI_ACTION_FORWARD, NoshiSymbolForward, @"chat.msg.forward", NO},
     {NOSHI_ACTION_REPORT, NoshiSymbolReport, @"chat.msg.report", YES},
+    {NOSHI_ACTION_DELETE, NoshiSymbolTrash, @"chat.msg.delete", YES},
 };
 
 static NSArray *NoshiMenuItems(const NoshiMessageActionRow *table, size_t count, uint32_t mask) {

@@ -13,23 +13,24 @@
 #import "noshi_reaction_artwork.h"
 #import "noshi_weak_reference.h"
 #import "noshi_platform.h"
+#import "noshi_string_drawing.h"
 #import "noshi_theme.h"
 #include "noshi_reaction_layout.h"
 
-#define CARD_WIDTH 250.0
-#define ROW_HEIGHT 48.0
-#define HEADER_HEIGHT 44.0
-#define BAND_HEIGHT 7.0
-#define ICON_ROW_HEIGHT 56.0
-#define PILL_HEIGHT 52.0
+/* the menu of a message of telegram for ios 4: the chat goes dim, a black strip with an arrow stands over the message with the actions of one tap, and a white sheet of
+   buttons rises from the bottom with the rest, as the TGMenuView and the TGMenuSheet of that app drew them */
+#define BAR_HEIGHT 41.0
+#define BAR_ARROW_WIDTH 20.0
+#define BAR_ARROW_HEIGHT 10.0
+#define BAR_RADIUS 8.0
+#define BAR_BUTTON_PAD 17.0
+#define SHEET_EDGE 10.0
+#define SHEET_RADIUS 14.5
+#define SHEET_ROW 57.0
+#define SHEET_LINE 44.0
 #define PILL_ITEM 42.0
-#define PILL_PAD 7.0
-#define GAP 8.0
-#define EDGE 10.0
-/* how many text rows show before the rest go behind "More" */
-#define ROWS_SHOWN 3
 #define REACTIONS_SHOWN 7
-#define MORE_TAG 0xFFFFu
+#define GAP 8.0
 
 @implementation NoshiMenuItem
 
@@ -60,7 +61,6 @@
     NSArray *_reactions;
     NSString *_headerText;
     BOOL _headerRead;
-    BOOL _expanded;
     BOOL _closing;
     UIControl *_dim;
     UIView *_litClip;
@@ -69,8 +69,9 @@
     CGFloat _litShift;
     NoshiMediaCache *_media;
     NoshiWeakReference *_weak;
-    UIView *_pill;
-    UIView *_card;
+    /* the black strip over the message and the white sheet at the bottom */
+    UIView *_bar;
+    UIView *_sheet;
     /* the parts of the header that a late answer changes in place, so the card does not have to be built again while it is still coming in */
     UIImageView *_headerMark;
     UILabel *_headerLabel;
@@ -115,8 +116,8 @@
     [_dim release];
     [_lit release];
     [_litClip release];
-    [_pill release];
-    [_card release];
+    [_bar release];
+    [_sheet release];
     [_headerMark release];
     [_headerLabel release];
     [_headerView release];
@@ -133,34 +134,12 @@
     [super dealloc];
 }
 
-#pragma mark skin
+#pragma mark colors
 
-static BOOL NoshiMenuClassic(void) { return YES; }
-
-/* the classic plate is charcoal on the dark tone, and a pale one on the white tone, where a black plate sat on the light list like a hole */
-static BOOL NoshiMenuCharcoal(void) { return NoshiMenuClassic() && NoshiThemeIsDark(); }
-
-static UIColor *NoshiMenuText(void) { return NoshiMenuCharcoal() ? NoshiClassicMenuTextColor() : NoshiColorTitle(); }
-static UIColor *NoshiMenuRed(void) { return NoshiMenuCharcoal() ? NoshiClassicMenuRedColor() : NoshiColorBadgeRed(); }
-static UIColor *NoshiMenuBand(void) {
-    if (NoshiMenuCharcoal()) return [UIColor colorWithWhite:0 alpha:0.35];
-    return NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.07] : [UIColor colorWithWhite:0 alpha:0.06];
-}
-
-/* the plate behind the rows: the flat plate of the menus */
-static void NoshiMenuSkin(UIView *view, CGFloat radius) {
-    if (NoshiMenuClassic()) {
-        NoshiClassicApplyMenuPlate(view, radius);
-        return;
-    }
-    view.layer.cornerRadius = radius;
-    view.layer.shadowColor = [UIColor blackColor].CGColor;
-    view.layer.shadowOpacity = NoshiThemeIsDark() ? 0.5 : 0.22;
-    view.layer.shadowRadius = 14;
-    view.layer.shadowOffset = CGSizeMake(0, 5);
-    view.backgroundColor = NoshiColorCard();
-    NoshiSetShadowPath(view, radius);
-}
+static UIColor *NoshiSheetGround(void) { return NoshiThemeIsDark() ? [UIColor colorWithRed:0.11 green:0.11 blue:0.114 alpha:1] : [UIColor whiteColor]; }
+static UIColor *NoshiSheetLine(void) { return NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.1] : [UIColor colorWithRed:0.784 green:0.78 blue:0.8 alpha:1]; }
+static UIColor *NoshiSheetPress(void) { return NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.08] : [UIColor colorWithRed:0.922 green:0.922 blue:0.922 alpha:1]; }
+static UIColor *NoshiSheetRed(void) { return [UIColor colorWithRed:1 green:0.231 blue:0.188 alpha:1]; }
 
 #pragma mark content
 
@@ -169,13 +148,14 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
     [_headerText release];
     _headerText = [text copy];
     _headerRead = read;
-    if (!_card) return;
-    /* the same line with other words keeps the card as it is; only a header that appears or goes needs the rows moved */
+    if (!_sheet) return;
+    /* the same line with other words keeps the sheet as it is; only a line that appears or goes needs the rows moved */
     if (hadHeader && _headerText.length && _headerLabel) {
         _headerLabel.text = _headerText;
-        _headerMark.image = NoshiCheckImage(_headerRead, 18, NoshiMenuText());
-        if (_headerHandler && _headerView.subviews.count < 3) {
+        _headerMark.image = NoshiCheckImage(_headerRead, 16, NoshiColorSecondary());
+        if (_headerHandler && ![_headerView viewWithTag:1]) {
             UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+            button.tag = 1;
             button.frame = _headerView.bounds;
             button.accessibilityLabel = _headerText;
             [button addTarget:self action:@selector(headerTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -183,7 +163,7 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
         }
         return;
     }
-    [self rebuildAnimated:NO];
+    [self rebuild];
 }
 
 - (void)setHeaderPeople:(NSArray *)people cache:(NoshiAvatarCache *)cache {
@@ -191,14 +171,13 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
     _headerPeople = [people copy];
     [_headerCache release];
     _headerCache = [cache retain];
-    if (!_card || !_headerText.length) return;
-    [self rebuildAnimated:NO];
+    if (_sheet && _headerText.length) [self rebuild];
 }
 
 - (void)setReactorsText:(NSString *)text {
     [_reactorsText release];
     _reactorsText = [text copy];
-    if (_card) [self rebuildAnimated:NO];
+    if (_sheet) [self rebuild];
 }
 
 - (void)setReactorsPeople:(NSArray *)people cache:(NoshiAvatarCache *)cache {
@@ -206,193 +185,158 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
     _reactorsPeople = [people copy];
     [_headerCache release];
     _headerCache = [cache retain];
-    if (!_card || !_reactorsText.length) return;
-    [self rebuildAnimated:NO];
+    if (_sheet && _reactorsText.length) [self rebuild];
 }
 
 - (void)setReactions:(NSArray *)reactions {
     [_reactions release];
     _reactions = [reactions copy];
-    if (!_card) return;
-    if (!_shown) {
-        [self rebuildAnimated:NO];
-        return;
+    if (_sheet) [self rebuild];
+}
+
+#pragma mark the black strip
+
+- (void)barDown:(UIButton *)button { button.backgroundColor = [UIColor colorWithWhite:1 alpha:0.25]; }
+- (void)barUp:(UIButton *)button { button.backgroundColor = [UIColor clearColor]; }
+
+/* the strip of one-tap actions: white words on a black rounded plate with thin lines between them, and an arrow toward the message; the arrow is drawn at the bottom when the
+   strip stands over the message and at the top when it stands under it */
+- (UIView *)buildBarPointingDown:(BOOL)down {
+    UIFont *font = [UIFont systemFontOfSize:14];
+    CGFloat width = 0;
+    NSMutableArray *widths = [NSMutableArray array];
+    for (NoshiMenuItem *item in _icons) {
+        CGFloat each = ceil(NoshiStringSize(item.title, font).width) + 2 * BAR_BUTTON_PAD;
+        [widths addObject:[NSNumber numberWithDouble:each]];
+        width += each;
     }
-    /* the answer came after the menu was up: the pill grows in beside the card, and the card stays where it is drawn */
-    [_pill removeFromSuperview];
-    [_pill release];
-    _pill = _reactions.count ? [[self buildPill] retain] : nil;
-    if (!_pill) return;
-    [self addSubview:_pill];
-    _pill.alpha = 0;
-    _pill.transform = CGAffineTransformMakeTranslation(0, 8);
-    [self layoutStack];
-    NoshiAnimateView(_pill, CGAffineTransformIdentity, 1, NoshiPopupCurve(YES), nil);
+    CGFloat room = self.bounds.size.width - 2 * SHEET_EDGE;
+    CGFloat squeeze = width > room ? room / width : 1;
+    width = MIN(width, room);
+    UIView *bar = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, BAR_HEIGHT + BAR_ARROW_HEIGHT)] autorelease];
+    UIView *plate = [[[UIView alloc] initWithFrame:CGRectMake(0, down ? 0 : BAR_ARROW_HEIGHT, width, BAR_HEIGHT)] autorelease];
+    plate.backgroundColor = [UIColor colorWithWhite:0 alpha:0.86];
+    plate.layer.cornerRadius = BAR_RADIUS;
+    plate.clipsToBounds = YES;
+    plate.tag = 2;
+    [bar addSubview:plate];
+    CGFloat x = 0;
+    for (NSUInteger i = 0; i < _icons.count; ++i) {
+        NoshiMenuItem *item = [_icons objectAtIndex:i];
+        CGFloat each = floor([[widths objectAtIndex:i] doubleValue] * squeeze);
+        if (i == _icons.count - 1) each = width - x;
+        UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+        button.frame = CGRectMake(x, 0, each, BAR_HEIGHT);
+        button.tag = (NSInteger)item.tag;
+        button.titleLabel.font = font;
+        button.titleLabel.adjustsFontSizeToFitWidth = YES;
+        [button setTitle:item.title forState:UIControlStateNormal];
+        [button setTitleColor:item.destructive ? NoshiSheetRed() : [UIColor whiteColor] forState:UIControlStateNormal];
+        [button addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [button addTarget:self action:@selector(barDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+        [button addTarget:self action:@selector(barUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+        [plate addSubview:button];
+        if (i > 0) {
+            UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(x, 0, 1.0f / NoshiScreenScale(), BAR_HEIGHT)] autorelease];
+            line.backgroundColor = [UIColor colorWithWhite:1 alpha:0.25];
+            line.userInteractionEnabled = NO;
+            [plate addSubview:line];
+        }
+        x += each;
+    }
+    /* the arrow is a triangle in the color of the plate, set where the message is by the layout */
+    CAShapeLayer *arrow = [CAShapeLayer layer];
+    UIBezierPath *path = [UIBezierPath bezierPath];
+    if (down) {
+        [path moveToPoint:CGPointMake(0, 0)];
+        [path addLineToPoint:CGPointMake(BAR_ARROW_WIDTH, 0)];
+        [path addLineToPoint:CGPointMake(BAR_ARROW_WIDTH / 2, BAR_ARROW_HEIGHT)];
+    } else {
+        [path moveToPoint:CGPointMake(0, BAR_ARROW_HEIGHT)];
+        [path addLineToPoint:CGPointMake(BAR_ARROW_WIDTH, BAR_ARROW_HEIGHT)];
+        [path addLineToPoint:CGPointMake(BAR_ARROW_WIDTH / 2, 0)];
+    }
+    [path closePath];
+    arrow.path = path.CGPath;
+    arrow.fillColor = [UIColor colorWithWhite:0 alpha:0.86].CGColor;
+    arrow.frame = CGRectMake(0, down ? BAR_HEIGHT : 0, BAR_ARROW_WIDTH, BAR_ARROW_HEIGHT);
+    arrow.name = @"arrow";
+    [bar.layer addSublayer:arrow];
+    return bar;
 }
 
-/* the rows that show now: all of them, or the first few and the entry that opens the rest */
-- (NSArray *)visibleRows {
-    if (_expanded || _rows.count <= ROWS_SHOWN + 1) return _rows;
-    NSMutableArray *shown = [NSMutableArray arrayWithArray:[_rows subarrayWithRange:NSMakeRange(0, ROWS_SHOWN)]];
-    [shown addObject:[NoshiMenuItem itemWithTitle:NSLocalizedString(@"chat.msg.more", nil) symbol:NoshiSymbolEllipsis tag:MORE_TAG destructive:NO]];
-    return shown;
+#pragma mark the white sheet
+
+- (void)sheetDown:(UIButton *)row { row.backgroundColor = NoshiSheetPress(); }
+- (void)sheetUp:(UIButton *)row { row.backgroundColor = [UIColor clearColor]; }
+
+- (UIView *)lineOfWidth:(CGFloat)width atY:(CGFloat)y {
+    UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, y, width, 1.0f / NoshiScreenScale())] autorelease];
+    line.backgroundColor = NoshiSheetLine();
+    line.userInteractionEnabled = NO;
+    return line;
 }
 
-- (UIView *)bandOfWidth:(CGFloat)width {
-    UIView *band = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, BAND_HEIGHT)] autorelease];
-    band.backgroundColor = NoshiMenuBand();
-    return band;
-}
-
-- (UIButton *)rowForItem:(NoshiMenuItem *)item width:(CGFloat)width {
+/* a button of the sheet: its title in the middle, in the accent or in red */
+- (UIButton *)sheetRowForItem:(NoshiMenuItem *)item width:(CGFloat)width {
     UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
-    row.frame = CGRectMake(0, 0, width, ROW_HEIGHT);
+    row.frame = CGRectMake(0, 0, width, SHEET_ROW);
     row.tag = (NSInteger)item.tag;
-    row.accessibilityLabel = item.title;
+    row.titleLabel.font = [UIFont systemFontOfSize:20];
+    row.titleLabel.adjustsFontSizeToFitWidth = YES;
+    row.contentEdgeInsets = UIEdgeInsetsMake(0, 12, 0, 12);
+    [row setTitle:item.title forState:UIControlStateNormal];
+    [row setTitleColor:item.destructive ? NoshiSheetRed() : NoshiColorAccent() forState:UIControlStateNormal];
     [row addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
-    [row addTarget:self action:@selector(rowDown:) forControlEvents:UIControlEventTouchDown];
-    [row addTarget:self action:@selector(rowUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-    UIColor *color = item.destructive ? NoshiMenuRed() : NoshiMenuText();
-    UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(item.symbol, 24, color)] autorelease];
-    icon.contentMode = UIViewContentModeCenter;
-    icon.frame = CGRectMake(14, (ROW_HEIGHT - 28) / 2, 30, 28);
-    icon.userInteractionEnabled = NO;
-    [row addSubview:icon];
-    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(58, 0, width - 70, ROW_HEIGHT)] autorelease];
-    label.backgroundColor = [UIColor clearColor];
-    label.textColor = color;
-    label.text = item.title;
-    label.userInteractionEnabled = NO;
-    if (NoshiMenuClassic()) NoshiClassicStyleMenuLabel(label, 16);
-    else label.font = NoshiFontMedium(16.5);
-    [row addSubview:label];
+    [row addTarget:self action:@selector(sheetDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [row addTarget:self action:@selector(sheetUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
     return row;
 }
 
-- (void)rowDown:(UIButton *)row {
-    row.backgroundColor = NoshiMenuClassic() ? NoshiClassicMenuPressColor() : NoshiColorField();
-}
-
-- (void)rowUp:(UIButton *)row { row.backgroundColor = [UIColor clearColor]; }
-
-/* a line of the top of the card: a mark, a text, and at the right end the first three faces, each over the edge of the one before, as in the other clients; a tap runs action */
-- (UIView *)headerLineWithMark:(UIImage *)markImage text:(NSString *)text people:(NSArray *)people action:(SEL)action width:(CGFloat)width
-                       outMark:(UIImageView **)outMark outLabel:(UILabel **)outLabel {
-    UIView *header = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, HEADER_HEIGHT)] autorelease];
-    UIImageView *mark = [[[UIImageView alloc] initWithImage:markImage] autorelease];
-    mark.frame = CGRectMake(16, (HEADER_HEIGHT - mark.image.size.height) / 2, mark.image.size.width, mark.image.size.height);
-    [header addSubview:mark];
-    CGFloat textX = CGRectGetMaxX(mark.frame) + 10;
+/* a small grey line of the top of the sheet: a mark, a text in the middle, and at the right end the first three faces, each over the edge of the one before; a tap runs action */
+- (UIView *)infoLineWithMark:(UIImage *)markImage text:(NSString *)text people:(NSArray *)people action:(SEL)action width:(CGFloat)width
+                     outMark:(UIImageView **)outMark outLabel:(UILabel **)outLabel {
+    UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, SHEET_LINE)] autorelease];
+    UIFont *font = [UIFont systemFontOfSize:14];
     NSUInteger faces = MIN(people.count, (NSUInteger)3);
-    CGFloat faceSide = 24, faceStep = 16;
+    CGFloat faceSide = 22, faceStep = 14;
     CGFloat facesWidth = faces ? faceSide + (CGFloat)(faces - 1) * faceStep : 0;
-    CGFloat textRoom = width - textX - 12 - (faces ? facesWidth + 8 : 0);
+    CGFloat textWidth = MIN(ceil(NoshiStringSize(text, font).width), width - 2 * 16 - 24 - (faces ? 2 * (facesWidth + 8) : 0));
+    CGFloat markWidth = markImage ? markImage.size.width + 6 : 0;
+    CGFloat startX = floor((width - textWidth - markWidth) / 2);
+    UIImageView *mark = [[[UIImageView alloc] initWithImage:markImage] autorelease];
+    mark.frame = CGRectMake(startX, floor((SHEET_LINE - markImage.size.height) / 2), markImage.size.width, markImage.size.height);
+    [line addSubview:mark];
+    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(startX + markWidth, 0, textWidth, SHEET_LINE)] autorelease];
+    label.backgroundColor = [UIColor clearColor];
+    label.font = font;
+    label.textColor = NoshiColorSecondary();
+    label.text = text;
+    label.adjustsFontSizeToFitWidth = YES;
+    [line addSubview:label];
     for (NSUInteger i = 0; i < faces; ++i) {
         NoshiPerson *person = [people objectAtIndex:i];
-        NoshiAvatarView *face = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(width - 14 - facesWidth + (CGFloat)i * faceStep, (HEADER_HEIGHT - faceSide) / 2, faceSide, faceSide)] autorelease];
+        NoshiAvatarView *face = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(width - 14 - facesWidth + (CGFloat)i * faceStep, (SHEET_LINE - faceSide) / 2, faceSide, faceSide)] autorelease];
         face.seed = (NSUInteger)(person.userId % 1000003);
         face.initials = person.initials;
         face.deleted = person.deleted;
         face.userInteractionEnabled = NO;
         [face setPhoto:person.photo cache:_headerCache];
-        [header addSubview:face];
+        [line addSubview:face];
     }
-    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(textX, 0, textRoom, HEADER_HEIGHT)] autorelease];
-    label.backgroundColor = [UIColor clearColor];
-    label.font = NoshiMenuClassic() ? [UIFont boldSystemFontOfSize:15] : NoshiFontMedium(15.5);
-    label.textColor = NoshiMenuText();
-    label.text = text;
-    label.adjustsFontSizeToFitWidth = YES;
-    [header addSubview:label];
     if (action) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-        button.frame = header.bounds;
+        button.tag = 1;
+        button.frame = line.bounds;
         button.accessibilityLabel = text;
         [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-        [header addSubview:button];
+        [button addTarget:self action:@selector(sheetDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+        [button addTarget:self action:@selector(sheetUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+        [line insertSubview:button atIndex:0];
     }
     if (outMark) *outMark = mark;
     if (outLabel) *outLabel = label;
-    return header;
-}
-
-/* the card: header, rows and glyph row, with a band between each part, built again whenever its content or the open "More" changes */
-- (UIView *)buildCardWithMaxHeight:(CGFloat)maxHeight {
-    CGFloat width = MIN(CARD_WIDTH, self.bounds.size.width - 2 * EDGE);
-    UIView *content = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 0)] autorelease];
-    CGFloat y = 0;
-    [_headerMark release];
-    [_headerLabel release];
-    [_headerView release];
-    _headerMark = nil;
-    _headerLabel = nil;
-    _headerView = nil;
-    if (_headerText.length) {
-        UIImageView *mark = nil;
-        UILabel *label = nil;
-        UIView *header = [self headerLineWithMark:NoshiCheckImage(_headerRead, 18, NoshiMenuText()) text:_headerText people:_headerPeople
-                                          action:_headerHandler ? @selector(headerTapped) : NULL width:width outMark:&mark outLabel:&label];
-        header.frame = CGRectMake(0, y, width, HEADER_HEIGHT);
-        _headerView = [header retain];
-        _headerMark = [mark retain];
-        _headerLabel = [label retain];
-        [content addSubview:header];
-        y += HEADER_HEIGHT;
-    }
-    if (_reactorsText.length) {
-        UIView *line = [self headerLineWithMark:NoshiSymbolImage(NoshiSymbolHeartOutline, 20, NoshiMenuText()) text:_reactorsText people:_reactorsPeople
-                                        action:_reactorsHandler ? @selector(reactorsTapped) : NULL width:width outMark:NULL outLabel:NULL];
-        line.frame = CGRectMake(0, y, width, HEADER_HEIGHT);
-        [content addSubview:line];
-        y += HEADER_HEIGHT;
-    }
-    if (_headerText.length || _reactorsText.length) {
-        UIView *band = [self bandOfWidth:width];
-        band.frame = CGRectMake(0, y, width, BAND_HEIGHT);
-        [content addSubview:band];
-        y += BAND_HEIGHT;
-    }
-    NSArray *visible = [self visibleRows];
-    for (NSUInteger i = 0; i < visible.count; ++i) {
-        UIButton *row = [self rowForItem:[visible objectAtIndex:i] width:width];
-        row.frame = CGRectMake(0, y, width, ROW_HEIGHT);
-        [content addSubview:row];
-        y += ROW_HEIGHT;
-    }
-    if (visible.count && _icons.count) {
-        UIView *band = [self bandOfWidth:width];
-        band.frame = CGRectMake(0, y, width, BAND_HEIGHT);
-        [content addSubview:band];
-        y += BAND_HEIGHT;
-    }
-    if (_icons.count) {
-        CGFloat each = width / (CGFloat)_icons.count;
-        for (NSUInteger i = 0; i < _icons.count; ++i) {
-            NoshiMenuItem *item = [_icons objectAtIndex:i];
-            UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-            button.frame = CGRectMake(each * (CGFloat)i, y, each, ICON_ROW_HEIGHT);
-            button.tag = (NSInteger)item.tag;
-            button.accessibilityLabel = item.title;
-            [button setImage:NoshiSymbolImage(item.symbol, 26, item.destructive ? NoshiMenuRed() : NoshiMenuText()) forState:UIControlStateNormal];
-            [button addTarget:self action:@selector(rowTapped:) forControlEvents:UIControlEventTouchUpInside];
-            [button addTarget:self action:@selector(rowDown:) forControlEvents:UIControlEventTouchDown];
-            [button addTarget:self action:@selector(rowUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-            [content addSubview:button];
-        }
-        y += ICON_ROW_HEIGHT;
-    }
-    content.frame = CGRectMake(0, 0, width, y);
-    UIView *card = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, MIN(y, maxHeight))] autorelease];
-    NoshiMenuSkin(card, NoshiMenuClassic() ? 10 : 18);
-    UIScrollView *clip = [[[UIScrollView alloc] initWithFrame:card.bounds] autorelease];
-    clip.contentSize = content.bounds.size;
-    clip.layer.cornerRadius = card.layer.cornerRadius;
-    clip.clipsToBounds = YES;
-    clip.showsVerticalScrollIndicator = NO;
-    clip.bounces = y > maxHeight;
-    [clip addSubview:content];
-    [card addSubview:clip];
-    return card;
+    return line;
 }
 
 /* the reactions of the pill pop in together with the animation the server keeps for each; the still icon stays under it until its
@@ -433,22 +377,21 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
                      animations:^{ button.transform = CGAffineTransformIdentity; } completion:nil];
 }
 
-/* the pill of reactions: the first of them and an arrow that opens the whole list */
-- (UIView *)buildPill {
-    NSUInteger shown = MIN(_reactions.count, (NSUInteger)REACTIONS_SHOWN);
+/* the reactions stand in one row at the top of the sheet: the first of them, and an arrow that opens the whole list */
+- (UIView *)reactionsRowOfWidth:(CGFloat)width {
     CGFloat arrow = 36;
-    CGFloat room = self.bounds.size.width - 2 * EDGE - 2 * PILL_PAD - arrow - 6;
-    shown = MIN(shown, (NSUInteger)floor(room / PILL_ITEM));
-    CGFloat width = 2 * PILL_PAD + (CGFloat)shown * PILL_ITEM + 6 + arrow;
-    UIView *pill = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, PILL_HEIGHT)] autorelease];
-    NoshiMenuSkin(pill, PILL_HEIGHT / 2);
+    NSUInteger shown = MIN(_reactions.count, (NSUInteger)REACTIONS_SHOWN);
+    shown = MIN(shown, (NSUInteger)floor((width - 2 * 10 - arrow - 6) / PILL_ITEM));
+    UIView *row = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, SHEET_ROW)] autorelease];
+    CGFloat used = (CGFloat)shown * PILL_ITEM + 6 + arrow;
+    CGFloat x = floor((width - used) / 2);
     for (NSUInteger i = 0; i < shown; ++i) {
         NoshiReaction *reaction = [_reactions objectAtIndex:i];
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-        button.frame = CGRectMake(PILL_PAD + (CGFloat)i * PILL_ITEM, (PILL_HEIGHT - PILL_ITEM) / 2, PILL_ITEM, PILL_ITEM);
+        button.frame = CGRectMake(x + (CGFloat)i * PILL_ITEM, (SHEET_ROW - PILL_ITEM) / 2, PILL_ITEM, PILL_ITEM);
         button.tag = (NSInteger)i;
         button.layer.cornerRadius = PILL_ITEM / 2;
-        if (reaction.chosen) button.backgroundColor = [NoshiColorAccent() colorWithAlphaComponent:0.35];
+        if (reaction.chosen) button.backgroundColor = [NoshiColorAccent() colorWithAlphaComponent:0.25];
         button.accessibilityLabel = reaction.displayText;
         [button addTarget:self action:@selector(reactionTapped:) forControlEvents:UIControlEventTouchUpInside];
         [button addTarget:self action:@selector(reactionDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
@@ -462,146 +405,154 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
         label.userInteractionEnabled = NO;
         label.tag = NOSHI_REACTION_LABEL_TAG;
         [button addSubview:label];
-        [pill addSubview:button];
+        [row addSubview:button];
         [self playAppearOfReaction:reaction inButton:button label:label];
     }
     UIButton *more = [UIButton buttonWithType:UIButtonTypeCustom];
-    more.frame = CGRectMake(width - PILL_PAD - arrow, (PILL_HEIGHT - arrow) / 2, arrow, arrow);
+    more.frame = CGRectMake(x + (CGFloat)shown * PILL_ITEM + 6, (SHEET_ROW - arrow) / 2, arrow, arrow);
     more.layer.cornerRadius = arrow / 2;
-    more.backgroundColor = NoshiMenuCharcoal() ? [UIColor colorWithWhite:1 alpha:0.18] : (NoshiMenuClassic() ? [UIColor colorWithWhite:0 alpha:0.1] : [UIColor colorWithWhite:0.5 alpha:0.3]);
-    /* the arrow is the chevron of the lists turned a quarter */
-    [more setImage:NoshiSymbolImage(NoshiSymbolChevronRight, 18, NoshiMenuText()) forState:UIControlStateNormal];
+    more.backgroundColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.12] : [UIColor colorWithWhite:0 alpha:0.06];
+    [more setImage:NoshiSymbolImage(NoshiSymbolChevronRight, 18, NoshiColorSecondary()) forState:UIControlStateNormal];
     more.imageView.transform = CGAffineTransformMakeRotation(M_PI_2);
     more.accessibilityLabel = NSLocalizedString(@"chat.reactions", nil);
     [more addTarget:self action:@selector(moreReactionsTapped) forControlEvents:UIControlEventTouchUpInside];
-    [pill addSubview:more];
-    return pill;
+    [row addSubview:more];
+    return row;
+}
+
+/* the sheet: the reactions and the lines about the message on top, then a button for each action, all on one white plate with rounded corners that scrolls when it is taller
+   than the room */
+- (UIView *)buildSheetWithMaxHeight:(CGFloat)maxHeight {
+    CGFloat width = MIN(self.bounds.size.width - 2 * SHEET_EDGE, 400);
+    UIView *content = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 0)] autorelease];
+    CGFloat y = 0;
+    [_headerMark release];
+    [_headerLabel release];
+    [_headerView release];
+    _headerMark = nil;
+    _headerLabel = nil;
+    _headerView = nil;
+    if (_reactions.count) {
+        UIView *row = [self reactionsRowOfWidth:width];
+        row.frame = CGRectMake(0, y, width, SHEET_ROW);
+        [content addSubview:row];
+        y += SHEET_ROW;
+    }
+    if (_headerText.length) {
+        if (y > 0) [content addSubview:[self lineOfWidth:width atY:y]];
+        UIImageView *mark = nil;
+        UILabel *label = nil;
+        UIView *line = [self infoLineWithMark:NoshiCheckImage(_headerRead, 16, NoshiColorSecondary()) text:_headerText people:_headerPeople
+                                       action:_headerHandler ? @selector(headerTapped) : NULL width:width outMark:&mark outLabel:&label];
+        line.frame = CGRectMake(0, y, width, SHEET_LINE);
+        _headerView = [line retain];
+        _headerMark = [mark retain];
+        _headerLabel = [label retain];
+        [content addSubview:line];
+        y += SHEET_LINE;
+    }
+    if (_reactorsText.length) {
+        if (y > 0) [content addSubview:[self lineOfWidth:width atY:y]];
+        UIView *line = [self infoLineWithMark:NoshiSymbolImage(NoshiSymbolHeartOutline, 16, NoshiColorSecondary()) text:_reactorsText people:_reactorsPeople
+                                       action:_reactorsHandler ? @selector(reactorsTapped) : NULL width:width outMark:NULL outLabel:NULL];
+        line.frame = CGRectMake(0, y, width, SHEET_LINE);
+        [content addSubview:line];
+        y += SHEET_LINE;
+    }
+    for (NoshiMenuItem *item in _rows) {
+        if (y > 0) [content addSubview:[self lineOfWidth:width atY:y]];
+        UIButton *row = [self sheetRowForItem:item width:width];
+        row.frame = CGRectMake(0, y, width, SHEET_ROW);
+        [content insertSubview:row atIndex:0];
+        y += SHEET_ROW;
+    }
+    content.frame = CGRectMake(0, 0, width, y);
+    UIView *sheet = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, MIN(y, maxHeight))] autorelease];
+    sheet.backgroundColor = NoshiSheetGround();
+    sheet.layer.cornerRadius = SHEET_RADIUS;
+    sheet.clipsToBounds = YES;
+    UIScrollView *scroll = [[[UIScrollView alloc] initWithFrame:sheet.bounds] autorelease];
+    scroll.contentSize = content.bounds.size;
+    scroll.showsVerticalScrollIndicator = NO;
+    scroll.bounces = y > maxHeight;
+    scroll.delaysContentTouches = NO;
+    [scroll addSubview:content];
+    [sheet addSubview:scroll];
+    return sheet;
 }
 
 #pragma mark layout
 
-/* the reaction pill sits above the visible message and the card below it */
-- (void)layoutStack {
+/* the sheet sits at the bottom; the lit message moves up so it stands over the sheet, and the strip goes over the message, or under it when the bar above leaves no room */
+- (void)layout {
     CGSize size = self.bounds.size;
-    CGFloat top = EDGE + (0), bottom = size.height - EDGE;
-    CGFloat pillHeight = _pill ? _pill.frame.size.height : 0;
-    CGFloat cardHeight = _card.frame.size.height;
-    CGFloat cardY = MIN(CGRectGetMaxY(_bubble) + GAP, bottom - cardHeight);
-    CGFloat pillY = top;
-    double calculatedPill = 0, calculatedCard = 0, shift = 0;
-    if (_pill && noshi_reaction_menu_stack(top, bottom, CGRectGetMinY(_bubble), CGRectGetMaxY(_bubble), pillHeight, cardHeight, GAP,
-                                             &calculatedPill, &calculatedCard, &shift) == NOSHI_OK) {
-        pillY = (CGFloat)calculatedPill;
-        cardY = (CGFloat)calculatedCard;
-    }
-    [self moveLitBy:(CGFloat)shift];
-    CGFloat cardX = _outgoing ? CGRectGetMaxX(_bubble) - _card.frame.size.width : CGRectGetMinX(_bubble);
-    cardX = MIN(MAX(EDGE, cardX), size.width - EDGE - _card.frame.size.width);
-    _card.frame = CGRectMake(cardX, cardY, _card.frame.size.width, cardHeight);
-    if (_pill) {
-        CGFloat pillX = _outgoing ? CGRectGetMaxX(_bubble) - _pill.frame.size.width : CGRectGetMinX(_bubble);
-        pillX = MIN(MAX(EDGE, pillX), size.width - EDGE - _pill.frame.size.width);
-        _pill.frame = CGRectMake(pillX, pillY, _pill.frame.size.width, pillHeight);
+    CGFloat sheetHeight = _sheet ? _sheet.frame.size.height : 0;
+    CGFloat sheetY = size.height - SHEET_EDGE - sheetHeight;
+    _sheet.frame = CGRectMake(floor((size.width - _sheet.frame.size.width) / 2), sheetY, _sheet.frame.size.width, sheetHeight);
+    CGFloat top = SHEET_EDGE;
+    CGFloat limit = (_sheet ? sheetY : size.height) - GAP;
+    CGFloat shift = 0;
+    if (CGRectGetMaxY(_bubble) > limit) shift = limit - CGRectGetMaxY(_bubble);
+    /* a tall message keeps its top in view, with room for the strip over it */
+    CGFloat lowestTop = top + BAR_HEIGHT + BAR_ARROW_HEIGHT;
+    if (CGRectGetMinY(_bubble) + shift < lowestTop) shift = MIN(0, lowestTop - CGRectGetMinY(_bubble));
+    [self moveLitBy:shift];
+    CGRect bubble = CGRectOffset(_bubble, 0, shift);
+    if (!_bar) return;
+    BOOL down = CGRectGetMinY(bubble) - BAR_HEIGHT - BAR_ARROW_HEIGHT >= top;
+    CGFloat barWidth = _bar.frame.size.width;
+    CGFloat center = CGRectGetMidX(bubble);
+    CGFloat barX = MIN(MAX(SHEET_EDGE, floor(center - barWidth / 2)), size.width - SHEET_EDGE - barWidth);
+    CGFloat barY = down ? CGRectGetMinY(bubble) - BAR_HEIGHT - BAR_ARROW_HEIGHT : MIN(CGRectGetMaxY(bubble), limit - BAR_HEIGHT - BAR_ARROW_HEIGHT);
+    _bar.frame = CGRectMake(barX, MAX(top, barY), barWidth, BAR_HEIGHT + BAR_ARROW_HEIGHT);
+    for (CALayer *layer in _bar.layer.sublayers) {
+        if (![layer.name isEqualToString:@"arrow"]) continue;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        CGFloat arrowX = MIN(MAX(BAR_RADIUS, center - barX - BAR_ARROW_WIDTH / 2), barWidth - BAR_RADIUS - BAR_ARROW_WIDTH);
+        layer.frame = CGRectMake(arrowX, layer.frame.origin.y, BAR_ARROW_WIDTH, BAR_ARROW_HEIGHT);
+        [CATransaction commit];
     }
 }
 
-/* the lit copy of the message makes room for the pill and the card by the shift the layout asks for; once the menu is up it slides there, and it slides back when the menu
-   goes, so the message never jumps between the lit copy and the one in the list */
+/* the lit copy of the message moves by the shift the layout asks for; once the menu is up it slides there, and it slides back when the menu goes, so the message never jumps
+   between the lit copy and the one in the list */
 - (void)moveLitBy:(CGFloat)shift {
     if (!_lit) return;
     BOOL changed = shift != _litShift;
     _litShift = shift;
     CGRect target = CGRectOffset(_litOriginalFrame, 0, shift);
     if (!_shown || !changed || NoshiReduceMotionEnabled()) {
-        _lit.frame = target;
+        _litClip.frame = target;
         return;
     }
-    [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState animations:^{ _lit.frame = target; } completion:nil];
+    [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState animations:^{ _litClip.frame = target; } completion:nil];
 }
 
-- (void)rebuildAnimated:(BOOL)animated {
-    CGFloat available = self.bounds.size.height - 2 * EDGE - 24 - (_reactions.count ? PILL_HEIGHT + GAP : 0);
-    [_card removeFromSuperview];
-    [_card release];
-    _card = [[self buildCardWithMaxHeight:MAX(120, available)] retain];
-    [_pill removeFromSuperview];
-    [_pill release];
-    _pill = _reactions.count ? [[self buildPill] retain] : nil;
-    [self addSubview:_card];
-    NoshiAddDismissPan(_card, self, @selector(dismiss));
-    if (_pill) [self addSubview:_pill];
-    [self layoutStack];
-    if (animated) {
-        _card.alpha = 0;
-        [UIView animateWithDuration:0.16 animations:^{ _card.alpha = 1; }];
+/* the strip points down at the message when there is room over it, which is known only once the sheet is placed, so it is built after a first layout */
+- (void)rebuild {
+    [_sheet removeFromSuperview];
+    [_sheet release];
+    _sheet = nil;
+    if (_rows.count || _reactions.count || _headerText.length || _reactorsText.length) {
+        _sheet = [[self buildSheetWithMaxHeight:MAX(SHEET_ROW * 2, floor(self.bounds.size.height * 0.55))] retain];
+        [self addSubview:_sheet];
+        NoshiAddDismissPan(_sheet, self, @selector(dismiss));
+    }
+    [_bar removeFromSuperview];
+    [_bar release];
+    _bar = nil;
+    [self layout];
+    if (_icons.count) {
+        CGRect bubble = CGRectOffset(_bubble, 0, _litShift);
+        BOOL down = CGRectGetMinY(bubble) - BAR_HEIGHT - BAR_ARROW_HEIGHT >= SHEET_EDGE;
+        _bar = [[self buildBarPointingDown:down] retain];
+        [self addSubview:_bar];
+        [self layout];
     }
 }
 
 #pragma mark show and close
-
-/* the card opens as the popup of exteraless does: its background grows from the edge that is next to the message while it fades in, and the rows come one after
-   another, each from 6 points off, over 150 ms plus 16 ms a row; nothing scales, so there is no overshoot to see */
-static void NoshiRevealCard(UIView *card, BOOL fromTop) {
-    UIView *content = nil;
-    if (card.subviews.count) {
-        UIView *clip = [card.subviews objectAtIndex:0];
-        if (clip.subviews.count) content = [clip.subviews objectAtIndex:0];
-    }
-    NSUInteger count = content.subviews.count;
-    CFTimeInterval duration = 0.15 + 0.016 * (CFTimeInterval)count;
-    /* the margin keeps the shadow outside the card visible while the mask grows */
-    const CGFloat margin = 24;
-    CGRect full = CGRectInset(card.bounds, -margin, -margin);
-    CGRect start = CGRectMake(full.origin.x, fromTop ? full.origin.y : CGRectGetMaxY(full) - margin, full.size.width, margin);
-    CAShapeLayer *mask = [CAShapeLayer layer];
-    mask.frame = card.bounds;
-    mask.fillColor = [UIColor blackColor].CGColor;
-    mask.path = [UIBezierPath bezierPathWithRect:full].CGPath;
-    card.layer.mask = mask;
-    CAMediaTimingFunction *ease = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [CATransaction begin];
-    [CATransaction setCompletionBlock:^{ card.layer.mask = nil; }];
-    CABasicAnimation *grow = [CABasicAnimation animationWithKeyPath:@"path"];
-    grow.fromValue = (id)[UIBezierPath bezierPathWithRect:start].CGPath;
-    grow.toValue = (id)[UIBezierPath bezierPathWithRect:full].CGPath;
-    grow.duration = duration;
-    grow.timingFunction = ease;
-    [mask addAnimation:grow forKey:@"noshigram.menu.reveal"];
-    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = [NSNumber numberWithFloat:0];
-    fade.toValue = [NSNumber numberWithFloat:1];
-    fade.duration = duration;
-    fade.timingFunction = ease;
-    [card.layer addAnimation:fade forKey:@"noshigram.menu.fade"];
-    [CATransaction commit];
-    for (NSUInteger i = 0; i < count; ++i) {
-        UIView *row = [content.subviews objectAtIndex:i];
-        CFTimeInterval delay = count > 1 ? duration * 0.4 * (CFTimeInterval)i / (CFTimeInterval)(count - 1) : 0;
-        CABasicAnimation *rowFade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        rowFade.fromValue = [NSNumber numberWithFloat:0];
-        rowFade.toValue = [NSNumber numberWithFloat:1];
-        CABasicAnimation *rowMove = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        rowMove.fromValue = [NSNumber numberWithFloat:fromTop ? -6 : 6];
-        rowMove.toValue = [NSNumber numberWithFloat:0];
-        CAAnimationGroup *group = [CAAnimationGroup animation];
-        group.animations = [NSArray arrayWithObjects:rowFade, rowMove, nil];
-        group.duration = duration * 0.6;
-        group.beginTime = [row.layer convertTime:CACurrentMediaTime() fromLayer:nil] + delay;
-        group.fillMode = kCAFillModeBackwards;
-        group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
-        /* each row fades and moves alone, and a row with a label and a picture is a group that fades off screen on every frame unless it is a bitmap first */
-        NoshiCacheForMotion(row);
-        [row.layer addAnimation:group forKey:@"noshigram.menu.row"];
-    }
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)((duration + 0.05) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        for (UIView *row in content.subviews) NoshiUncacheAfterMotion(row);
-    });
-}
-
-/* the card is below the message unless the screen had no room for it there */
-- (BOOL)cardOpensDownward {
-    return CGRectGetMidY(_card.frame) >= CGRectGetMidY(_bubble);
-}
 
 - (void)showInView:(UIView *)host bubble:(CGRect)bubble outgoing:(BOOL)outgoing snapshot:(UIImage *)snapshot snapshotFrame:(CGRect)snapshotFrame clip:(CGRect)clip {
     if (self.superview) return;
@@ -610,94 +561,50 @@ static void NoshiRevealCard(UIView *card, BOOL fromTop) {
     _bubble = bubble;
     _outgoing = outgoing;
     _dim = [[UIControl alloc] initWithFrame:self.bounds];
-    _dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.45];
+    _dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.4];
     _dim.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [_dim addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_dim];
-    /* taken before the menu joins the host, so the picture holds the chat and nothing of the menu; it fades in with the dim */
-    UIView *blur = NoshiBlurBackdrop(host, self.bounds);
-    if (blur) {
-        blur.userInteractionEnabled = NO;
-        blur.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        _dim.backgroundColor = [UIColor colorWithWhite:0 alpha:0.12];
-        [_dim insertSubview:blur atIndex:0];
-    }
     if (snapshot) {
-        /* only the part of the row that shows in the list stays lit, so it never reaches over the bar above or the field below */
-        _litClip = [[UIView alloc] initWithFrame:clip];
+        /* only the bubble stays lit: the picture of the row holds the wallpaper beside it too, which the dim must cover; the window of the bubble moves with the layout,
+           and the part of the bubble the list shows is what stays lit of a taller one */
+        CGRect window = CGRectIntersection(CGRectInset(bubble, -3, -3), CGRectIntersection(clip, self.bounds));
+        if (CGRectIsNull(window)) window = CGRectZero;
+        _litClip = [[UIView alloc] initWithFrame:window];
         _litClip.clipsToBounds = YES;
         _litClip.userInteractionEnabled = NO;
         _lit = [[UIImageView alloc] initWithImage:snapshot];
-        _lit.frame = CGRectOffset(snapshotFrame, -clip.origin.x, -clip.origin.y);
-        _litOriginalFrame = _lit.frame;
+        _lit.frame = CGRectOffset(snapshotFrame, -window.origin.x, -window.origin.y);
+        _litOriginalFrame = window;
         [_litClip addSubview:_lit];
         [self addSubview:_litClip];
     }
-    [self rebuildAnimated:NO];
+    [self rebuild];
     [host addSubview:self];
-    if (_lit && _litShift != 0 && !NoshiReduceMotionEnabled()) {
-        /* it starts where the message is in the list, and rises to the place the layout gave it */
-        CGRect target = _lit.frame;
-        _lit.frame = _litOriginalFrame;
-        [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ _lit.frame = target; } completion:nil];
+    BOOL still = NoshiReduceMotionEnabled();
+    if (_lit && _litShift != 0 && !still) {
+        CGRect target = _litClip.frame;
+        _litClip.frame = _litOriginalFrame;
+        [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ _litClip.frame = target; } completion:nil];
     }
     _shown = YES;
+    if (still) return;
     _dim.alpha = 0;
-    NoshiAnimateView(_dim, CGAffineTransformIdentity, 1, NoshiPopupCurve(YES), nil);
-    if (!NoshiReduceMotionEnabled()) NoshiRevealCard(_card, [self cardOpensDownward]);
-    if (_pill && !NoshiReduceMotionEnabled()) {
-        _pill.alpha = 0;
-        _pill.transform = CGAffineTransformMakeTranslation(0, 8);
-        NoshiAnimateView(_pill, CGAffineTransformIdentity, 1, NoshiPopupCurve(YES), nil);
+    [UIView animateWithDuration:0.2 animations:^{ _dim.alpha = 1; }];
+    /* the sheet rises from under the bottom edge and the strip fades in over the message, as the menus of telegram for ios 4 came */
+    if (_sheet) {
+        CGRect rest = _sheet.frame;
+        _sheet.frame = CGRectOffset(rest, 0, self.bounds.size.height - rest.origin.y);
+        [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{ _sheet.frame = rest; } completion:nil];
     }
-}
-
-/* the classic card closes the way it opened, backwards: its plate shrinks back into the edge that is next to the message while it fades, and the rows go first. the plate has a
-   layer of its own and a shadow, which a plain fade left as a blink */
-static void NoshiConcealCard(UIView *card, BOOL towardTop, void (^done)(void)) {
-    UIView *content = nil;
-    if (card.subviews.count) {
-        UIView *clip = [card.subviews objectAtIndex:0];
-        if (clip.subviews.count) content = [clip.subviews objectAtIndex:0];
+    if (_bar) {
+        _bar.alpha = 0;
+        _bar.transform = CGAffineTransformMakeScale(0.9, 0.9);
+        [UIView animateWithDuration:0.18 delay:0.08 options:UIViewAnimationOptionCurveEaseOut animations:^{
+            _bar.alpha = 1;
+            _bar.transform = CGAffineTransformIdentity;
+        } completion:nil];
     }
-    CFTimeInterval duration = 0.2;
-    const CGFloat margin = 24;
-    CGRect full = CGRectInset(card.bounds, -margin, -margin);
-    CGRect end = CGRectMake(full.origin.x, towardTop ? full.origin.y : CGRectGetMaxY(full) - margin, full.size.width, margin);
-    CAShapeLayer *mask = [CAShapeLayer layer];
-    mask.frame = card.bounds;
-    mask.fillColor = [UIColor blackColor].CGColor;
-    mask.path = [UIBezierPath bezierPathWithRect:end].CGPath;
-    card.layer.mask = mask;
-    CAMediaTimingFunction *ease = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn];
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    card.layer.opacity = 0;
-    [CATransaction commit];
-    [CATransaction begin];
-    [CATransaction setCompletionBlock:done];
-    CABasicAnimation *shrink = [CABasicAnimation animationWithKeyPath:@"path"];
-    shrink.fromValue = (id)[UIBezierPath bezierPathWithRect:full].CGPath;
-    shrink.toValue = (id)[UIBezierPath bezierPathWithRect:end].CGPath;
-    shrink.duration = duration;
-    shrink.timingFunction = ease;
-    [mask addAnimation:shrink forKey:@"noshigram.menu.conceal"];
-    CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    fade.fromValue = [NSNumber numberWithFloat:1];
-    fade.toValue = [NSNumber numberWithFloat:0];
-    fade.duration = duration;
-    fade.timingFunction = ease;
-    [card.layer addAnimation:fade forKey:@"noshigram.menu.fade"];
-    for (UIView *row in content.subviews) {
-        CABasicAnimation *gone = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        gone.fromValue = [NSNumber numberWithFloat:1];
-        gone.toValue = [NSNumber numberWithFloat:0];
-        gone.duration = duration * 0.6;
-        gone.fillMode = kCAFillModeForwards;
-        gone.removedOnCompletion = NO;
-        [row.layer addAnimation:gone forKey:@"noshigram.menu.row.gone"];
-    }
-    [CATransaction commit];
 }
 
 - (void)leaveThen:(void (^)(void))after {
@@ -712,29 +619,20 @@ static void NoshiConcealCard(UIView *card, BOOL towardTop, void (^done)(void)) {
         [next release];
         [self release];
     };
-    /* the block outlives this call in the animation that runs it */
     finish = [[finish copy] autorelease];
-    BOOL still = NoshiReduceMotionEnabled() || !self.window || ![UIView areAnimationsEnabled];
-    /* the lit copy of the message goes back to the place of the one in the list while the menu leaves */
-    if (_lit && _litShift != 0 && !still) {
-        [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState animations:^{ _lit.frame = _litOriginalFrame; } completion:nil];
-    }
-    NoshiAnimateView(_dim, CGAffineTransformIdentity, 0, NoshiPopupCurve(NO), nil);
-    if (_pill) {
-        NoshiCacheForMotion(_pill);
-        NoshiAnimateView(_pill, CGAffineTransformMakeTranslation(0, 5), 0, NoshiPopupCurve(NO), nil);
-    }
-    if (NoshiMenuClassic() && !still) {
-        /* the dim fades for the same time, and the menu is taken away when the card is gone */
-        NoshiConcealCard(_card, [self cardOpensDownward], finish);
+    if (NoshiReduceMotionEnabled() || !self.window || ![UIView areAnimationsEnabled]) {
+        finish();
         return;
     }
-    NoshiCacheForMotion(_card);
-    /* the popup of exteraless leaves by fading while it slips 5 points toward the message */
-    NoshiAnimateView(_card, CGAffineTransformMakeTranslation(0, [self cardOpensDownward] ? -5 : 5), 0, NoshiPopupCurve(NO), ^(BOOL finished) {
+    [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState animations:^{
+        _dim.alpha = 0;
+        _bar.alpha = 0;
+        if (_lit) _litClip.frame = _litOriginalFrame;
+        if (_sheet) _sheet.frame = CGRectOffset(_sheet.frame, 0, self.bounds.size.height - _sheet.frame.origin.y);
+    } completion:^(BOOL finished) {
         (void)finished;
         finish();
-    });
+    }];
 }
 
 - (void)dismiss {
@@ -743,11 +641,6 @@ static void NoshiConcealCard(UIView *card, BOOL towardTop, void (^done)(void)) {
 
 - (void)rowTapped:(UIButton *)button {
     NSUInteger tag = (NSUInteger)button.tag;
-    if (tag == MORE_TAG) {
-        _expanded = YES;
-        [self rebuildAnimated:YES];
-        return;
-    }
     void (^handler)(NSUInteger) = [_pickHandler retain];
     [self leaveThen:^{
         if (handler) handler(tag);
