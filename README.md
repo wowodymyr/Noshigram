@@ -20,7 +20,7 @@ Noshigram is a fork of [exteria](https://github.com/sqmrak/exteria) by sqmrak. R
 - the Python plugin system
 - developer badges and the team marks
 - AyuMoments
-- Senko, boykissers and other jokes
+- boykissers and other jokes
 - the Shiro VPN
 - crash reports sent to the upstream developer
 - the meow build system, replaced with Theos

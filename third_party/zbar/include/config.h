@@ -1,6 +1,6 @@
-/* QR-only ZBar configuration for the Senko iOS capture path. */
-#ifndef SENKO_ZBAR_CONFIG_H
-#define SENKO_ZBAR_CONFIG_H
+/* QR-only ZBar configuration for the Noshigram iOS capture path. */
+#ifndef NOSHI_ZBAR_CONFIG_H
+#define NOSHI_ZBAR_CONFIG_H
 
 #define ENABLE_CODABAR 0
 #define ENABLE_CODE128 0
