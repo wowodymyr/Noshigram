@@ -63,21 +63,6 @@
 
 #pragma mark sections
 
-- (NoshiSettingsSection *)layoutSection {
-    NoshiWeakReference *weak = _weak;
-    NoshiTabLayout current = NoshiTabLayoutStored();
-    NSArray *keys = [NSArray arrayWithObjects:@"look.layout.messenger", @"look.layout.calls", nil];
-    NSMutableArray *rows = [NSMutableArray array];
-    for (NSUInteger i = 0; i < keys.count; ++i) {
-        [rows addObject:[NoshiSettingsRow checkRowWithTitle:NSLocalizedString([keys objectAtIndex:i], nil) subtitle:nil checked:!NoshiTabOrderIsCustom() && (NSUInteger)current == i tap:^{
-            if (!NoshiTabOrderIsCustom() && (NSUInteger)NoshiTabLayoutStored() == i) return;
-            NoshiTabLayoutStore((NoshiTabLayout)i);
-            [(NoshiAppearanceSettingsController *)weak.target apply];
-        }]];
-    }
-    return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.layout.header", nil) footer:NSLocalizedString(@"look.layout.info", nil) rows:rows];
-}
-
 - (void)chooseTitle {
     NoshiWeakReference *weak = _weak;
     NSArray *options = [NSArray arrayWithObjects:NSLocalizedString(@"look.title.default", nil), NSLocalizedString(@"look.title.username", nil),
@@ -165,7 +150,7 @@
 }
 
 - (void)rebuild {
-    self.sections = [NSArray arrayWithObjects:[self layoutSection], [self chatListSection], [self foldersSection], [self cardsSection], nil];
+    self.sections = [NSArray arrayWithObjects:[self chatListSection], [self foldersSection], [self cardsSection], nil];
     [self reloadSettings];
 }
 

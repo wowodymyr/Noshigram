@@ -19,7 +19,6 @@
 #import "noshi_settings_pages.h"
 #import "noshi_symbol.h"
 #import "noshi_theme_list_view.h"
-#import "noshi_tab_editor.h"
 #import "noshi_wallpaper_controller.h"
 #import "noshi_theme.h"
 #import "noshi_file_picker.h"
@@ -247,10 +246,6 @@ static NSString *NoshiNightStateText(void) {
         wallpapers.session = me->_session;
         [me.navigationController pushViewController:wallpapers animated:YES];
     }]];
-    [looks addObject:[NoshiSettingsRow rowWithSymbol:NoshiSymbolApps tone:NoshiSettingsTonePurple title:NSLocalizedString(@"tabedit.title", nil) subtitle:nil value:nil tap:^{
-        NoshiChatSettingsController *me = weak.target;
-        if (me) [me.navigationController pushViewController:[[[NoshiTabEditor alloc] init] autorelease] animated:YES];
-    }]];
     [looks addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"chatset.wallpaper.blurdefault", nil) subtitle:NSLocalizedString(@"chatset.wallpaper.blurdefault.info", nil)
                                                          on:NoshiChatFlagGet(NoshiChatFlagBlurWallpaper) toggle:^(BOOL on) {
         NoshiChatFlagSet(NoshiChatFlagBlurWallpaper, on);
@@ -258,6 +253,18 @@ static NSString *NoshiNightStateText(void) {
         [[NSNotificationCenter defaultCenter] postNotificationName:NoshiWallpaperDidChangeNotification object:nil];
     }]];
     if (looks.count) [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:looks]];
+
+    /* the bottom bar of telegram for ios 4 is contacts, calls, chats and settings; the first two can be taken off it */
+    NSMutableArray *tabRows = [NSMutableArray array];
+    static const NoshiTabKind optional[] = {NoshiTabContacts, NoshiTabCalls};
+    static NSString *const optionalKeys[] = {@"chatset.tabs.contacts", @"chatset.tabs.calls"};
+    for (NSUInteger i = 0; i < 2; ++i) {
+        NoshiTabKind kind = optional[i];
+        [tabRows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(optionalKeys[i], nil) subtitle:nil on:NoshiTabShown(kind) toggle:^(BOOL on) {
+            NoshiTabSetShown(kind, on);
+        }]];
+    }
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.tabs", nil) footer:NSLocalizedString(@"chatset.tabs.info", nil) rows:tabRows]];
 
     NSMutableArray *themeRows = [NSMutableArray array];
     {

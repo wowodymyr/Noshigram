@@ -1,6 +1,5 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-#include "noshi_tab_order.h"
 
 /* the chat settings of the signed in person, from the Chat Settings screen (ThemeActivity) */
 extern NSString *const NoshiChatSettingsDidChangeNotification;
@@ -62,18 +61,18 @@ void NoshiChatSetRecordViaBluetooth(BOOL on);
 BOOL NoshiChatLargeEmoji(void);
 void NoshiChatSetLargeEmoji(BOOL on);
 
-/* the tabs of the bottom bar, four of them in either layout: the first is chats, contacts, settings and the profile; the second is contacts, calls, chats and settings */
+/* the tabs of the bottom bar of telegram for ios 4, in the order of the bar. chats and settings are always there; contacts and calls can be hidden */
 typedef enum {
-    NoshiTabLayoutMessenger = 0,
-    NoshiTabLayoutCalls,
-    NoshiTabLayoutCount
-} NoshiTabLayout;
-NoshiTabLayout NoshiTabLayoutStored(void);
-void NoshiTabLayoutStore(NoshiTabLayout layout);
-void NoshiTabOrderLoad(int order[NOSHI_TAB_SLOTS]);
-BOOL NoshiTabOrderStore(const int order[NOSHI_TAB_SLOTS]);
-BOOL NoshiTabOrderIsCustom(void);
-extern NSString *const NoshiTabOrderDidChangeNotification;
+    NoshiTabContacts = 0,
+    NoshiTabCalls,
+    NoshiTabChats,
+    NoshiTabSettings,
+    NoshiTabKindCount
+} NoshiTabKind;
+BOOL NoshiTabShown(NoshiTabKind kind);
+void NoshiTabSetShown(NoshiTabKind kind, BOOL shown);
+/* posted when a tab is shown or hidden, so the bar is built again */
+extern NSString *const NoshiTabsDidChangeNotification;
 
 /* what the title of the chat list says: the word Chats, the username, the name of the account, or a text of the person's own */
 typedef enum {

@@ -5,7 +5,6 @@
 
 #import "noshi_chat_settings.h"
 #import "noshi_classic_chrome.h"
-#import "noshi_tab_bar.h"
 #import "noshi_custom_emoji_loader.h"
 #import "noshi_emoji_text_view.h"
 #import "noshi_input_format.h"

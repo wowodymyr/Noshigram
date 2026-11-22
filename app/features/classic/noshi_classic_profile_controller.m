@@ -483,6 +483,12 @@ static UIFont *NoshiClassicInfoCaptionFont(void) { return [UIFont systemFontOfSi
 }
 
 - (void)openSettings {
+    /* the profile is opened from the settings, so the key goes back to them */
+    UINavigationController *own = self.navigationController;
+    if (own.viewControllers.count > 1 && [[own.viewControllers objectAtIndex:0] isKindOfClass:[NoshiSettingsController class]]) {
+        [own popToRootViewControllerAnimated:YES];
+        return;
+    }
     UITabBarController *tabs = self.tabBarController;
     NSArray *screens = tabs.viewControllers;
     for (NSUInteger i = 0; i < screens.count; ++i) {

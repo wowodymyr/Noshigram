@@ -1,4 +1,5 @@
 #import "noshi_classic_chrome.h"
+#import "noshi_classic_profile_controller.h"
 #import "noshi_profile_qr_controller.h"
 #import "noshi_folders_controller.h"
 #import "noshi_settings_controller.h"
@@ -89,6 +90,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NoshiSession *_session;
     NoshiAvatarCache *_avatars;
     NoshiMediaCache *_media;
+    NoshiStickerLibrary *_stickerLibrary;
     NoshiWeakReference *_weak;
     NoshiSettingsHeaderView *_header;
     NoshiPerson *_person;
@@ -108,6 +110,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 @implementation NoshiSettingsController
 
 @synthesize signOutHandler = _signOutHandler;
+@synthesize stickerLibrary = _stickerLibrary;
 
 - (id)initWithSession:(NoshiSession *)session avatars:(NoshiAvatarCache *)avatars media:(NoshiMediaCache *)media {
     self = [super init];
@@ -131,6 +134,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     [_session release];
     [_avatars release];
     [_media release];
+    [_stickerLibrary release];
     [_header release];
     [_barHandle release];
     [_person release];
@@ -154,6 +158,11 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     if (!NoshiThemeIsDark()) [_header.identity setBadgeRingColor:[UIColor clearColor]];
     [_header.identity.avatarHit addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
     [_header.identity.badge addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
+    /* the name and the line under it open the full profile */
+    for (UIView *words in [NSArray arrayWithObjects:_header.identity.name, _header.identity.line, nil]) {
+        words.userInteractionEnabled = YES;
+        [words addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfile)] autorelease]];
+    }
     self.headerView = _header;
     /* the same one-row menu as the dots of the modern bar, on the system bar, and the magnifier of its search
            in the corner at the left; the bars of this style are dark, so the pictures are drawn white */
@@ -174,6 +183,15 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
 - (void)chatSettingsChanged {
     if (_person) [self showPerson];
+}
+
+/* the full profile of the account: its stories, gifts, music and channel, which the settings do not hold */
+- (void)openProfile {
+    NoshiClassicProfileController *profile = [[[NoshiClassicProfileController alloc] initWithSession:_session avatars:_avatars] autorelease];
+    profile.media = _media;
+    profile.stickerLibrary = _stickerLibrary;
+    profile.signOutHandler = _signOutHandler;
+    [self.navigationController pushViewController:profile animated:YES];
 }
 
 - (void)openQr {
@@ -334,6 +352,8 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NoshiSettingsRow *look = [NoshiSettingsRow rowWithTileImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
                                                            subtitle:nil
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
+    NoshiSettingsRow *profile = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPerson tone:NoshiSettingsToneRed title:NSLocalizedString(@"settings.myprofile", nil)
+                                                           subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openProfile]; }];
     NoshiSettingsRow *account = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsAccount tone:NoshiSettingsToneBlue title:NSLocalizedString(@"account.title", nil)
                                                            subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
@@ -403,7 +423,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NSMutableArray *sections = [NSMutableArray array];
     NoshiSettingsSection *accounts = [self otherAccountsSection];
     if (accounts) [sections addObject:accounts];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:account, stickers, folders, devices, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, stickers, folders, devices, nil]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:notifications, privacy, passcode, data, chats, power, language, nil]]];
     [sections addObject:app];
     self.sections = sections;

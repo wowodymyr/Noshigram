@@ -8,7 +8,6 @@
 #import "noshi_classic_chats_controller.h"
 #import "noshi_classic_chrome.h"
 #import "noshi_classic_contacts_controller.h"
-#import "noshi_classic_profile_controller.h"
 #import "noshi_chat_controller.h"
 #import "noshi_community_screen.h"
 #import "noshi_topics_screen.h"
@@ -31,47 +30,35 @@
 
 #import <QuartzCore/QuartzCore.h>
 
-/* what a tab of the bar shows; the layout of the person puts four of these in a row */
-enum {
-    NoshiTabChats = NOSHI_TAB_CHATS,
-    NoshiTabContacts = NOSHI_TAB_CONTACTS,
-    NoshiTabSettings = NOSHI_TAB_SETTINGS,
-    NoshiTabProfile = NOSHI_TAB_PROFILE,
-    NoshiTabCalls = NOSHI_TAB_CALLS
-};
-#define NoshiTabCount NOSHI_TAB_SLOTS
-
-/* the four tabs of a layout, in the order of the bar */
-static void NoshiTabKinds(NoshiTabLayout layout, NSInteger kinds[NoshiTabCount]) {
-    int order[NOSHI_TAB_SLOTS];
-    (void)layout;
-    NoshiTabOrderLoad(order);
-    for (NSUInteger i = 0; i < NOSHI_TAB_SLOTS; ++i) kinds[i] = order[i];
+/* the tabs the bar shows, in its order: the four of telegram for ios 4 less the ones the person hid */
+static NSUInteger NoshiShownTabs(NSInteger kinds[NoshiTabKindCount]) {
+    NSUInteger count = 0;
+    for (NSInteger kind = 0; kind < NoshiTabKindCount; ++kind) if (NoshiTabShown((NoshiTabKind)kind)) kinds[count++] = kind;
+    return count;
 }
 
-static NSInteger NoshiTabIndexOfKind(const NSInteger kinds[NoshiTabCount], NSInteger kind) {
-    for (NSInteger i = 0; i < NoshiTabCount; ++i) if (kinds[i] == kind) return i;
+static NSInteger NoshiTabIndexOfKind(const NSInteger *kinds, NSUInteger count, NSInteger kind) {
+    for (NSUInteger i = 0; i < count; ++i) if (kinds[i] == kind) return (NSInteger)i;
     return -1;
 }
 
 static NSString *NoshiTabTitle(NSInteger kind) {
-    static NSString *const keys[] = {@"tab.chats", @"tab.contacts", @"tab.settings", @"tab.profile", @"tab.calls"};
+    static NSString *const keys[] = {@"tab.contacts", @"tab.calls", @"tab.chats", @"tab.settings"};
     return NSLocalizedString(keys[kind], nil);
 }
 
-/* the profile tab wears the photo once it is here, and the person in the ring until then */
 static NoshiTabIcon NoshiTabIconOfKind(NSInteger kind) {
-    static const NoshiTabIcon icons[] = {NoshiTabIconChats, NoshiTabIconContacts, NoshiTabIconSettings, NoshiTabIconContacts, NoshiTabIconCalls};
+    static const NoshiTabIcon icons[] = {NoshiTabIconContacts, NoshiTabIconCalls, NoshiTabIconChats, NoshiTabIconSettings};
     return icons[kind];
 }
 
 #define CLASSIC_BADGE_TAG 0x4258
 
-/* the count sits on the right of the first icon, whatever the width of the bar after a rotation */
-static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index) {
+/* the count sits on the right of the icon of the chats, whatever the width of the bar after a rotation */
+static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index, NSUInteger count) {
     UIView *badge = [bar viewWithTag:CLASSIC_BADGE_TAG];
-    if (!badge) return;
-    badge.frame = CGRectMake(floor(width * (CGFloat)(2 * index + 1) / (CGFloat)(NoshiTabCount * 2)) + 4, 1, badge.frame.size.width, badge.frame.size.height);
+    if (!badge || !count) return;
+    badge.frame = CGRectMake(floor(width * (CGFloat)(2 * index + 1) / (CGFloat)(count * 2)) + 4, 1, badge.frame.size.width, badge.frame.size.height);
 }
 
 @interface NoshiMainController () <UITabBarControllerDelegate, UINavigationControllerDelegate, UIGestureRecognizerDelegate> {
@@ -82,16 +69,15 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     NoshiLinkRouter *_linkRouter;
     UIViewController *_current;
     UITabBarController *_classicTabs;
-    /* the tab that wears the profile photo in the classic bar; the tab controller owns it */
-    UITabBarItem *_classicProfileItem;
     /* the swipe back of each classic tab: the tabs push into their own navigation controllers, which the one on the window never sees */
     NSMutableArray *_classicBackSwipes;
     UIImageView *_veil;
     NoshiThemeBusyView *_busy;
     BOOL _busyShown;
     CGPoint _revealOrigin;
-    /* the kinds of the tabs the bar was built with, so a change of layout knows which tab the person stood on */
-    NSInteger _kinds[NoshiTabCount];
+    /* the kinds of the tabs the bar was built with, so a tab shown or hidden leaves the person on the tab they stood on */
+    NSInteger _kinds[NoshiTabKindCount];
+    NSUInteger _tabCount;
 }
 @end
 
@@ -149,7 +135,6 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     [_classicTabs removeFromParentViewController];
     [_classicTabs release];
     _classicTabs = nil;
-    _classicProfileItem = nil;
 }
 
 - (void)loadView {
@@ -161,12 +146,11 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     [self performSelector:@selector(prepareBusy) withObject:nil afterDelay:3];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(themeChanged:)
                                                  name:NoshiThemeDidChangeNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabOrderChanged:)
-                                                 name:NoshiTabOrderDidChangeNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(tabsChanged:)
+                                                 name:NoshiTabsDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(languageChanged)
                                                  name:NoshiLanguageDidChangeNotification object:nil];
     [self buildContentWithTab:-1];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(ownProfileChanged) name:NoshiOwnProfileDidChangeNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(openChatRequested:) name:NoshiOpenChatNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(openLinkRequested:) name:NoshiOpenLinkNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(shareFilesRequested:) name:NoshiShareFilesNotification object:nil];
@@ -239,7 +223,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         : dialog.forum ? NoshiTopicsScreen(_session, dialog, _avatars, _media, _stickers, nil)
         : [[[NoshiChatController alloc] initWithSession:_session dialog:dialog avatars:_avatars media:_media stickers:_stickers] autorelease];
     if (_classicTabs) {
-        _classicTabs.selectedIndex = (NSUInteger)MAX(0, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
+        _classicTabs.selectedIndex = (NSUInteger)MAX(0, NoshiTabIndexOfKind(_kinds, _tabCount, NoshiTabChats));
         UINavigationController *navigation = (UINavigationController *)_classicTabs.selectedViewController;
         [navigation popToRootViewControllerAnimated:NO];
         [navigation pushViewController:chat animated:NO];
@@ -254,7 +238,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 - (void)buildClassicWithTab:(NSInteger)tab {
     NoshiClassicChatsController *chats = nil;
     NSMutableArray *screens = [NSMutableArray array], *navigations = [NSMutableArray array];
-    for (NSInteger i = 0; i < NoshiTabCount; ++i) {
+    for (NSUInteger i = 0; i < _tabCount; ++i) {
         UIViewController *screen = nil;
         switch (_kinds[i]) {
         case NoshiTabChats:
@@ -267,19 +251,12 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         case NoshiTabCalls:
             screen = [[[NoshiClassicCallsController alloc] initWithSession:_session avatars:_avatars media:_media stickers:_stickers] autorelease];
             break;
-        case NoshiTabSettings: {
-            /* the settings are one screen in both styles: the grouped table draws the same sections the modern cards do */
+        default: {
+            /* the settings of telegram for ios 4 are the profile too: the own photo and name stand over the rows, and the full profile is a tap away */
             NoshiSettingsController *settings = [[[NoshiSettingsController alloc] initWithSession:_session avatars:_avatars media:_media] autorelease];
+            settings.stickerLibrary = _stickers;
             settings.signOutHandler = ^(void (^completion)(NSString *errorName)) { [_delegate mainController:self requestsSignOut:completion]; };
             screen = settings;
-            break;
-        }
-        default: {
-            NoshiClassicProfileController *profile = [[[NoshiClassicProfileController alloc] initWithSession:_session avatars:_avatars] autorelease];
-            profile.media = _media;
-            profile.stickerLibrary = _stickers;
-            profile.signOutHandler = ^(void (^completion)(NSString *errorName)) { [_delegate mainController:self requestsSignOut:completion]; };
-            screen = profile;
             break;
         }
         }
@@ -318,73 +295,39 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         badge.tag = CLASSIC_BADGE_TAG;
         badge.userInteractionEnabled = NO;
         [bar addSubview:badge];
-        NoshiPlaceClassicBadge(bar, bar.bounds.size.width, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
+        NoshiPlaceClassicBadge(bar, bar.bounds.size.width, NoshiTabIndexOfKind(_kinds, _tabCount, NoshiTabChats), _tabCount);
     };
+    /* the list counts the unread chats once it has loaded them, and a bar built again over another tab (a tab shown or hidden, a new theme) does not show the list,
+       so its screen is made now and the count is on the bar at once */
+    [chats view];
     [self addChildViewController:_classicTabs];
     _classicTabs.view.frame = self.view.bounds;
     _classicTabs.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self.view addSubview:_classicTabs.view];
     [_classicTabs didMoveToParentViewController:self];
-    /* the profile tab, when the layout has one, wears the profile photo once it is here */
-    NSInteger profileIndex = NoshiTabIndexOfKind(_kinds, NoshiTabProfile);
-    if (profileIndex < 0) return;
-    _classicProfileItem = ((UIViewController *)[navigations objectAtIndex:(NSUInteger)profileIndex]).tabBarItem;
-    [self loadClassicProfileTab];
+    [self loadOwnPerson];
 }
 
-/* a tab picture drawn from the photo, or the symbol of the tab again when the person has none (the photo was removed) */
-- (void)showClassicProfilePhoto:(UIImage *)photo onItem:(UITabBarItem *)item {
-    if (![item respondsToSelector:@selector(setFinishedSelectedImage:withFinishedUnselectedImage:)]) return;
-    if (!photo) {
-        NoshiClassicStyleTabItem(item, NoshiTabIconContacts);
-        return;
-    }
-    UIImage *tab = NoshiClassicProfileTabImage(photo);
-    [item setFinishedSelectedImage:tab withFinishedUnselectedImage:tab];
-}
-
-- (void)loadClassicProfileTab {
-    UITabBarItem *profileItem = _classicProfileItem;
-    if (!profileItem) return;
-    /* the photo of the last time is on the tab before the answer comes */
-    NoshiPerson *known = [_session ownPerson];
-    if (known.photo) {
-        [_avatars pinPhoto:known.photo];
-        [_avatars loadImageForPhoto:known.photo completion:^(UIImage *photo) {
-            if (photo && profileItem == _classicProfileItem) [self showClassicProfilePhoto:photo onItem:profileItem];
-        }];
-    }
+/* the own profile is asked for once the bar is up: the account list shows this face when the account is not the one in use, and then has no connection to ask
+   for it, and the premium of the account decides what the lite mode allows */
+- (void)loadOwnPerson {
     [_session loadSelf:^(NSArray *items, NSString *errorName) {
-        if (!items) {
-            NSLog(@"noshigram: profile tab did not load: %@", errorName);
+        if (!items.count) {
+            NSLog(@"noshigram: the own profile did not load: %@", errorName);
             return;
         }
         NoshiPerson *person = [items objectAtIndex:0];
         [_avatars pinPhoto:person.photo];
-        /* the account list shows this face when the account is not the one in use, and then has no connection to ask for it */
         NoshiAccountKeepPhotoOfPerson(person, _avatars);
         NoshiLiteSetPremium(NoshiPremiumEffective(person.premium));
-        if (profileItem != _classicProfileItem) return;
-        if (!person.photo) {
-            [self showClassicProfilePhoto:nil onItem:profileItem];
-            return;
-        }
-        [_avatars loadImageForPhoto:person.photo completion:^(UIImage *photo) {
-            if (photo && profileItem == _classicProfileItem) [self showClassicProfilePhoto:photo onItem:profileItem];
-        }];
     }];
-}
-
-/* the photo of the account was set or removed: the tab that wears it is asked for again, since it is made once when the bar is */
-- (void)ownProfileChanged {
-    if (_classicTabs) [self loadClassicProfileTab];
 }
 
 /* the system tab bar swaps its screens at once; a push transition on the container of the screens, not on the bar, gives the same
    sideways slide the modern tabs have */
 - (BOOL)tabBarController:(UITabBarController *)tabs shouldSelectViewController:(UIViewController *)screen {
     NSUInteger from = tabs.selectedIndex, to = [tabs.viewControllers indexOfObject:screen];
-    if (from == to && to < NoshiTabCount && _kinds[to] == NoshiTabChats && [screen isKindOfClass:[UINavigationController class]]) {
+    if (from == to && to < _tabCount && _kinds[to] == NoshiTabChats && [screen isKindOfClass:[UINavigationController class]]) {
         /* the system pops a tab that is reselected to its root by itself; at the root there is nothing to pop, so the list goes up */
         UINavigationController *navigation = (UINavigationController *)screen;
         id root = navigation.viewControllers.count ? [navigation.viewControllers objectAtIndex:0] : nil;
@@ -409,8 +352,8 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
 
 /* tab is the place in the bar to land on, or -1 for the chats */
 - (void)buildContentWithTab:(NSInteger)tab {
-    NoshiTabKinds(NoshiTabLayoutStored(), _kinds);
-    if (tab < 0 || tab >= NoshiTabCount) tab = MAX(0, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
+    _tabCount = NoshiShownTabs(_kinds);
+    if (tab < 0 || tab >= (NSInteger)_tabCount) tab = MAX(0, NoshiTabIndexOfKind(_kinds, _tabCount, NoshiTabChats));
     [self buildClassicWithTab:tab];
 }
 
@@ -432,7 +375,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     [self showBusyOverVeil];
 }
 
-- (void)tabOrderChanged:(NSNotification *)note {
+- (void)tabsChanged:(NSNotification *)note {
     (void)note;
     NSArray *pages = [self pagesToRestore];
     BOOL wasClassic = _classicTabs != nil;
@@ -602,12 +545,12 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
 - (void)rebuildContent {
     /* the person stays on the tab they were on, which is settings when the switch there made the change */
     NSInteger tab = _classicTabs ? (NSInteger)_classicTabs.selectedIndex : 0;
-    /* a new layout may put the tab somewhere else, or have none of that kind: the settings are where the change was made, so they are the fallback */
-    NSInteger kind = tab >= 0 && tab < NoshiTabCount ? _kinds[tab] : NoshiTabSettings;
-    NSInteger next[NoshiTabCount];
-    NoshiTabKinds(NoshiTabLayoutStored(), next);
-    tab = NoshiTabIndexOfKind(next, kind);
-    if (tab < 0) tab = NoshiTabIndexOfKind(next, NoshiTabSettings);
+    /* a tab shown or hidden moves the others: the person stays on the kind of tab they were on, and the settings, where the change was made, are the fallback */
+    NSInteger kind = tab >= 0 && tab < (NSInteger)_tabCount ? _kinds[tab] : NoshiTabSettings;
+    NSInteger next[NoshiTabKindCount];
+    NSUInteger count = NoshiShownTabs(next);
+    tab = NoshiTabIndexOfKind(next, count, kind);
+    if (tab < 0) tab = NoshiTabIndexOfKind(next, count, NoshiTabSettings);
     NoshiThemeApplyStored();
     if (_current) {
         [_current willMoveToParentViewController:nil];
@@ -642,7 +585,7 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
     [super viewDidLayoutSubviews];
     if (_classicTabs) {
         NoshiClassicNoteTabBarHeight(_classicTabs.tabBar.frame.size.height);
-        NoshiPlaceClassicBadge(_classicTabs.tabBar, self.view.bounds.size.width, NoshiTabIndexOfKind(_kinds, NoshiTabChats));
+        NoshiPlaceClassicBadge(_classicTabs.tabBar, self.view.bounds.size.width, NoshiTabIndexOfKind(_kinds, _tabCount, NoshiTabChats), _tabCount);
     }
 }
 
@@ -663,13 +606,13 @@ static void NoshiCollectWaves(UIView *view, NSMutableArray *waves) {
 
 #pragma mark delegates
 
-/* the system tab bar has no hold of its own: a finger held on the slot of the profile tab offers the accounts of the phone, as the official client does */
+/* the system tab bar has no hold of its own: a finger held on the slot of the settings offers the accounts of the phone, as the official client does */
 - (void)classicBarHeld:(UILongPressGestureRecognizer *)hold {
-    if (hold.state != UIGestureRecognizerStateBegan || !_classicTabs) return;
+    if (hold.state != UIGestureRecognizerStateBegan || !_classicTabs || !_tabCount) return;
     UIView *bar = hold.view;
-    CGFloat slot = bar.bounds.size.width / (CGFloat)NoshiTabCount;
+    CGFloat slot = bar.bounds.size.width / (CGFloat)_tabCount;
     NSInteger index = (NSInteger)floor([hold locationInView:bar].x / slot);
-    if (index < 0 || index >= NoshiTabCount || _kinds[index] != NoshiTabProfile) return;
+    if (index < 0 || index >= (NSInteger)_tabCount || _kinds[index] != NoshiTabSettings) return;
     [self showAccountsAboveBar:bar frame:CGRectMake(slot * (CGFloat)index, 0, slot, bar.bounds.size.height)];
 }
 

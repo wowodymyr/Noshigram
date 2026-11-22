@@ -25,9 +25,9 @@ static NSString *const NoshiListDensityKey = @"noshigram.list.density";
 static NSString *const NoshiTabIndicatorKey = @"noshigram.tab.indicator";
 static NSString *const NoshiClassicSeparatorsKey = @"noshigram.classic.separators";
 static NSString *const NoshiSectionRadiusKey = @"noshigram.section.radius";
-static NSString *const NoshiTabLayoutKey = @"noshigram.tablayout";
-static NSString *const NoshiTabOrderKey = @"noshigram.taborder";
-NSString *const NoshiTabOrderDidChangeNotification = @"NoshiTabOrderDidChange";
+static NSString *const NoshiTabContactsHiddenKey = @"noshigram.tab.contacts.hidden";
+static NSString *const NoshiTabCallsHiddenKey = @"noshigram.tab.calls.hidden";
+NSString *const NoshiTabsDidChangeNotification = @"NoshiTabsDidChange";
 static NSString *const NoshiCacheKeepDaysKey = @"noshigram.cache.keepdays";
 static NSString *const NoshiChatDynamicPackOrderKey = @"noshigram.chat.dynamicpackorder";
 
@@ -201,50 +201,16 @@ void NoshiSectionRadiusStore(NSInteger points) {
     NoshiSectionRadiusCurrent = MAX(0, MIN(NOSHI_SECTION_RADIUS_MAX, points));
     NoshiStoreNumber(NoshiSectionRadiusKey, NoshiSectionRadiusCurrent);
 }
-NoshiTabLayout NoshiTabLayoutStored(void) {
-    NSNumber *stored = NoshiStoredNumber(NoshiTabLayoutKey);
-    return stored && stored.integerValue >= 0 && stored.integerValue < NoshiTabLayoutCount ? (NoshiTabLayout)stored.integerValue : NoshiTabLayoutMessenger;
+BOOL NoshiTabShown(NoshiTabKind kind) {
+    if (kind == NoshiTabContacts) return !NoshiStoredFlag(NoshiTabContactsHiddenKey, NO);
+    if (kind == NoshiTabCalls) return !NoshiStoredFlag(NoshiTabCallsHiddenKey, NO);
+    return kind < NoshiTabKindCount;
 }
-void NoshiTabLayoutStore(NoshiTabLayout layout) {
-    [[NSUserDefaults standardUserDefaults] removeObjectForKey:NoshiTabOrderKey];
-    NoshiStoreNumber(NoshiTabLayoutKey, layout);
-}
-
-void NoshiTabOrderLoad(int order[NOSHI_TAB_SLOTS]) {
-    static const int messenger[] = {NOSHI_TAB_CHATS, NOSHI_TAB_CONTACTS, NOSHI_TAB_SETTINGS, NOSHI_TAB_PROFILE};
-    static const int calls[] = {NOSHI_TAB_CONTACTS, NOSHI_TAB_CALLS, NOSHI_TAB_CHATS, NOSHI_TAB_SETTINGS};
-    if (!order) return;
-    NSArray *stored = [[NSUserDefaults standardUserDefaults] objectForKey:NoshiTabOrderKey];
-    BOOL valid = [stored isKindOfClass:[NSArray class]] && stored.count == NOSHI_TAB_SLOTS;
-    for (NSUInteger i = 0; valid && i < NOSHI_TAB_SLOTS; ++i) {
-        id value = [stored objectAtIndex:i];
-        if (![value isKindOfClass:[NSNumber class]]) valid = NO;
-        else order[i] = [value intValue];
-    }
-    if (valid && noshi_tab_order_valid(order, NOSHI_TAB_SLOTS)) return;
-    const int *fallback = NoshiTabLayoutStored() == NoshiTabLayoutCalls ? calls : messenger;
-    for (NSUInteger i = 0; i < NOSHI_TAB_SLOTS; ++i) order[i] = fallback[i];
-}
-
-BOOL NoshiTabOrderStore(const int order[NOSHI_TAB_SLOTS]) {
-    if (!noshi_tab_order_valid(order, NOSHI_TAB_SLOTS)) return NO;
-    NSMutableArray *values = [NSMutableArray arrayWithCapacity:NOSHI_TAB_SLOTS];
-    for (NSUInteger i = 0; i < NOSHI_TAB_SLOTS; ++i) [values addObject:[NSNumber numberWithInt:order[i]]];
-    [[NSUserDefaults standardUserDefaults] setObject:values forKey:NoshiTabOrderKey];
-    NoshiDefaultsSaveSoon();
-    return YES;
-}
-
-BOOL NoshiTabOrderIsCustom(void) {
-    id stored = [[NSUserDefaults standardUserDefaults] objectForKey:NoshiTabOrderKey];
-    int order[NOSHI_TAB_SLOTS];
-    if (![stored isKindOfClass:[NSArray class]] || [stored count] != NOSHI_TAB_SLOTS) return NO;
-    for (NSUInteger i = 0; i < NOSHI_TAB_SLOTS; ++i) {
-        id value = [stored objectAtIndex:i];
-        if (![value isKindOfClass:[NSNumber class]]) return NO;
-        order[i] = [value intValue];
-    }
-    return noshi_tab_order_valid(order, NOSHI_TAB_SLOTS);
+void NoshiTabSetShown(NoshiTabKind kind, BOOL shown) {
+    if (kind == NoshiTabContacts) NoshiStoreFlag(NoshiTabContactsHiddenKey, !shown);
+    else if (kind == NoshiTabCalls) NoshiStoreFlag(NoshiTabCallsHiddenKey, !shown);
+    else return;
+    [[NSNotificationCenter defaultCenter] postNotificationName:NoshiTabsDidChangeNotification object:nil];
 }
 NSInteger NoshiCacheKeepDays(void) {
     NSNumber *stored = NoshiStoredNumber(NoshiCacheKeepDaysKey);
