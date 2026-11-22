@@ -1,198 +1,50 @@
 #import "noshi_popup_menu.h"
 
-#import <QuartzCore/QuartzCore.h>
+#import "noshi_alert.h"
 
-#import "noshi_animation.h"
-#import "noshi_classic_chrome.h"
-#import "noshi_platform.h"
-#import "noshi_theme.h"
-
-#define ROW_HEIGHT 48.0
-/* a long menu on a short screen gets rows down to this height before it scrolls */
-#define ROW_HEIGHT_MIN 38.0
-#define EDGE_MARGIN 10.0
-#define CARD_WIDTH 232.0
-#define ICON_SIDE 22.0
-
-@interface NoshiPopupMenu () <UIGestureRecognizerDelegate> {
+@interface NoshiPopupMenu () {
     NSArray *_titles;
-    NoshiSymbol *_symbols;
-    void (^_handler)(NSUInteger);
-    UIView *_card;
-    CGFloat _rowHeight;
-    CGPoint _anchor;
-    CGFloat _bottomInset;
-    BOOL _closing;
+    void (^_handler)(NSUInteger index);
 }
 @end
 
 @implementation NoshiPopupMenu
 
 @synthesize bottomInset = _bottomInset;
+@synthesize destructiveIndex = _destructiveIndex;
 
-- (id)initWithTitles:(NSArray *)titles symbols:(const NoshiSymbol *)symbols handler:(void (^)(NSUInteger))handler {
+- (id)initWithTitles:(NSArray *)titles symbols:(const NoshiSymbol *)symbols handler:(void (^)(NSUInteger index))handler {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
+    (void)symbols;
     _titles = [titles copy];
-    _symbols = malloc(sizeof(NoshiSymbol) * (titles.count ? titles.count : 1));
-    memcpy(_symbols, symbols, sizeof(NoshiSymbol) * titles.count);
     _handler = [handler copy];
-    self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    UITapGestureRecognizer *tap = [[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(dismiss)] autorelease];
-    tap.delegate = self;
-    [self addGestureRecognizer:tap];
+    _destructiveIndex = -1;
     return self;
 }
 
-/* the tap that closes the menu belongs to the space around the card: a tap on a row is the row's alone, whatever the system does about the
-   tap recognizer of a view that lies under a button */
-- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gesture shouldReceiveTouch:(UITouch *)touch {
-    (void)gesture;
-    return !_card || ![touch.view isDescendantOfView:_card];
-}
-
 - (void)dealloc {
-    free(_symbols);
     [_titles release];
     [_handler release];
-    [_card release];
     [super dealloc];
 }
 
-/* the card always fits the screen: the rows shrink a little first, and a menu that is still too tall scrolls inside its card */
-- (void)buildCardWithin:(CGFloat)room {
-    NSUInteger count = _titles.count ? _titles.count : 1;
-    _rowHeight = ROW_HEIGHT;
-    if (_rowHeight * (CGFloat)count > room) _rowHeight = MAX(ROW_HEIGHT_MIN, floor(room / (CGFloat)count));
-    CGFloat content = _rowHeight * (CGFloat)_titles.count;
-    CGFloat height = MIN(content, room);
-    CGFloat radius = 10;
-    _card = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CARD_WIDTH, height)];
-    UIView *rows = _card;
-    if (content > height) {
-        UIScrollView *scroll = [[[UIScrollView alloc] initWithFrame:_card.bounds] autorelease];
-        scroll.contentSize = CGSizeMake(CARD_WIDTH, content);
-        scroll.layer.cornerRadius = radius;
-        scroll.clipsToBounds = YES;
-        scroll.showsVerticalScrollIndicator = NO;
-        [_card addSubview:scroll];
-        rows = scroll;
-    }
-    NoshiClassicApplyMenuPlate(_card, radius);
-    for (NSUInteger i = 0; i < _titles.count; ++i) {
-        UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
-        row.frame = CGRectMake(0, _rowHeight * (CGFloat)i, CARD_WIDTH, _rowHeight);
-        row.tag = (NSInteger)i;
-        /* the card cannot clip its rows because of its shadow, so the pressed fill of the first and last row is cut to the card's corners itself */
-        UIRectCorner corners = (i == 0 ? (UIRectCornerTopLeft | UIRectCornerTopRight) : 0) | (i + 1 == _titles.count ? (UIRectCornerBottomLeft | UIRectCornerBottomRight) : 0);
-        if (corners) {
-            CAShapeLayer *mask = [CAShapeLayer layer];
-            mask.path = [UIBezierPath bezierPathWithRoundedRect:row.bounds byRoundingCorners:corners cornerRadii:CGSizeMake(radius, radius)].CGPath;
-            row.layer.mask = mask;
-        }
-        [row addTarget:self action:@selector(picked:) forControlEvents:UIControlEventTouchUpInside];
-        [row addTarget:self action:@selector(rowDown:) forControlEvents:UIControlEventTouchDown];
-        [row addTarget:self action:@selector(rowUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
-        UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(_symbols[i], ICON_SIDE, NoshiClassicMenuTextColor())] autorelease];
-        icon.contentMode = UIViewContentModeCenter;
-        icon.frame = CGRectMake(16, (_rowHeight - ICON_SIDE) / 2, ICON_SIDE + 4, ICON_SIDE);
-        icon.userInteractionEnabled = NO;
-        [row addSubview:icon];
-        UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(56, 0, CARD_WIDTH - 70, _rowHeight)] autorelease];
-        label.backgroundColor = [UIColor clearColor];
-        label.text = [_titles objectAtIndex:i];
-        label.userInteractionEnabled = NO;
-        label.textColor = NoshiClassicMenuTextColor();
-        NoshiClassicStyleMenuLabel(label, 16);
-        [row addSubview:label];
-        [rows addSubview:row];
-        if (i > 0) {
-            /* a hairline between the rows */
-            CGFloat y = _rowHeight * (CGFloat)i, pixel = 1.0f / NoshiScreenScale();
-            UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, y - pixel, CARD_WIDTH, pixel)] autorelease];
-            line.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.15];
-            line.userInteractionEnabled = NO;
-            [rows addSubview:line];
-        }
-    }
-    [self addSubview:_card];
-}
-
-- (void)rowDown:(UIButton *)row {
-    row.backgroundColor = NoshiClassicMenuPressColor();
-}
-
-- (void)rowUp:(UIButton *)row {
-    row.backgroundColor = [UIColor clearColor];
-}
-
 - (void)showInView:(UIView *)host anchor:(CGPoint)anchor {
-    if (self.superview) return;
-    /* the classic navigation bar lies outside the host and keeps taking taps while a card is open, so a second tap on its button would stack another card; it closes the open one instead */
-    for (UIView *open in host.subviews) {
-        if (![open isKindOfClass:[NoshiPopupMenu class]]) continue;
-        [(NoshiPopupMenu *)open dismiss];
-        return;
-    }
-    _closing = NO;
-    self.userInteractionEnabled = YES;
-    [_card removeFromSuperview];
-    [_card release];
-    _card = nil;
-    self.frame = host.bounds;
-    _anchor = anchor;
-    CGFloat bottom = MAX(EDGE_MARGIN + ROW_HEIGHT_MIN, host.bounds.size.height - MAX(0, _bottomInset) - EDGE_MARGIN);
-    CGFloat start = MAX(EDGE_MARGIN, MIN(anchor.y, bottom - ROW_HEIGHT_MIN));
-    [self buildCardWithin:bottom - start];
-    CGFloat x = MIN(MAX(8, anchor.x - CARD_WIDTH), host.bounds.size.width - CARD_WIDTH - 8);
-    /* it hangs from the anchor when there is room under it, and slides up just far enough to end above the bottom edge when there is not */
-    CGFloat height = _card.frame.size.height;
-    CGFloat top = MAX(EDGE_MARGIN, MIN(anchor.y, bottom - height));
-    _card.frame = CGRectMake(x, top, CARD_WIDTH, height);
-    [host addSubview:self];
-    _card.layer.anchorPoint = CGPointMake(1, 0);
-    _card.layer.position = CGPointMake(x + CARD_WIDTH, top);
-    _card.transform = CGAffineTransformMakeScale(NoshiPopupScale(), NoshiPopupScale());
-    _card.alpha = 0;
-    NoshiCacheForMotion(_card);
-    UIView *card = _card;
-    NoshiAnimateView(_card, CGAffineTransformIdentity, 1, NoshiPopupCurve(YES), ^(BOOL finished) {
-        (void)finished;
-        NoshiUncacheAfterMotion(card);
-    });
-}
-
-- (void)leaveThen:(void (^)(void))after {
-    if (_closing) return;
-    _closing = YES;
-    void (^next)(void) = [after copy];
+    /* a small view at the anchor gives the popover of an ipad the place to point at */
+    self.frame = CGRectMake(anchor.x - 1, anchor.y - 1, 2, 2);
     self.userInteractionEnabled = NO;
-    NoshiCacheForMotion(_card);
-    NoshiAnimateView(_card, CGAffineTransformMakeScale(NoshiPopupScale(), NoshiPopupScale()), 0, NoshiPopupCurve(NO), ^(BOOL finished) {
-        (void)finished;
-        /* the completion runs at once when animations are off or reduce motion is on, inside the action of the row button; the host's release and the
-           one of picked: then freed the menu before the button sent rowUp: to it on ios 6, which crashed in objc_msgSend. the pool frees it after the touch */
-        [[self retain] autorelease];
-        [self removeFromSuperview];
-        if (next) next();
-        [next release];
+    [host addSubview:self];
+    void (^handler)(NSUInteger) = [[_handler copy] autorelease];
+    NoshiPopupMenu *menu = [self retain];
+    NoshiChooseFromView(self, nil, _titles, _destructiveIndex, ^(NSInteger index) {
+        [menu removeFromSuperview];
+        [menu release];
+        if (index >= 0 && handler) handler((NSUInteger)index);
     });
 }
 
 - (void)dismiss {
-    [self leaveThen:nil];
-}
-
-- (void)picked:(UIButton *)row {
-    if (_closing) return;
-    NSUInteger index = (NSUInteger)row.tag;
-    void (^handler)(NSUInteger) = [_handler retain];
-    [self retain];
-    [self leaveThen:^{
-        handler(index);
-        [handler release];
-        [self release];
-    }];
+    [self removeFromSuperview];
 }
 
 @end
