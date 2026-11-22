@@ -25,6 +25,7 @@ extern NSString *const NoshiDialogsChangedNotification;
     BOOL _canViewStats;
     BOOL _creator;
     BOOL _signatures;
+    BOOL _basic;
     uint32_t _adminRights;
     NSInteger _participants;
     NSInteger _admins;
@@ -59,6 +60,8 @@ extern NSString *const NoshiDialogsChangedNotification;
 @property (nonatomic, readonly) BOOL creator;
 /* posts carry the name of the admin who wrote them */
 @property (nonatomic, readonly) BOOL signatures;
+/* a basic group, not a channel: it has no blacklist, no admins of its own to manage and no members list of the channel kind */
+@property (nonatomic, readonly) BOOL basic;
 /* NOSHI_ADMIN_* bits the account holds: all for the creator, those of its admin rights for an admin, none for anyone else */
 @property (nonatomic, readonly) uint32_t adminRights;
 /* the account is the creator or an admin with at least one right, so the management screens are for it */

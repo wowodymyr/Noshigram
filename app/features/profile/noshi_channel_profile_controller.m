@@ -573,9 +573,9 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
     _communityCard.hidden = _community == nil;
     if (_community) [_communityCard configureWithDialog:_community avatars:self.avatars];
     [self fillCounts];
-    if ((full.megagroup || _dialog.kind == NOSHI_DIALOG_CHANNEL) && !_groupTabs) {
+    if ((full.megagroup || full.basic || _dialog.kind == NOSHI_DIALOG_CHANNEL) && !_groupTabs) {
         /* the members of a broadcast channel are told to its administrators only, so the tab is not offered to anybody else */
-        BOOL members = full.megagroup || full.creator || full.adminRights != 0;
+        BOOL members = !full.basic && (full.megagroup || full.creator || full.adminRights != 0);
         _groupTabs = [[NoshiGroupTabsView alloc] initWithSession:self.session dialog:_dialog avatars:self.avatars media:self.media forUser:NO hidesMembers:!members];
         _groupTabs.delegate = self;
         [_head addSubview:_groupTabs];
@@ -586,7 +586,7 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
 
 - (void)fillCounts {
     NoshiFullChannel *full = _full;
-    _membersRow.title = NSLocalizedString(full.megagroup ? @"channel.members" : @"channel.subscribers", nil);
+    _membersRow.title = NSLocalizedString(full.megagroup || full.basic ? @"channel.members" : @"channel.subscribers", nil);
     _membersRow.value = [NSString stringWithFormat:@"%ld", (long)full.participants];
     _adminsRow.value = [NSString stringWithFormat:@"%ld", (long)full.admins];
     _bannedRow.value = [NSString stringWithFormat:@"%ld", (long)full.banned];
@@ -895,7 +895,8 @@ typedef enum { NoshiChannelMenuCopyLink, NoshiChannelMenuManage, NoshiChannelMen
         [titles addObject:NSLocalizedString(@"profile.qr.copy", nil)];
         [entries addObject:[NSNumber numberWithInt:NoshiChannelMenuCopyLink]];
     }
-    if ([self isMember] && _full.isAdmin) {
+    /* the screen of managing is the one of a channel */
+    if ([self isMember] && _full.isAdmin && !_full.basic) {
         symbols[titles.count] = NoshiSymbolGear;
         [titles addObject:NSLocalizedString(@"channel.action.manage", nil)];
         [entries addObject:[NSNumber numberWithInt:NoshiChannelMenuManage]];

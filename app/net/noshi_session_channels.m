@@ -60,6 +60,7 @@ NSString *const NoshiDialogsChangedNotification = @"NoshiDialogsChanged";
     _canViewStats = row->can_view_stats;
     _creator = row->creator;
     _signatures = row->signatures;
+    _basic = row->basic;
     _adminRights = row->admin_rights;
     _participants = row->participants;
     _admins = row->admins;
@@ -210,8 +211,10 @@ static void NoshiChannelWrite(NoshiSession *session, noshi_status (^build)(noshi
 - (void)loadFullChannelOfDialog:(NoshiDialog *)dialog completion:(void (^)(NoshiFullChannel *, NSString *))completion {
     void (^done)(NoshiFullChannel *, NSString *) = [completion copy];
     noshi_peer_ref peer = NoshiPeerRefOfDialog(dialog);
+    /* a basic group asks messages.getFullChat and reads the answer into the same row */
+    BOOL basic = peer.kind == 2;
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
-        return noshi_full_channel_request(arena, &peer, request);
+        return basic ? noshi_full_chat_request(arena, peer.id, request) : noshi_full_channel_request(arena, &peer, request);
     } handler:^(const noshi_mt_rpc_result *result) {
         if (result->status != NOSHI_OK) {
             NSString *error = NoshiRpcErrorName(result);
@@ -221,9 +224,10 @@ static void NoshiChannelWrite(NoshiSession *session, noshi_status (^build)(noshi
             return;
         }
         noshi_full_channel *full = calloc(1, sizeof(*full));
-        noshi_status status = full ? noshi_full_channel_parse(result->value, peer.id, (int32_t)time(NULL), full) : NOSHI_E_NOMEM;
+        int32_t now = (int32_t)time(NULL);
+        noshi_status status = !full ? NOSHI_E_NOMEM : basic ? noshi_full_chat_parse(result->value, peer.id, now, full) : noshi_full_channel_parse(result->value, peer.id, now, full);
         if (status != NOSHI_OK) {
-            NSLog(@"noshigram: channels.getFullChannel answer rejected: %s", noshi_status_name(status));
+            NSLog(@"noshigram: %s answer rejected: %s", basic ? "messages.getFullChat" : "channels.getFullChannel", noshi_status_name(status));
             free(full);
             [self deliverMain:^{ done(nil, @"INTERNAL"); [done release]; }];
             return;

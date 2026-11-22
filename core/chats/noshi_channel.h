@@ -59,6 +59,7 @@ typedef struct noshi_full_channel {
     uint8_t gifts_available;        /* the channel takes gifts */
     uint8_t creator;                /* the account made the channel, so it holds every right */
     uint8_t signatures;             /* posts carry the name of the admin who wrote them */
+    uint8_t basic;                  /* a basic group read from messages.getFullChat, not a channel: the dialog is of kind 2 and only the fields a chatFull has are set */
     uint32_t admin_rights;          /* NOSHI_ADMIN_* of the account when it is an admin */
     char about[NOSHI_ABOUT_MAX];
     char username[NOSHI_CHANNEL_USERNAME_MAX];    /* empty for a private channel */
@@ -83,6 +84,12 @@ noshi_status noshi_discussion_parse(const noshi_tl_value *answer, int64_t channe
 /* a messages.chatFull of that channel; now (unix seconds) decides whether a mute is still running; anything else,
    or a full chat that is not a channel, is NOSHI_E_MALFORMED. out is always initialised */
 noshi_status noshi_full_channel_parse(const noshi_tl_value *answer, int64_t channel_id, int32_t now, noshi_full_channel *out);
+/* messages.getFullChat for a basic group */
+noshi_status noshi_full_chat_request(noshi_arena *arena, int64_t chat_id, noshi_tl_value **out);
+/* a messages.chatFull of that basic group into the same row a channel fills, with basic set: the title, the description, the invite link, the mute, the
+   pinned message, and the members and admins counted from the participants it lists (or the count of the chat when it lists none); anything else,
+   or a full chat that is a channel's, is NOSHI_E_MALFORMED. out is always initialised */
+noshi_status noshi_full_chat_parse(const noshi_tl_value *answer, int64_t chat_id, int32_t now, noshi_full_channel *out);
 /* the NOSHI_ADMIN_* bits a chatAdminRights object sets; a missing or foreign object is none */
 uint32_t noshi_admin_rights_read(const noshi_tl_value *rights);
 

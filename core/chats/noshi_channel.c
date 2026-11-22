@@ -258,10 +258,19 @@ void noshi_chat_wallpaper_read(const noshi_tl_value *wallpaper, noshi_chat_wallp
     if (!out->color_count && !out->has_file) memset(out, 0, sizeof(*out));
 }
 
-noshi_status noshi_full_channel_parse(const noshi_tl_value *answer, int64_t channel_id, int32_t now, noshi_full_channel *out) {
-    const noshi_tl_value *full, *chats, *entity, *invite, *notify;
-    int64_t linked = 0;
+/* what a channelFull and a chatFull both carry: the description, the invite link the account sees, the mute and the pinned message */
+static void read_full_common(const noshi_tl_value *full, int32_t now, noshi_full_channel *out) {
+    const noshi_tl_value *invite = noshi_tl_get(full, "exported_invite"), *notify = noshi_tl_get(full, "notify_settings");
     int32_t mute_until = 0;
+    copy_text(out->about, sizeof(out->about), full, "about");
+    if (noshi_tl_is(invite, NOSHI_TL_ID_chatInviteExported)) copy_text(out->link, sizeof(out->link), invite, "link");
+    if (notify && noshi_tl_get_i32(notify, "mute_until", &mute_until) == NOSHI_OK && mute_until > now) out->muted = 1;
+    noshi_tl_get_i32(full, "pinned_msg_id", &out->pinned_message);
+}
+
+noshi_status noshi_full_channel_parse(const noshi_tl_value *answer, int64_t channel_id, int32_t now, noshi_full_channel *out) {
+    const noshi_tl_value *full, *chats, *entity;
+    int64_t linked = 0;
     if (!out) return NOSHI_E_ARG;
     memset(out, 0, sizeof(*out));
     if (!noshi_tl_is(answer, NOSHI_TL_ID_messages_chatFull) || channel_id <= 0) return NOSHI_E_MALFORMED;
@@ -280,18 +289,13 @@ noshi_status noshi_full_channel_parse(const noshi_tl_value *answer, int64_t chan
     out->admin_rights = out->creator ? NOSHI_ADMIN_ALL : noshi_admin_rights_read(noshi_tl_get(entity, "admin_rights"));
     out->verified = noshi_tl_has(entity, "verified") ? 1 : 0;
     read_username(out->username, sizeof(out->username), entity);
-    copy_text(out->about, sizeof(out->about), full, "about");
+    read_full_common(full, now, out);
     noshi_tl_get_i32(full, "participants_count", &out->participants);
     noshi_tl_get_i32(full, "admins_count", &out->admins);
     noshi_tl_get_i32(full, "banned_count", &out->banned);
     noshi_tl_get_i32(full, "stargifts_count", &out->gifts);
-    noshi_tl_get_i32(full, "pinned_msg_id", &out->pinned_message);
     out->can_view_stats = noshi_tl_has(full, "can_view_stats") ? 1 : 0;
     out->gifts_available = noshi_tl_has(full, "stargifts_available") ? 1 : 0;
-    invite = noshi_tl_get(full, "exported_invite");
-    if (noshi_tl_is(invite, NOSHI_TL_ID_chatInviteExported)) copy_text(out->link, sizeof(out->link), invite, "link");
-    notify = noshi_tl_get(full, "notify_settings");
-    if (notify && noshi_tl_get_i32(notify, "mute_until", &mute_until) == NOSHI_OK && mute_until > now) out->muted = 1;
     {
         noshi_peer chosen;
         if (noshi_peer_from_tl(noshi_tl_get(full, "default_send_as"), &chosen) == NOSHI_OK && (chosen.kind == 1 || chosen.kind == 3) && chosen.id > 0) {
@@ -303,6 +307,61 @@ noshi_status noshi_full_channel_parse(const noshi_tl_value *answer, int64_t chan
     if (noshi_tl_get_i64(full, "linked_chat_id", &linked) == NOSHI_OK && linked > 0 && find_channel(chats, linked)) {
         read_dialog(&out->linked, linked, chats);
         out->has_linked = out->linked.title[0] != 0;
+    }
+    return NOSHI_OK;
+}
+
+noshi_status noshi_full_chat_request(noshi_arena *arena, int64_t chat_id, noshi_tl_value **out) {
+    noshi_tl_value *request;
+    noshi_status status;
+    if (out) *out = NULL;
+    if (!arena || !out || chat_id <= 0) return NOSHI_E_ARG;
+    request = noshi_tl_new_obj(arena, "messages.getFullChat");
+    if (!request) return NOSHI_E_NOMEM;
+    status = noshi_tl_set_i64(arena, request, "chat_id", chat_id);
+    if (status == NOSHI_OK) *out = request;
+    return status;
+}
+
+static const noshi_tl_value *find_basic_chat(const noshi_tl_value *chats, int64_t id) {
+    uint32_t i;
+    for (i = 0; chats && chats->kind == NOSHI_TL_V_VEC && i < chats->u.vec.count; ++i) {
+        int64_t found;
+        const noshi_tl_value *chat = chats->u.vec.items[i];
+        if (noshi_tl_is(chat, NOSHI_TL_ID_chat) && noshi_tl_get_i64(chat, "id", &found) == NOSHI_OK && found == id) return chat;
+    }
+    return NULL;
+}
+
+noshi_status noshi_full_chat_parse(const noshi_tl_value *answer, int64_t chat_id, int32_t now, noshi_full_channel *out) {
+    const noshi_tl_value *full, *chats, *entity, *list, *people;
+    if (!out) return NOSHI_E_ARG;
+    memset(out, 0, sizeof(*out));
+    if (!noshi_tl_is(answer, NOSHI_TL_ID_messages_chatFull) || chat_id <= 0) return NOSHI_E_MALFORMED;
+    full = noshi_tl_get(answer, "full_chat");
+    chats = noshi_tl_get(answer, "chats");
+    entity = find_basic_chat(chats, chat_id);
+    if (!noshi_tl_is(full, NOSHI_TL_ID_chatFull) || !entity) return NOSHI_E_MALFORMED;
+    out->dialog.peer_kind = 2;
+    out->dialog.peer_id = chat_id;
+    noshi_dialog_peer_read(&out->dialog, NULL, chats, 0);
+    out->basic = 1;
+    out->membership_known = 1;
+    out->creator = noshi_tl_has(entity, "creator") ? 1 : 0;
+    out->admin_rights = out->creator ? NOSHI_ADMIN_ALL : noshi_admin_rights_read(noshi_tl_get(entity, "admin_rights"));
+    read_full_common(full, now, out);
+    /* the members are listed whole in a chatParticipants; a chat the account has left gets chatParticipantsForbidden, and the chat's own count stands in */
+    list = noshi_tl_get(full, "participants");
+    people = noshi_tl_is(list, NOSHI_TL_ID_chatParticipants) ? noshi_tl_get(list, "participants") : NULL;
+    if (people && people->kind == NOSHI_TL_V_VEC) {
+        uint32_t i;
+        out->participants = (int32_t)people->u.vec.count;
+        for (i = 0; i < people->u.vec.count; ++i) {
+            const noshi_tl_value *person = people->u.vec.items[i];
+            if (noshi_tl_is(person, NOSHI_TL_ID_chatParticipantAdmin) || noshi_tl_is(person, NOSHI_TL_ID_chatParticipantCreator)) ++out->admins;
+        }
+    } else {
+        noshi_tl_get_i32(entity, "participants_count", &out->participants);
     }
     return NOSHI_OK;
 }

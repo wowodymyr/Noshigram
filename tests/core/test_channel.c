@@ -161,6 +161,52 @@ static void test_malformed(void) {
     CHECK_EQ_INT(noshi_full_channel_parse(answer_for(f, chats, 1), 800, 0, NULL), NOSHI_E_ARG);
 }
 
+static void test_basic_group(void) {
+    noshi_full_channel full;
+    noshi_tl_value *f = obj("chatFull"), *chat = obj("chat"), *list = obj("chatParticipants"), *people[3], *chats[1], *notify = obj("peerNotifySettings");
+    noshi_tl_value *request = NULL;
+    set_i64(chat, "id", 900);
+    set_str(chat, "title", "old friends");
+    set_i32(chat, "participants_count", 7);
+    set_flag(chat, "creator");
+    set_i64(f, "id", 900);
+    set_str(f, "about", "since 2014");
+    set_i32(notify, "mute_until", 5000);
+    set(f, "notify_settings", notify);
+    people[0] = obj("chatParticipantCreator");
+    people[1] = obj("chatParticipantAdmin");
+    people[2] = obj("chatParticipant");
+    set(list, "participants", vec_of(people, 3));
+    set(f, "participants", list);
+    chats[0] = chat;
+    CHECK_EQ_INT(noshi_full_chat_parse(answer_for(f, chats, 1), 900, 1000, &full), NOSHI_OK);
+    CHECK_EQ_INT(full.basic, 1);
+    CHECK_EQ_INT(full.megagroup, 0);
+    CHECK(!strcmp(full.dialog.title, "old friends"));
+    CHECK_EQ_INT(full.dialog.kind, NOSHI_DIALOG_GROUP);
+    CHECK_EQ_INT(full.dialog.peer_kind, 2);
+    CHECK(!strcmp(full.about, "since 2014"));
+    CHECK_EQ_INT(full.participants, 3);
+    CHECK_EQ_INT(full.admins, 2);
+    CHECK_EQ_INT(full.creator, 1);
+    CHECK_EQ_INT(full.muted, 1);
+    /* a chat the account has left lists nobody, and the count of the chat stands in */
+    set(f, "participants", obj("chatParticipantsForbidden"));
+    CHECK_EQ_INT(noshi_full_chat_parse(answer_for(f, chats, 1), 900, 6000, &full), NOSHI_OK);
+    CHECK_EQ_INT(full.participants, 7);
+    CHECK_EQ_INT(full.admins, 0);
+    CHECK_EQ_INT(full.muted, 0);
+    /* a channel's full chat, or a chat the answer does not carry, is not a basic group's */
+    chats[0] = channel(900, "real", 1);
+    CHECK_EQ_INT(noshi_full_chat_parse(answer_for(obj("channelFull"), chats, 1), 900, 0, &full), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_chat_parse(answer_for(f, chats, 1), 900, 0, &full), NOSHI_E_MALFORMED);
+    CHECK_EQ_INT(noshi_full_chat_parse(answer_for(f, chats, 1), 900, 0, NULL), NOSHI_E_ARG);
+    CHECK_EQ_INT(noshi_full_chat_request(&arena, 900, &request), NOSHI_OK);
+    CHECK_EQ_INT(noshi_tl_id(request), NOSHI_TL_ID_messages_getFullChat);
+    CHECK_EQ_INT(noshi_full_chat_request(&arena, 0, &request), NOSHI_E_ARG);
+    CHECK(request == NULL);
+}
+
 static void test_requests(void) {
     noshi_tl_value *request = NULL;
     noshi_peer_ref ok = {3, 500, 7, 0, 0}, nohash = {3, 500, 0, 0, 0}, user = {1, 5, 7, 0, 0};
@@ -591,6 +637,7 @@ int main(void) {
     test_discussion();
     test_username_list();
     test_malformed();
+    test_basic_group();
     test_requests();
     test_join();
     test_sender_channel();

@@ -7218,7 +7218,8 @@ static NSDate *NoshiReminderDate(NSUInteger choice) {
 
 - (void)openProfileGifts {
     NSTimeInterval began = [NSDate timeIntervalSinceReferenceDate];
-    BOOL channelLike = _dialog.peerKind == 3;
+    /* a basic group has the same info screen as a channel, read from its full chat */
+    BOOL channelLike = _dialog.peerKind == 3 || _dialog.peerKind == 2;
     if (!_dialog.saved && _dialog.kind != NOSHI_DIALOG_USER && _dialog.kind != NOSHI_DIALOG_BOT && !channelLike) return;
     [_input.textView resignFirstResponder];
     UIViewController *screen;
