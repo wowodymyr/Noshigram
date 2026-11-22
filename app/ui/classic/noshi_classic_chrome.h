@@ -78,6 +78,8 @@ UIView *NoshiClassicCounterBadge(NSString *text);
 
 /* the small round count on a row, in the accent color or gray */
 UILabel *NoshiClassicBadge(NSString *text, BOOL muted);
+/* the same capsule in red, for the counts on the bottom bar */
+UILabel *NoshiClassicAlertBadge(NSString *text);
 
 /* the colors of a glossy button of the classic style */
 typedef enum {

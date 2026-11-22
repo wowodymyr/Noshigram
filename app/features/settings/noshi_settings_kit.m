@@ -45,68 +45,50 @@ static void NoshiToneEnds(NoshiSettingsTone tone, uint32_t *top, uint32_t *botto
     *bottom = table[tone][1];
 }
 
-static UIColor *NoshiMix(UIColor *color, CGFloat white, CGFloat amount) {
-    CGFloat r = 0, g = 0, b = 0, a = 0;
-    [color getRed:&r green:&g blue:&b alpha:&a];
-    return [UIColor colorWithRed:r + (white - r) * amount green:g + (white - g) * amount blue:b + (white - b) * amount alpha:1];
+/* the pictures telegram for ios 4 drew for the same rows: rounded squares in the colors of the settings of ios 7, kept in the bundle */
+static NSString *NoshiTelegramTileName(NoshiSymbol symbol) {
+    switch (symbol) {
+    case NoshiSymbolSettingsSounds: return @"SettingsNotificationsIcon";
+    case NoshiSymbolSettingsPrivacy: return @"SettingsPrivacyIcon";
+    case NoshiSymbolSettingsData: return @"SettingsDataIcon";
+    case NoshiSymbolSettingsChat: return @"SettingsWallpaperIcon";
+    case NoshiSymbolSettingsStickers:
+    case NoshiSymbolSticker: return @"SettingsStickersIcon";
+    case NoshiSymbolSettingsLanguage: return @"SettingsLanguageIcon";
+    case NoshiSymbolSettingsFaq: return @"SettingsFaqIcon";
+    case NoshiSymbolSettingsAsk: return @"SettingsSupportIcon";
+    default: return nil;
+    }
 }
 
+/* the tile of a settings row as telegram for ios 4 had it: a rounded square filled with the color of the tone and a white glyph on it,
+   or the very picture of telegram when it had one for the row */
 UIImage *NoshiSettingsTileImage(NoshiSymbol symbol, NoshiSettingsTone tone, CGFloat side) {
     static NSCache *cache;
     if (!cache) cache = [[NSCache alloc] init];
-    BOOL dark = NoshiThemeIsDark();
-    NSString *key = [NSString stringWithFormat:@"%d/%d/%g/%d", (int)symbol, (int)tone, (double)side, dark];
+    NSString *key = [NSString stringWithFormat:@"%d/%d/%g", (int)symbol, (int)tone, (double)side];
     UIImage *image = [[[cache objectForKey:key] retain] autorelease];
     if (image) return image;
-    uint32_t top, bottom;
-    NoshiToneEnds(tone, &top, &bottom);
-    UIColor *middle = NoshiMix(NoshiToneRGB(top), 0, 0);
-    CGFloat r1 = 0, g1 = 0, b1 = 0, r2 = 0, g2 = 0, b2 = 0, a = 0;
-    [NoshiToneRGB(top) getRed:&r1 green:&g1 blue:&b1 alpha:&a];
-    [NoshiToneRGB(bottom) getRed:&r2 green:&g2 blue:&b2 alpha:&a];
-    middle = [UIColor colorWithRed:(r1 + r2) / 2 green:(g1 + g2) / 2 blue:(b1 + b2) / 2 alpha:1];
-    /* a pale disc with a deep glyph: the tonal pair the M3 list takes from the two colors of the tone */
-    UIColor *disc = dark ? NoshiMix(middle, 1, 0.56) : NoshiMix(middle, 1, 0.80);
-    UIColor *ink = dark ? NoshiMix(middle, 0, 0.42) : NoshiMix(middle, 0, 0.12);
+    NSString *name = NoshiTelegramTileName(symbol);
+    UIImage *bundled = name ? [UIImage imageNamed:name] : nil;
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    [disc setFill];
-    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, side, side)] fill];
-    UIImage *glyph = NoshiSymbolImage(symbol, floor(side * 0.62), ink);
-    [glyph drawAtPoint:CGPointMake((side - glyph.size.width) / 2, (side - glyph.size.height) / 2)];
+    if (bundled) {
+        [bundled drawInRect:CGRectMake(0, 0, side, side)];
+    } else {
+        uint32_t top, bottom;
+        NoshiToneEnds(tone, &top, &bottom);
+        CGFloat r1 = 0, g1 = 0, b1 = 0, r2 = 0, g2 = 0, b2 = 0, a = 0;
+        [NoshiToneRGB(top) getRed:&r1 green:&g1 blue:&b1 alpha:&a];
+        [NoshiToneRGB(bottom) getRed:&r2 green:&g2 blue:&b2 alpha:&a];
+        [[UIColor colorWithRed:(r1 + r2) / 2 green:(g1 + g2) / 2 blue:(b1 + b2) / 2 alpha:1] setFill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, side, side) cornerRadius:side * 0.225f] fill];
+        UIImage *glyph = NoshiSymbolImage(symbol, floor(side * 0.66), [UIColor whiteColor]);
+        [glyph drawAtPoint:CGPointMake((side - glyph.size.width) / 2, (side - glyph.size.height) / 2)];
+    }
     image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     if (image) [cache setObject:image forKey:key];
     return image;
-}
-
-/* the outline of the mark, in the units of the vector: absolute M, L, C and Z commands */
-static const char NoshiMarkPath[] =
-    "M122.661 123.5L261.364 67.4608C279.286 60.2198 287.945 39.8198 280.704 21.8978C273.463 3.97575 253.064 -4.68325 235.141 2.55775L21.8888 88.7168"
-    "C15.0532 91.4785 9.26419 96.3283 5.34756 102.574C1.43092 108.82 -0.413356 116.144 0.0777699 123.5C-0.413356 130.856 1.43092 138.179 5.34756 144.425"
-    "C9.26419 150.671 15.0532 155.521 21.8888 158.283L235.141 244.442C253.064 251.683 273.463 243.024 280.704 225.102C287.945 207.179 279.286 186.78 261.364 179.539Z";
-
-/* reads the numbers after a command letter; the path above is fixed text, so a malformed one is a build mistake and ends the walk */
-static void NoshiWalkMarkPath(CGMutablePathRef path, CGAffineTransform place) {
-    const char *at = NoshiMarkPath;
-    char command = 0;
-    double v[6];
-    while (*at) {
-        if (*at == 'M' || *at == 'L' || *at == 'C' || *at == 'Z') command = *at++;
-        else break;
-        int need = command == 'C' ? 6 : (command == 'Z' ? 0 : 2);
-        do {
-            for (int i = 0; i < need; ++i) {
-                char *end = NULL;
-                v[i] = strtod(at, &end);
-                if (end == at) return;
-                at = end;
-            }
-            if (command == 'M') CGPathMoveToPoint(path, &place, (CGFloat)v[0], (CGFloat)v[1]);
-            else if (command == 'L') CGPathAddLineToPoint(path, &place, (CGFloat)v[0], (CGFloat)v[1]);
-            else if (command == 'C') CGPathAddCurveToPoint(path, &place, (CGFloat)v[0], (CGFloat)v[1], (CGFloat)v[2], (CGFloat)v[3], (CGFloat)v[4], (CGFloat)v[5]);
-            else CGPathCloseSubpath(path);
-        } while (need && (*at == '-' || *at == '.' || (*at >= '0' && *at <= '9')));
-    }
 }
 
 UIImage *NoshiSettingsMarkTile(CGFloat side) {
@@ -115,18 +97,11 @@ UIImage *NoshiSettingsMarkTile(CGFloat side) {
     NSString *key = [NSString stringWithFormat:@"%g", (double)side];
     UIImage *image = [[[cache objectForKey:key] retain] autorelease];
     if (image) return image;
+    /* the paper plane of the icon of the app, cut to the corners of the other tiles */
+    UIImage *plane = [UIImage imageNamed:@"splash_icon"];
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    [[UIColor colorWithRed:0x99 / 255.0 green:0x3C / 255.0 blue:0x38 / 255.0 alpha:1] setFill];
-    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, side, side)] fill];
-    /* the vector is 24 units wide, and its group moves the mark by 4.5 and 5.477 and shrinks it by 0.052817 */
-    CGFloat unit = side / 24.0;
-    CGMutablePathRef path = CGPathCreateMutable();
-    NoshiWalkMarkPath(path, CGAffineTransformMake(0.052817 * unit, 0, 0, 0.052817 * unit, 4.5 * unit, 5.477 * unit));
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGContextAddPath(context, path);
-    CGPathRelease(path);
-    [[UIColor whiteColor] setFill];
-    CGContextFillPath(context);
+    [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, side, side) cornerRadius:side * 0.225f] addClip];
+    [plane drawInRect:CGRectMake(0, 0, side, side)];
     image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     if (image) [cache setObject:image forKey:key];

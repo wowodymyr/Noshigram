@@ -12,14 +12,9 @@
 #import "noshi_theme.h"
 #import "noshi_wave_background_view.h"
 
+/* both slices start at ios 7 and link against a current sdk, so the bars are always the flat ones; the glossy branches that ask this go next */
 BOOL NoshiClassicIsFlatSystem(void) {
-#if defined(__LP64__)
     return YES;
-#else
-    /* the armv7 slice links against the ios 5 sdk, so ios 7 and later draw its bars in the ios 6 look where tintColor
-       paints the bar itself; setting a white tintColor there turned every bar white */
-    return NO;
-#endif
 }
 
 /* the blue of the bars of telegram: deep enough in the dark theme that the gloss of ios 5 and 6 still reads, lighter in the white
@@ -69,6 +64,7 @@ static CGFloat NoshiClassicGlossScale(void) {
 }
 
 static UIImage *NoshiClassicBarImageMade(void);
+static UIColor *NoshiTabBarGround(void);
 
 static UIImage *NoshiClassicBarImage(void) {
     return NoshiClassicRemembered(@"bar", ^UIImage *{ return NoshiClassicBarImageMade(); });
@@ -117,10 +113,9 @@ static void NoshiClassicApplyBarAppearance(UIView *bar) {
     if (!kind || ![kind instancesRespondToSelector:opaque]) return;
     id appearance = [[[kind alloc] init] autorelease];
     [appearance performSelector:opaque];
-    [appearance setValue:NoshiClassicBarColor() forKey:@"backgroundColor"];
-    if (navigation && [appearance respondsToSelector:NSSelectorFromString(@"setBackgroundImage:")]) [appearance setValue:NoshiClassicBarImage() forKey:@"backgroundImage"];
+    [appearance setValue:NoshiTabBarGround() forKey:@"backgroundColor"];
     if (navigation) {
-        [appearance setValue:[NSDictionary dictionaryWithObject:[UIColor whiteColor] forKey:NSForegroundColorAttributeName] forKey:@"titleTextAttributes"];
+        [appearance setValue:[NSDictionary dictionaryWithObject:NoshiColorTitle() forKey:NSForegroundColorAttributeName] forKey:@"titleTextAttributes"];
     }
     for (NSString *key in [NSArray arrayWithObjects:@"standardAppearance", @"compactAppearance", @"scrollEdgeAppearance", nil]) {
         NSString *setter = [NSString stringWithFormat:@"set%@%@:", [[key substringToIndex:1] uppercaseString], [key substringFromIndex:1]];
@@ -131,9 +126,9 @@ static void NoshiClassicApplyBarAppearance(UIView *bar) {
 static void NoshiClassicTintBar(id bar) {
     if (NoshiClassicIsFlatSystem()) {
         NoshiClassicApplyBarAppearance(bar);
-        /* black style makes the title and the buttons white; the tint then colors the bar itself */
-        [bar setValue:NoshiClassicBarColor() forKey:@"barTintColor"];
-        [bar setValue:[UIColor whiteColor] forKey:@"tintColor"];
+        /* the bars of telegram for ios 4: the light ground of the bottom bar (dark at night), a dark title and the buttons in the accent */
+        [bar setValue:NoshiTabBarGround() forKey:@"barTintColor"];
+        [bar setValue:NoshiColorAccent() forKey:@"tintColor"];
         [bar setValue:[NSNumber numberWithBool:NO] forKey:@"translucent"];
     } else {
         [bar setTintColor:NoshiClassicBarColor()];
@@ -141,13 +136,16 @@ static void NoshiClassicTintBar(id bar) {
 }
 
 void NoshiClassicStyleNavigationBar(UINavigationBar *bar) {
-    bar.barStyle = NoshiClassicIsFlatSystem() ? UIBarStyleBlack : (NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault);
+    bar.barStyle = NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault;
     NoshiClassicTintBar(bar);
-    if (NoshiClassicIsFlatSystem()) [bar setBackgroundImage:NoshiClassicBarImage() forBarMetrics:UIBarMetricsDefault];
+    if (NoshiClassicIsFlatSystem()) {
+        [bar setBackgroundImage:nil forBarMetrics:UIBarMetricsDefault];
+        [bar setTitleTextAttributes:[NSDictionary dictionaryWithObject:NoshiColorTitle() forKey:NSForegroundColorAttributeName]];
+    }
 }
 
 void NoshiClassicStyleToolbar(UIToolbar *bar) {
-    bar.barStyle = NoshiClassicIsFlatSystem() ? UIBarStyleBlack : (NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault);
+    bar.barStyle = NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault;
     NoshiClassicTintBar(bar);
 }
 
@@ -170,7 +168,7 @@ static UIImage *NoshiClassicSearchWellMade(void) {
     UIBezierPath *lower = [UIBezierPath bezierPathWithRoundedRect:CGRectOffset(pill, 0, rim) cornerRadius:radius];
     [(dark ? [UIColor colorWithWhite:1 alpha:0.1] : [UIColor colorWithWhite:1 alpha:0.9]) setFill];
     [lower fill];
-    [NoshiThemeTinted(dark ? [UIColor colorWithRed:0.07 green:0.11 blue:0.13 alpha:1] : [UIColor colorWithRed:0.86 green:0.83 blue:0.91 alpha:1]) setFill];
+    [NoshiThemeTinted(dark ? [UIColor colorWithRed:0.07 green:0.11 blue:0.13 alpha:1] : [UIColor colorWithRed:0.89 green:0.89 blue:0.91 alpha:1]) setFill];
     [shape fill];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -675,7 +673,7 @@ UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle
     top.text = title;
     top.textAlignment = NoshiTextAlignmentCenter;
     top.font = [UIFont boldSystemFontOfSize:hasSubtitle ? 17 : 20];
-    top.textColor = [UIColor whiteColor];
+    top.textColor = flat ? NoshiColorTitle() : [UIColor whiteColor];
     top.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     /* the engraved shadow is part of the look of the old bars; the flat ones have none */
     if (!flat) {
@@ -688,8 +686,8 @@ UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle
         bottom.textAlignment = NoshiTextAlignmentCenter;
         bottom.backgroundColor = [UIColor clearColor];
         bottom.font = [UIFont systemFontOfSize:12];
-        bottom.plainColor = [UIColor colorWithWhite:0.92 alpha:1];
-        bottom.activeColor = [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1];
+        bottom.plainColor = flat ? NoshiColorSecondary() : [UIColor colorWithWhite:0.92 alpha:1];
+        bottom.activeColor = flat ? NoshiColorAccent() : [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1];
         [bottom setStatus:subtitle kind:(NoshiStatusKind)kind];
         if (!flat) {
             bottom.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
@@ -767,15 +765,19 @@ UIView *NoshiClassicCounterBadge(NSString *text) {
    list has one of these on every row that has unread messages */
 @interface NoshiClassicBadgeLabel : UILabel {
     BOOL _muted;
+    BOOL _alert;
 }
 @property (nonatomic, assign) BOOL muted;
+/* the red of the counts on the bottom bar of telegram, in place of the accent of the list */
+@property (nonatomic, assign) BOOL alert;
 @end
 
 @implementation NoshiClassicBadgeLabel
 @synthesize muted = _muted;
+@synthesize alert = _alert;
 - (void)drawRect:(CGRect)rect {
-    UIColor *color = _muted ? [UIColor colorWithRed:0.62 green:0.66 blue:0.71 alpha:1] : NoshiColorAccent();
-    NSString *key = [NSString stringWithFormat:@"badge|%d", _muted];
+    UIColor *color = _muted ? [UIColor colorWithRed:0.62 green:0.66 blue:0.71 alpha:1] : (_alert ? NoshiColorBadgeRed() : NoshiColorAccent());
+    NSString *key = [NSString stringWithFormat:@"badge|%d|%d", _muted, _alert];
     UIImage *capsule = NoshiClassicRemembered(key, ^UIImage *{
         /* one point of stretch between the caps: with none, ios 6 leaves a seam down the middle of the capsule */
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(23, 22), NO, 0);
@@ -801,6 +803,12 @@ UILabel *NoshiClassicBadge(NSString *text, BOOL muted) {
     label.textAlignment = NoshiTextAlignmentCenter;
     label.backgroundColor = [UIColor clearColor];
     label.opaque = NO;
+    return label;
+}
+
+UILabel *NoshiClassicAlertBadge(NSString *text) {
+    NoshiClassicBadgeLabel *label = (NoshiClassicBadgeLabel *)NoshiClassicBadge(text, NO);
+    label.alert = YES;
     return label;
 }
 

@@ -27,10 +27,9 @@ typedef enum {
     NoshiSettingsTonePurplePastel
 } NoshiSettingsTone;
 
-/* the glyph in a circle of the tone, in the tonal style M3 list: a pale disc with a deep glyph, as the dark theme
-   and the light theme each want it */
+/* the tile of a settings row as telegram for ios 4 had it: a rounded square in the color of the tone with a white glyph, or telegram's own picture for the row */
 UIImage *NoshiSettingsTileImage(NoshiSymbol symbol, NoshiSettingsTone tone, CGFloat side);
-/* the tile of the Noshigram row: the mark of the app in white on a dark red disc draw theirs */
+/* the tile of the Noshigram row: the paper plane of the app icon */
 UIImage *NoshiSettingsMarkTile(CGFloat side);
 
 /* the circle that stands for a session: the colors and the glyph SessionCell, white on a gradient */

@@ -306,7 +306,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     _classicTabs.viewControllers = navigations;
     _classicTabs.selectedIndex = (NSUInteger)tab;
     NoshiClassicStyleTabBar(_classicTabs.tabBar);
-    /* the system badge is red on ios 5 to 9 and takes no color before ios 10, so the count is a label of our own in the accent */
+    /* the count is a red capsule of our own, as telegram drew it on its bar; the system badge cannot be placed or colored on every ios */
     UITabBar *bar = _classicTabs.tabBar;
     UILongPressGestureRecognizer *hold = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(classicBarHeld:)];
     [bar addGestureRecognizer:hold];
@@ -314,7 +314,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
     chats.unreadHandler = ^(NSInteger total) {
         [[bar viewWithTag:CLASSIC_BADGE_TAG] removeFromSuperview];
         if (total <= 0) return;
-        UILabel *badge = NoshiClassicBadge(total > 999 ? @"999+" : [NSString stringWithFormat:@"%ld", (long)total], NO);
+        UILabel *badge = NoshiClassicAlertBadge(total > 999 ? @"999+" : [NSString stringWithFormat:@"%ld", (long)total]);
         badge.tag = CLASSIC_BADGE_TAG;
         badge.userInteractionEnabled = NO;
         [bar addSubview:badge];

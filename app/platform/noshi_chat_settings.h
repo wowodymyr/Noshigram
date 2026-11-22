@@ -95,7 +95,7 @@ void NoshiChatListSetCustomTitle(NSString *text);
 #define NOSHI_AVATAR_CORNER_DEFAULT 64
 NSInteger NoshiAvatarCornerPercent(void);
 void NoshiAvatarCornerStore(NSInteger percent);
-/* the outline of the pictures of people and chats, an NoshiShape; the rounded square of the corner above is the default */
+/* the outline of the pictures of people and chats, a NoshiShape; the circle of telegram for ios 4 is the default */
 NSInteger NoshiAvatarShapeStored(void);
 void NoshiAvatarShapeStore(NSInteger shape);
 /* the outline of the round button that sends: 0 a circle, 1 a rounded square, 2 the shape of the avatars */

@@ -330,13 +330,12 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
 - (void)rebuildRows {
     NoshiWeakReference *weak = _weak;
-    /* the classic cell draws a tile at 29 points, the modern row at 36 */
     UIImage *logo = NoshiSettingsMarkTile(29);
     NoshiSettingsRow *look = [NoshiSettingsRow rowWithTileImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
-                                                           subtitle:NSLocalizedString(@"settings.noshigram.info", nil)
+                                                           subtitle:nil
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
     NoshiSettingsRow *account = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsAccount tone:NoshiSettingsToneBlue title:NSLocalizedString(@"account.title", nil)
-                                                           subtitle:NSLocalizedString(@"account.title.info", nil) value:nil tap:^{
+                                                           subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
         if (!me) return;
         NoshiAccountController *page = [[[NoshiAccountController alloc] initWithSession:me->_session avatars:me->_avatars media:me->_media] autorelease];
@@ -345,22 +344,22 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
         [me push:page];
     }];
     NoshiSettingsRow *chats = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsChat tone:NoshiSettingsToneOrange title:NSLocalizedString(@"settings.chats", nil)
-                                                         subtitle:NSLocalizedString(@"settings.chats.info", nil) value:nil
+                                                         subtitle:nil value:nil
                                                               tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiChatSettingsController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session] autorelease]]; }];
     NoshiSettingsRow *stickers = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSticker tone:NoshiSettingsToneOrangeBright title:NSLocalizedString(@"chatset.stickers", nil)
-                                                            subtitle:NSLocalizedString(@"chatset.stickers.info2", nil) value:nil tap:^{
+                                                            subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
         if (me) [me push:[[[NoshiStickersSettingsController alloc] initWithSession:me->_session media:me->_media] autorelease]];
     }];
-    NoshiSettingsRow *folders = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsFolders tone:NoshiSettingsToneBlue title:NSLocalizedString(@"folders.title", nil) subtitle:NSLocalizedString(@"folders.title.info", nil) value:nil tap:^{
+    NoshiSettingsRow *folders = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsFolders tone:NoshiSettingsToneBlue title:NSLocalizedString(@"folders.title", nil) subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
         if (me) [me push:[[[NoshiFoldersController alloc] initWithSession:me->_session] autorelease]];
     }];
     NoshiSettingsRow *notifications = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsSounds tone:NoshiSettingsToneRed
-                                                                    title:NSLocalizedString(@"settings.notifications", nil) subtitle:NSLocalizedString(@"settings.notifications.info", nil)
+                                                                    title:NSLocalizedString(@"settings.notifications", nil) subtitle:nil
                                                                     value:nil tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiNotificationsSettingsController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars media:((NoshiSettingsController *)weak.target)->_media] autorelease]]; }];
     NoshiSettingsRow *privacy = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsPrivacy tone:NoshiSettingsToneGreen title:NSLocalizedString(@"privacy.title", nil)
-                                                           subtitle:NSLocalizedString(@"privacy.title.info", nil) value:nil tap:^{
+                                                           subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
         if (me) [me push:[[[NoshiPrivacyController alloc] initWithSession:me->_session avatars:me->_avatars media:me->_media] autorelease]];
     }];
@@ -371,7 +370,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
         [NoshiPasscodeSettingsController openFrom:me push:^(UIViewController *page) { [(NoshiSettingsController *)weak.target push:page]; }];
     }];
     NoshiSettingsRow *data = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsData tone:NoshiSettingsToneBlueDeep title:NSLocalizedString(@"settings.data", nil)
-                                                        subtitle:NSLocalizedString(@"settings.data.info", nil) value:nil tap:^{
+                                                        subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
         [me push:[[[NoshiDataSettingsController alloc] initWithSession:me->_session avatars:me->_avatars media:me->_media] autorelease]];
     }];
@@ -379,18 +378,18 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
        last knew */
     NSInteger known = [[NSUserDefaults standardUserDefaults] integerForKey:NoshiDevicesCountKey];
     NoshiSettingsRow *devices = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsDevices tone:NoshiSettingsToneCyan title:NSLocalizedString(@"settings.devices", nil)
-                                                           subtitle:NSLocalizedString(@"settings.devices.info", nil)
+                                                           subtitle:nil
                                                               value:known > 0 ? [NSString stringWithFormat:@"%ld", (long)known] : nil tap:^{
         [(NoshiSettingsController *)weak.target openDevices];
     }];
     NoshiSettingsRow *power = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsPower tone:NoshiSettingsToneOrangeDeep title:NSLocalizedString(@"settings.power", nil)
-                                                         subtitle:NSLocalizedString(@"settings.power.info", nil) value:nil
+                                                         subtitle:nil value:nil
                                                               tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiLiteModeSettingsController alloc] init] autorelease]]; }];
     NoshiSettingsRow *language = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsLanguage tone:NoshiSettingsTonePurple title:NSLocalizedString(@"language.title", nil)
                                                             subtitle:nil value:NoshiNativeLanguageName(NoshiInterfaceLanguageVariant())
                                                                  tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiLanguageSettingsController alloc] init] autorelease]]; }];
     NoshiSettingsRow *update = [NoshiSettingsRow rowWithSymbol:NoshiSymbolDocument tone:NoshiSettingsToneBlue title:NSLocalizedString(@"update.page.title", nil)
-                                                         subtitle:NSLocalizedString(@"update.page.info", nil) value:nil tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiUpdateController alloc] init] autorelease]]; }];
+                                                         subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiUpdateController alloc] init] autorelease]]; }];
     NSDictionary *info = [[NSBundle mainBundle] infoDictionary];
 #if defined(__arm64__)
     NSString *architecture = @"arm64";
@@ -398,13 +397,15 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NSString *architecture = @"armv7";
 #endif
     NSString *version = [NSString stringWithFormat:NSLocalizedString(@"settings.version.line", nil), [info objectForKey:@"CFBundleShortVersionString"], architecture];
-    NoshiSettingsSection *list = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:account, chats, stickers, privacy, passcode, notifications, data, folders, devices, power, update, language, nil]];
-    list.centerFooter = YES;
+    /* the groups of telegram for ios 4: what belongs to the account, then how the app behaves, then the app itself, each row a title alone */
+    NoshiSettingsSection *app = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:look, update, nil]];
+    app.centerFooter = YES;
     NSMutableArray *sections = [NSMutableArray array];
     NoshiSettingsSection *accounts = [self otherAccountsSection];
     if (accounts) [sections addObject:accounts];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:look]]];
-    [sections addObject:list];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:account, stickers, folders, devices, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:notifications, privacy, passcode, data, chats, power, language, nil]]];
+    [sections addObject:app];
     self.sections = sections;
 }
 

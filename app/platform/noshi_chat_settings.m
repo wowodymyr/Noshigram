@@ -191,7 +191,7 @@ static NSInteger NoshiAvatarShapeCurrent = -1;
 NSInteger NoshiAvatarShapeStored(void) {
     if (NoshiAvatarShapeCurrent == -1) {
         NSNumber *stored = NoshiStoredNumber(NoshiAvatarShapeKey);
-        NoshiAvatarShapeCurrent = stored && stored.integerValue >= 0 && stored.integerValue < NoshiShapeCount ? stored.integerValue : 0;
+        NoshiAvatarShapeCurrent = stored && stored.integerValue >= 0 && stored.integerValue < NoshiShapeCount ? stored.integerValue : NoshiShapeCircle;
     }
     return NoshiAvatarShapeCurrent;
 }
@@ -243,7 +243,8 @@ void NoshiClassicTextureStrengthStore(NSInteger percent) { NoshiClassicWrite(3, 
 /* stored as the hue plus one so that zero, the unset value, follows the accent */
 NSInteger NoshiClassicTextureHue(void) { return NoshiClassicRead(6, NoshiClassicTextureHueKey, 0, 360, 0) - 1; }
 void NoshiClassicTextureHueStore(NSInteger hue) { NoshiClassicWrite(6, NoshiClassicTextureHueKey, 0, 360, hue < 0 ? 0 : MIN(hue, 359) + 1); }
-BOOL NoshiClassicAvatarGloss(void) { return NoshiClassicRead(4, NoshiClassicAvatarGlossKey, 0, 1, 1) != 0; }
+/* the flat pictures of telegram for ios 4 by default; the gloss is a choice of the customization */
+BOOL NoshiClassicAvatarGloss(void) { return NoshiClassicRead(4, NoshiClassicAvatarGlossKey, 0, 1, 0) != 0; }
 void NoshiClassicAvatarGlossStore(BOOL on) { NoshiClassicWrite(4, NoshiClassicAvatarGlossKey, 0, 1, on ? 1 : 0); }
 BOOL NoshiClassicAvatarShadow(void) {
     NSNumber *stored = NoshiStoredNumber(NoshiClassicAvatarShadowKey);
