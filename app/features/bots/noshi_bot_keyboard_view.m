@@ -18,7 +18,7 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    /* the keys of a bot sit on the same glossy purple as the bars, as the keys of the old keyboards sat on their plate */
+    /* the keys of a bot sit on the light ground of the bars, as on the keyboard of telegram for ios 4 */
     UIImageView *plate = NoshiClassicStripBackdrop();
     plate.frame = self.bounds;
     plate.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -47,9 +47,10 @@
     for (NSArray *row in markup.rows) {
         for (NoshiMarkupButton *button in row) {
             NoshiEmojiTitleButton *key = [[[NoshiEmojiTitleButton alloc] initWithFrame:CGRectZero] autorelease];
-            [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-            [key setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-            [key setFaceText:button.text font:[UIFont boldSystemFontOfSize:16] color:[UIColor whiteColor]];
+            /* white keys with dark words, a little grey while pressed, as the keys of the system keyboard */
+            [key setBackgroundImage:NoshiClassicTintedGlossImage(NoshiClassicInputFill(), 6, NO) forState:UIControlStateNormal];
+            [key setBackgroundImage:NoshiClassicTintedGlossImage(NoshiClassicInputFill(), 6, YES) forState:UIControlStateHighlighted];
+            [key setFaceText:button.text font:[UIFont systemFontOfSize:16] color:NoshiColorTitle()];
             key.contentEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 8);
             key.enabled = button.enabled;
             key.alpha = button.enabled ? 1 : 0.5;

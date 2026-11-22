@@ -103,7 +103,7 @@ static UIImage *NoshiAttachBlurred(UIImage *image) {
 @synthesize offersGift = _offersGift;
 @synthesize profilePicker = _profilePicker;
 
-/* the glossy purple of the navigation bar under the header, the five buttons and the caption field. the strips have no size when they are made, so the plate is sized in layoutSubviews:
+/* the flat ground of the bars under the header, the five buttons and the caption field. the strips have no size when they are made, so the plate is sized in layoutSubviews:
    autoresizing from an empty frame kept it empty and the strips showed the dark panel through it */
 static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     UIImageView *plate = NoshiClassicStripBackdrop();
@@ -138,11 +138,9 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
     _title.font = [UIFont boldSystemFontOfSize:19];
-    _title.textColor = [UIColor whiteColor];
-    _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-    _title.shadowOffset = CGSizeMake(0, -1);
+    _title.textColor = NoshiColorTitle();
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, NoshiColorAccent()) forState:UIControlStateNormal];
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     _more.accessibilityLabel = NSLocalizedString(@"attach.more", nil);
     _more.hidden = YES;
@@ -165,10 +163,8 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     _barPlate = [NoshiAttachClassicBackdrop(_bar) retain];
     [_panel addSubview:_bar];
     _line = [[UIView alloc] init];
-    _line.backgroundColor = NoshiColorSecondary();
-    _line.alpha = 0.25;
-    /* the plate of the classic bar has its own lit top edge, and a black line over it made a second stripe */
-    _line.hidden = YES;
+    /* the hairline on top of the bar, as the bottom bar of the app has */
+    _line.backgroundColor = NoshiColorHairline();
     [_bar addSubview:_line];
     NSArray *titles = [NSArray arrayWithObjects:NSLocalizedString(@"attach.gallery", nil), NSLocalizedString(@"attach.file", nil),
         NSLocalizedString(@"attach.location", nil), NSLocalizedString(@"attach.gift", nil), NSLocalizedString(@"attach.contact", nil), nil];
@@ -176,17 +172,15 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     NSMutableArray *buttons = [NSMutableArray array], *labels = [NSMutableArray array];
     for (NSUInteger i = 0; i < titles.count; ++i) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-        [button setImage:NoshiSymbolImage(symbols[i], 25, [UIColor whiteColor]) forState:UIControlStateNormal];
+        [button setImage:NoshiSymbolImage(symbols[i], 25, NoshiColorAccent()) forState:UIControlStateNormal];
         button.tag = (NSInteger)i;
         button.accessibilityLabel = [titles objectAtIndex:i];
         [button addTarget:self action:@selector(chosen:) forControlEvents:UIControlEventTouchUpInside];
         [_bar addSubview:button]; [buttons addObject:button];
         UILabel *label = [[[UILabel alloc] init] autorelease];
         label.backgroundColor = [UIColor clearColor];
-        label.font = [UIFont boldSystemFontOfSize:11];
-        label.textColor = [UIColor whiteColor];
-        label.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        label.shadowOffset = CGSizeMake(0, -1);
+        label.font = [UIFont systemFontOfSize:11];
+        label.textColor = NoshiColorSecondary();
         label.textAlignment = NoshiTextAlignmentCenter;
         /* the five labels keep one size, and one that is too long for its column is cut instead of shrunk */
         label.lineBreakMode = UILineBreakModeTailTruncation;

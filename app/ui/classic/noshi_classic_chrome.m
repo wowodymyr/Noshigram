@@ -63,46 +63,7 @@ static CGFloat NoshiClassicGlossScale(void) {
     return scales[NoshiClassicGlossLevel()];
 }
 
-static UIImage *NoshiClassicBarImageMade(void);
 static UIColor *NoshiTabBarGround(void);
-
-static UIImage *NoshiClassicBarImage(void) {
-    return NoshiClassicRemembered(@"bar", ^UIImage *{ return NoshiClassicBarImageMade(); });
-}
-
-static UIImage *NoshiClassicBarImageMade(void) {
-    UIColor *base = NoshiClassicBarColor();
-    UIColor *top = NoshiMixedColor(base, [UIColor whiteColor], 0.15);
-    UIColor *bottom = NoshiMixedColor(base, [UIColor blackColor], 0.12);
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(2, 44), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    NSArray *colors = [NSArray arrayWithObjects:(id)top.CGColor, (id)base.CGColor, (id)bottom.CGColor, nil];
-    CGFloat stops[] = {0, 0.48, 1};
-    CGGradientRef gradient = CGGradientCreateWithColors(space, (CFArrayRef)colors, stops);
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(0, 44), 0);
-    /* the light on the upper half fades out by the middle: with a hard edge there, a strip of any height showed a band, and the pinned message, the player and the sheet headers
-       are all strips */
-    {
-        CGFloat shine[] = {1, 1, 1, MIN(1, 0.12f * NoshiClassicGlossScale()), 1, 1, 1, 0};
-        CGGradientRef lit = CGGradientCreateWithColorComponents(space, shine, NULL, 2);
-        CGContextSaveGState(context);
-        CGContextClipToRect(context, CGRectMake(0, 0, 2, 22));
-        if (NoshiClassicGlossScale() > 0) CGContextDrawLinearGradient(context, lit, CGPointMake(0, 0), CGPointMake(0, 22), 0);
-        CGContextRestoreGState(context);
-        CGGradientRelease(lit);
-    }
-    /* a bright line runs along the top and a dark one under the bar */
-    [[UIColor colorWithWhite:1 alpha:NoshiClassicGlossScale() > 0 ? 0.22 : 0.08] setFill];
-    UIRectFill(CGRectMake(0, 0, 2, 1.0 / NoshiScreenScale()));
-    [[UIColor colorWithWhite:0 alpha:0.35] setFill];
-    UIRectFill(CGRectMake(0, 44 - 1.0 / NoshiScreenScale(), 2, 1.0 / NoshiScreenScale()));
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
 
 /* ios 15 draws a bar that has nothing scrolled under it from scrollEdgeAppearance, which is clear by default and ignores barTintColor: the classic bar came out
    white with white buttons and title. the appearance classes are looked up by name, so the slices linked against old sdks never see them */
@@ -770,6 +731,15 @@ static UIImage *NoshiClassicGlossImage(const CGFloat *fill, const CGFloat *outli
 
 static UIImage *NoshiClassicGlossImageMade(const CGFloat *fill, const CGFloat *outline, CGFloat radius, CGFloat gloss, CGFloat lit) {
     CGFloat side = radius * 2 + 4;
+    /* with the lights of the customization off, as by default, the plate is flat as telegram for ios 4 drew it: the middle color alone and no rim */
+    if (NoshiClassicGlossLevel() == 0) {
+        UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
+        [[UIColor colorWithRed:fill[4] green:fill[5] blue:fill[6] alpha:fill[7]] setFill];
+        [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, side, side) cornerRadius:radius] fill];
+        UIImage *flat = UIGraphicsGetImageFromCurrentImageContext();
+        UIGraphicsEndImageContext();
+        return [flat resizableImageWithCapInsets:UIEdgeInsetsMake(radius + 1, radius + 1, radius + 1, radius + 1)];
+    }
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGRect bounds = CGRectMake(0.5, 0.5, side - 1, side - 1);
@@ -846,14 +816,6 @@ UIImage *NoshiClassicBarButtonImage(BOOL pressed) {
     return NoshiClassicGlossImage(fill, outline, 6, pressed ? 0.08 : 0.20, 0.30);
 }
 
-/* a purple of the classic chrome with the hue of the theme, as three components */
-static void NoshiTintedRGB(CGFloat red, CGFloat green, CGFloat blue, CGFloat out[3]) {
-    const CGFloat *c = CGColorGetComponents(NoshiThemeTinted([UIColor colorWithRed:red green:green blue:blue alpha:1]).CGColor);
-    out[0] = c[0];
-    out[1] = c[1];
-    out[2] = c[2];
-}
-
 UIImage *NoshiClassicGlossButtonImage(NoshiClassicGloss color, BOOL pressed) {
     CGFloat dim = pressed ? 0.78 : 1;
     if (color == NoshiClassicGlossGreen) {
@@ -864,16 +826,8 @@ UIImage *NoshiClassicGlossButtonImage(NoshiClassicGloss color, BOOL pressed) {
         return NoshiClassicGlossImage(fill, outline, 8, pressed ? 0.12 : 0.34, 0.45);
     }
     if (color == NoshiClassicGlossSlate) {
-        /* the purple plate of the app: it takes the hue the wallpaper gave the theme */
-        CGFloat fill[12];
-        const CGFloat purple[3][3] = {{0.64, 0.59, 0.74}, {0.43, 0.37, 0.56}, {0.33, 0.27, 0.46}};
-        for (int i = 0; i < 3; ++i) {
-            NoshiTintedRGB(purple[i][0] * dim, purple[i][1] * dim, purple[i][2] * dim, fill + i * 4);
-            fill[i * 4 + 3] = 1;
-        }
-        CGFloat outline[3];
-        NoshiTintedRGB(0.16, 0.11, 0.25, outline);
-        return NoshiClassicGlossImage(fill, outline, 8, pressed ? 0.10 : 0.30, 0.40);
+        /* the key of the app in its accent */
+        return NoshiClassicTintedGlossImage(NoshiColorAccent(), 8, pressed);
     }
     if (color == NoshiClassicGlossAmber) {
         CGFloat fill[] = {1.00 * dim, 0.87 * dim, 0.46 * dim, 1,
@@ -1008,7 +962,9 @@ UIColor *NoshiClassicStripInk(void) { return NoshiThemeIsDark() ? [UIColor white
 UIColor *NoshiClassicStripEdge(void) { return NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.16] : [UIColor colorWithWhite:0 alpha:0.22]; }
 
 UIImageView *NoshiClassicStripBackdrop(void) {
-    UIImageView *view = [[[UIImageView alloc] initWithImage:NoshiClassicBarImage()] autorelease];
+    /* the flat ground of the bars of telegram for ios 4; the strips draw their own hairlines where they need them */
+    UIImageView *view = [[[UIImageView alloc] initWithImage:nil] autorelease];
+    view.backgroundColor = NoshiTabBarGround();
     view.contentMode = UIViewContentModeScaleToFill;
     view.userInteractionEnabled = NO;
     return view;

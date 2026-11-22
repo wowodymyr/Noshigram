@@ -40,8 +40,8 @@
 
 - (UIButton *)iconButton:(NoshiSymbol)symbol label:(NSString *)label action:(SEL)action {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    [button setImage:NoshiSymbolImage(symbol, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
-    [button setImage:NoshiSymbolImage(symbol, 24, [UIColor colorWithWhite:1 alpha:0.35]) forState:UIControlStateDisabled];
+    [button setImage:NoshiSymbolImage(symbol, 24, NoshiColorAccent()) forState:UIControlStateNormal];
+    [button setImage:NoshiSymbolImage(symbol, 24, NoshiColorMuted()) forState:UIControlStateDisabled];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     button.accessibilityLabel = label;
     [self addSubview:button];
@@ -55,18 +55,16 @@
     [self addSubview:_backdrop];
     _cancel = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_cancel setTitle:NSLocalizedString(@"chat.msg.cancel", nil) forState:UIControlStateNormal];
-    [_cancel setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    _cancel.titleLabel.font = [UIFont boldSystemFontOfSize:16];
-    [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [_cancel setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    /* a word in the accent with nothing under it, as the buttons of the bars of ios 7 are */
+    [_cancel setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
+    [_cancel setTitleColor:[NoshiColorAccent() colorWithAlphaComponent:0.4] forState:UIControlStateHighlighted];
+    _cancel.titleLabel.font = [UIFont systemFontOfSize:17];
     [_cancel addTarget:self action:@selector(cancelTapped) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_cancel];
     _count = [[UILabel alloc] init];
     _count.backgroundColor = [UIColor clearColor];
-    _count.textColor = [UIColor whiteColor];
+    _count.textColor = NoshiColorTitle();
     _count.font = [UIFont boldSystemFontOfSize:15];
-    _count.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-    _count.shadowOffset = CGSizeMake(0, -1);
     _count.textAlignment = NoshiTextAlignmentCenter;
     _count.adjustsFontSizeToFitWidth = YES;
     [self addSubview:_count];
