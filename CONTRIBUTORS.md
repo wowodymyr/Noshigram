@@ -1,5 +1,13 @@
 # Working on Noshigram
 
+## People
+
+- [wowodymyr](https://github.com/wowodymyr): the fork, its direction and the testing on real devices
+- [koke228666](https://github.com/koke228666)
+- [Claude](https://github.com/claude) (Anthropic): code
+
+Noshigram is built on [exteria](https://github.com/sqmrak/exteria); its developers are listed in the README.
+
 ## Rules
 
 - The target is iOS 7 on armv7 (iPhone 4S, 5, 5c, the 32 bit iPads) and on arm64. Anything newer than iOS 7 is used only behind a runtime check.
