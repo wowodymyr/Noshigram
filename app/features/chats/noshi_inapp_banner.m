@@ -1,27 +1,22 @@
 #import "noshi_inapp_banner.h"
 
 #import <QuartzCore/QuartzCore.h>
+#import <objc/message.h>
 
 #import "noshi_avatar_view.h"
-#import "noshi_chat_settings.h"
-#import "noshi_classic_chrome.h"
 #import "noshi_emoji_label.h"
 #import "noshi_image_decoder.h"
 #import "noshi_name_badge.h"
 #import "noshi_platform.h"
 #import "noshi_theme.h"
 
-#define CARD_HEIGHT 62.0
-#define AVATAR_SIDE 42.0
-#define PADDING 12.0
 #define SHOW_SECONDS 4.0
 #define SLIDE_SECONDS 0.25
-/* the classic bar covers the status bar and is as tall as a title and two lines of text; the icon is the size of a home screen icon in the old bars */
-#define CLASSIC_BAND 58.0
-#define CLASSIC_ICON 38.0
-/* the backdrop reaches this far above the bar, so the landing bounce never shows a gap over it */
-#define CLASSIC_BLEED 16.0
-#define CLASSIC_SWEEP_WIDTH 96.0
+/* the banner of telegram for ios 4: a dark band over the status bar, 64 points under it, a round picture of 44 and two lines of white text */
+#define BAND 64.0
+#define AVATAR 44.0
+#define HANDLE_WIDTH 38.0
+#define HANDLE_HEIGHT 5.0
 
 static NoshiInAppBanner *NoshiShownBanner;
 
@@ -31,12 +26,9 @@ static NoshiInAppBanner *NoshiShownBanner;
     UIImageView *_picture;
     NoshiEmojiLabel *_title;
     NoshiEmojiLabel *_body;
-    UIImageView *_backdrop;
-    CAGradientLayer *_glass;
-    CALayer *_lip;
+    UIView *_ground;
+    UIView *_handle;
     CALayer *_press;
-    UIView *_shine;
-    CAGradientLayer *_sweep;
     CGFloat _contentTop;
     BOOL _leaving;
 }
@@ -93,15 +85,16 @@ static NoshiInAppBanner *NoshiShownBanner;
         [banner addSubview:banner->_picture];
     }
     UIEdgeInsets insets = NoshiSafeInsets(window);
-    CGFloat height = picture ? 132 : CARD_HEIGHT;
-    /* the ios 5 banner is a full width bar that covers the status bar, not a floating card */
+    /* the band covers the status bar and starts its content under it */
     banner->_contentTop = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20);
-    height = banner->_contentTop + (picture ? 132 : CLASSIC_BAND);
+    CGFloat height = banner->_contentTop + (picture ? 132 : BAND);
     banner.frame = CGRectMake(0, 0, window.bounds.size.width, height);
     [window addSubview:banner];
     NoshiShownBanner = [banner retain];
     if (!NoshiReduceMotionEnabled()) {
-        [banner dropWithBounce];
+        banner.transform = CGAffineTransformMakeTranslation(0, -height);
+        [UIView animateWithDuration:SLIDE_SECONDS delay:0 options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{ banner.transform = CGAffineTransformIdentity; } completion:nil];
     }
     [banner performSelector:@selector(leave) withObject:nil afterDelay:SHOW_SECONDS];
 }
@@ -109,68 +102,47 @@ static NoshiInAppBanner *NoshiShownBanner;
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    /* the bar of the navigation bars, so the notice wears the accent of the theme on both tones. the glass over its upper half has a hard edge like the keys of the
-           old chrome, and the dark lip under it and the lit line over it set the bar off the screen */
-    _backdrop = [NoshiClassicStripBackdrop() retain];
-    [self addSubview:_backdrop];
-    _glass = [[CAGradientLayer layer] retain];
-    _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.30].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.08].CGColor, nil];
-    [self.layer addSublayer:_glass];
-    _lip = [[CALayer layer] retain];
-    _lip.backgroundColor = [UIColor colorWithWhite:0 alpha:0.55].CGColor;
-    [self.layer addSublayer:_lip];
-    /* the sheen that runs over the bar once it has landed lives in a clipped view, as the shadow of the bar needs the bar itself to stay unclipped */
-    _shine = [[UIView alloc] init];
-    _shine.userInteractionEnabled = NO;
-    _shine.clipsToBounds = YES;
-    _sweep = [[CAGradientLayer layer] retain];
-    _sweep.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.38].CGColor,
-                     (id)[UIColor colorWithWhite:1 alpha:0].CGColor, nil];
-    _sweep.startPoint = CGPointMake(0, 0.5);
-    _sweep.endPoint = CGPointMake(1, 0.5);
-    _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, 10);
-    _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH, 0);
-    [_shine.layer addSublayer:_sweep];
-    [self addSubview:_shine];
-    /* a touch lights the bar like a pressed row of the old tables */
+    /* the dark blur of ios 8 under the band, and a dark veil where there is no blur */
+    Class blur = NSClassFromString(@"UIBlurEffect"), effectView = NSClassFromString(@"UIVisualEffectView");
+    if (blur && effectView) {
+        /* UIBlurEffectStyleDark is 2; the classes are looked up by name, as the sdk the slices link against may not declare them for ios 7 */
+        id effect = ((id (*)(id, SEL, NSInteger))objc_msgSend)(blur, NSSelectorFromString(@"effectWithStyle:"), 2);
+        _ground = ((id (*)(id, SEL, id))objc_msgSend)([effectView alloc], NSSelectorFromString(@"initWithEffect:"), effect);
+    } else {
+        _ground = [[UIView alloc] init];
+        _ground.backgroundColor = [UIColor colorWithWhite:0 alpha:0.86];
+    }
+    _ground.userInteractionEnabled = NO;
+    [self addSubview:_ground];
+    /* a touch lights the band a little */
     _press = [[CALayer layer] retain];
-    _press.backgroundColor = [UIColor colorWithWhite:1 alpha:0.2].CGColor;
+    _press.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12].CGColor;
     _press.opacity = 0;
     [self.layer addSublayer:_press];
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.layer.shadowOpacity = 0.55f;
-    self.layer.shadowRadius = 5;
-    self.layer.shadowOffset = CGSizeMake(0, 2);
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = NO;
+    _avatar.circular = YES;
     _avatar.hidden = YES;
     [self addSubview:_avatar];
-    /* the picture sits on the bar like an app icon: a pale rim and a drop shadow */
-    _avatar.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.7].CGColor;
-    _avatar.layer.borderWidth = 1;
-    /* the rim follows the corner the person chose for pictures, as the avatar draws itself with it */
-    _avatar.layer.cornerRadius = CLASSIC_ICON * MIN(100, NoshiAvatarCornerPercent()) / 200.0;
-    _avatar.layer.shadowColor = [UIColor blackColor].CGColor;
-    _avatar.layer.shadowOpacity = 0.6f;
-    _avatar.layer.shadowRadius = 1.5f;
-    _avatar.layer.shadowOffset = CGSizeMake(0, 1);
     _title = [[NoshiEmojiLabel alloc] init];
-    _title.font = [UIFont boldSystemFontOfSize:15];
+    _title.font = NoshiFontMedium(14);
     _title.textColor = [UIColor whiteColor];
     [self addSubview:_title];
     /* the body names who wrote, and a UILabel shows a box for every letter of a styled name that the system font lacks */
     _body = [[NoshiEmojiLabel alloc] init];
-    _body.font = [UIFont systemFontOfSize:13];
-    _body.textColor = [UIColor colorWithWhite:1 alpha:0.9];
-    /* the text is stamped into the bar, as the titles of the navigation bar are */
-    _title.shadowColor = _body.shadowColor = [UIColor colorWithWhite:0 alpha:0.55];
-    _title.shadowOffset = _body.shadowOffset = CGSizeMake(0, -1);
+    _body.font = NoshiFontRegular(14);
+    _body.textColor = [UIColor whiteColor];
     _body.numberOfLines = 2;
     /* the body starts with the sender of a group message, so a styled nick that no font draws is left out of it as it is out of the title, not drawn as a box */
     _body.dropsUndrawable = YES;
     [self addSubview:_body];
+    /* the handle says the band can be pulled away */
+    _handle = [[UIView alloc] initWithFrame:CGRectMake(0, 0, HANDLE_WIDTH, HANDLE_HEIGHT)];
+    _handle.backgroundColor = [UIColor colorWithWhite:1 alpha:0.5];
+    _handle.layer.cornerRadius = HANDLE_HEIGHT / 2;
+    _handle.userInteractionEnabled = NO;
+    [self addSubview:_handle];
     [self addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapped)] autorelease]];
-    /* the card follows the finger to the left, to the right or up, and goes when it is let go far enough or flicked; a tap still opens the chat */
+    /* the band follows the finger to the left, to the right or up, and goes when it is let go far enough or flicked; a tap still opens the chat */
     [self addGestureRecognizer:[[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragged:)] autorelease]];
     return self;
 }
@@ -182,12 +154,9 @@ static NoshiInAppBanner *NoshiShownBanner;
     [_picture release];
     [_title release];
     [_body release];
-    [_backdrop release];
-    [_glass release];
-    [_lip release];
+    [_ground release];
+    [_handle release];
     [_press release];
-    [_sweep release];
-    [_shine release];
     [super dealloc];
 }
 
@@ -195,56 +164,20 @@ static NoshiInAppBanner *NoshiShownBanner;
     [super layoutSubviews];
     CGSize size = self.bounds.size;
     CGFloat band = size.height - _contentTop;
-    CGFloat icon = CLASSIC_ICON;
-    CGFloat edge = 10;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    _backdrop.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height + CLASSIC_BLEED);
-    _glass.frame = CGRectMake(0, -CLASSIC_BLEED, size.width, size.height / 2 + CLASSIC_BLEED);
-    CGFloat line = 1.0 / NoshiScreenScale();
-    _lip.frame = CGRectMake(0, size.height - line, size.width, line);
     _press.frame = self.bounds;
-    _shine.frame = self.bounds;
-    _sweep.bounds = CGRectMake(0, 0, CLASSIC_SWEEP_WIDTH, size.height);
-    _sweep.position = CGPointMake(-CLASSIC_SWEEP_WIDTH / 2, size.height / 2);
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRect:self.bounds].CGPath;
     [CATransaction commit];
-    /* the text starts after the picture, and at the old edge when the card has none */
-    CGFloat left = _picture ? 122 : (_avatar.hidden ? 14 : edge + icon + 10);
+    _ground.frame = self.bounds;
+    /* the text starts after the picture, and at the edge when the band has none */
+    CGFloat left = _picture ? 122 : (_avatar.hidden ? 14 : 10 + AVATAR + 10);
     CGFloat width = MAX(0, size.width - left - 14);
     if (_picture) _picture.frame = CGRectMake(8, _contentTop + 6, 104, band - 12);
-    _avatar.frame = CGRectMake(edge, _contentTop + floor((band - icon) / 2), icon, icon);
-    CGFloat textTop = _contentTop + (_picture ? floor((band - 60) / 2) : (6));
+    _avatar.frame = CGRectMake(10, _contentTop + 6, AVATAR, AVATAR);
+    CGFloat textTop = _contentTop + (_picture ? floor((band - 60) / 2) : 7);
     _title.frame = CGRectMake(left, textTop, width, 18);
-    _body.frame = CGRectMake(left, textTop + (18), width, _picture ? 40 : (32));
-}
-
-/* the classic bar falls from the top edge, sinks a little past its place and rises back, then the picture pops and a sheen runs over the bar */
-- (void)dropWithBounce {
-    CGFloat height = self.bounds.size.height;
-    CAKeyframeAnimation *fall = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.y"];
-    fall.values = [NSArray arrayWithObjects:[NSNumber numberWithDouble:-height - 12], [NSNumber numberWithDouble:7], [NSNumber numberWithDouble:-3], [NSNumber numberWithDouble:0], nil];
-    fall.keyTimes = [NSArray arrayWithObjects:[NSNumber numberWithDouble:0], [NSNumber numberWithDouble:0.58], [NSNumber numberWithDouble:0.8], [NSNumber numberWithDouble:1], nil];
-    fall.timingFunctions = [NSArray arrayWithObjects:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn],
-                            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut], [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut], nil];
-    fall.duration = 0.45;
-    [self.layer addAnimation:fall forKey:@"classicDrop"];
-    if (!_avatar.hidden) {
-        CAKeyframeAnimation *pop = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
-        pop.values = [NSArray arrayWithObjects:[NSNumber numberWithDouble:0.5], [NSNumber numberWithDouble:1.15], [NSNumber numberWithDouble:0.96], [NSNumber numberWithDouble:1], nil];
-        pop.keyTimes = [NSArray arrayWithObjects:[NSNumber numberWithDouble:0], [NSNumber numberWithDouble:0.5], [NSNumber numberWithDouble:0.8], [NSNumber numberWithDouble:1], nil];
-        pop.duration = 0.35;
-        pop.beginTime = CACurrentMediaTime() + 0.3;
-        pop.fillMode = kCAFillModeBackwards;
-        [_avatar.layer addAnimation:pop forKey:@"classicPop"];
-    }
-    CABasicAnimation *sweep = [CABasicAnimation animationWithKeyPath:@"position.x"];
-    sweep.fromValue = [NSNumber numberWithDouble:-CLASSIC_SWEEP_WIDTH / 2];
-    sweep.toValue = [NSNumber numberWithDouble:self.bounds.size.width + CLASSIC_SWEEP_WIDTH / 2];
-    sweep.duration = 0.7;
-    sweep.beginTime = CACurrentMediaTime() + 0.4;
-    sweep.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [_sweep addAnimation:sweep forKey:@"classicSweep"];
+    _body.frame = CGRectMake(left, textTop + 18, width, _picture ? 40 : 34);
+    _handle.frame = CGRectMake(floor((size.width - HANDLE_WIDTH) / 2), size.height - HANDLE_HEIGHT - 4, HANDLE_WIDTH, HANDLE_HEIGHT);
 }
 
 - (void)lightPress:(BOOL)on {
