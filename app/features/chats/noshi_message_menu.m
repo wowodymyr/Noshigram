@@ -153,6 +153,7 @@ static UIColor *NoshiSheetRed(void) { return [UIColor colorWithRed:1 green:0.231
     if (hadHeader && _headerText.length && _headerLabel) {
         _headerLabel.text = _headerText;
         _headerMark.image = NoshiCheckImage(_headerRead, 16, NoshiColorSecondary());
+        [self placeMark:_headerMark label:_headerLabel inLine:_headerView faces:MIN(_headerPeople.count, (NSUInteger)3)];
         if (_headerHandler && ![_headerView viewWithTag:1]) {
             UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
             button.tag = 1;
@@ -293,27 +294,37 @@ static UIColor *NoshiSheetRed(void) { return [UIColor colorWithRed:1 green:0.231
     return row;
 }
 
+/* the mark and the words of a line stand together in its middle, as wide as the words need and no wider than the room the faces at the right end leave; the words come later
+   than the line for the time of reading, so this runs again when they change, or the label kept the width of the first words and shrank the new ones to nothing */
+- (void)placeMark:(UIImageView *)mark label:(UILabel *)label inLine:(UIView *)line faces:(NSUInteger)faces {
+    CGFloat width = line.bounds.size.width;
+    CGFloat facesWidth = faces ? 22 + (CGFloat)(faces - 1) * 14 : 0;
+    CGFloat textWidth = MIN(ceil(NoshiStringSize(label.text, label.font).width), width - 2 * 16 - 24 - (faces ? 2 * (facesWidth + 8) : 0));
+    CGSize markSize = mark.image.size;
+    CGFloat markWidth = mark.image ? markSize.width + 6 : 0;
+    CGFloat startX = floor((width - textWidth - markWidth) / 2);
+    mark.frame = CGRectMake(startX, floor((SHEET_LINE - markSize.height) / 2), markSize.width, markSize.height);
+    label.frame = CGRectMake(startX + markWidth, 0, MAX(0, textWidth), SHEET_LINE);
+}
+
 /* a small grey line of the top of the sheet: a mark, a text in the middle, and at the right end the first three faces, each over the edge of the one before; a tap runs action */
 - (UIView *)infoLineWithMark:(UIImage *)markImage text:(NSString *)text people:(NSArray *)people action:(SEL)action width:(CGFloat)width
                      outMark:(UIImageView **)outMark outLabel:(UILabel **)outLabel {
     UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, SHEET_LINE)] autorelease];
-    UIFont *font = [UIFont systemFontOfSize:14];
     NSUInteger faces = MIN(people.count, (NSUInteger)3);
     CGFloat faceSide = 22, faceStep = 14;
     CGFloat facesWidth = faces ? faceSide + (CGFloat)(faces - 1) * faceStep : 0;
-    CGFloat textWidth = MIN(ceil(NoshiStringSize(text, font).width), width - 2 * 16 - 24 - (faces ? 2 * (facesWidth + 8) : 0));
-    CGFloat markWidth = markImage ? markImage.size.width + 6 : 0;
-    CGFloat startX = floor((width - textWidth - markWidth) / 2);
     UIImageView *mark = [[[UIImageView alloc] initWithImage:markImage] autorelease];
-    mark.frame = CGRectMake(startX, floor((SHEET_LINE - markImage.size.height) / 2), markImage.size.width, markImage.size.height);
     [line addSubview:mark];
-    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(startX + markWidth, 0, textWidth, SHEET_LINE)] autorelease];
+    UILabel *label = [[[UILabel alloc] init] autorelease];
     label.backgroundColor = [UIColor clearColor];
-    label.font = font;
+    label.font = [UIFont systemFontOfSize:14];
     label.textColor = NoshiColorSecondary();
     label.text = text;
-    label.adjustsFontSizeToFitWidth = YES;
+    /* a line too long for the room ends in dots; shrinking it made it unreadable */
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
     [line addSubview:label];
+    [self placeMark:mark label:label inLine:line faces:faces];
     for (NSUInteger i = 0; i < faces; ++i) {
         NoshiPerson *person = [people objectAtIndex:i];
         NoshiAvatarView *face = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(width - 14 - facesWidth + (CGFloat)i * faceStep, (SHEET_LINE - faceSide) / 2, faceSide, faceSide)] autorelease];
