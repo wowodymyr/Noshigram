@@ -64,50 +64,14 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>Blueprint</key>
+			<key>Telegram</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>Blueprint-60@2x.png</string>
-					<string>Blueprint-60@3x.png</string>
-					<string>Blueprint-57.png</string>
-					<string>Blueprint-57@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Red</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Red-60@2x.png</string>
-					<string>Red-60@3x.png</string>
-					<string>Red-57.png</string>
-					<string>Red-57@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Nya</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Nya-60@2x.png</string>
-					<string>Nya-60@3x.png</string>
-					<string>Nya-57.png</string>
-					<string>Nya-57@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Quack</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Quack-60@2x.png</string>
-					<string>Quack-60@3x.png</string>
-					<string>Quack-57.png</string>
-					<string>Quack-57@2x.png</string>
+					<string>Telegram-60@2x.png</string>
+					<string>Telegram-60@3x.png</string>
+					<string>Telegram-57.png</string>
+					<string>Telegram-57@2x.png</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<true/>
@@ -137,54 +101,15 @@
 		</dict>
 		<key>CFBundleAlternateIcons</key>
 		<dict>
-			<key>Blueprint</key>
+			<key>Telegram</key>
 			<dict>
 				<key>CFBundleIconFiles</key>
 				<array>
-					<string>Blueprint-76.png</string>
-					<string>Blueprint-76@2x.png</string>
-					<string>Blueprint-83.5@2x.png</string>
-					<string>Blueprint-72.png</string>
-					<string>Blueprint-72@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Red</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Red-76.png</string>
-					<string>Red-76@2x.png</string>
-					<string>Red-83.5@2x.png</string>
-					<string>Red-72.png</string>
-					<string>Red-72@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Nya</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Nya-76.png</string>
-					<string>Nya-76@2x.png</string>
-					<string>Nya-83.5@2x.png</string>
-					<string>Nya-72.png</string>
-					<string>Nya-72@2x.png</string>
-				</array>
-				<key>UIPrerenderedIcon</key>
-				<true/>
-			</dict>
-			<key>Quack</key>
-			<dict>
-				<key>CFBundleIconFiles</key>
-				<array>
-					<string>Quack-76.png</string>
-					<string>Quack-76@2x.png</string>
-					<string>Quack-83.5@2x.png</string>
-					<string>Quack-72.png</string>
-					<string>Quack-72@2x.png</string>
+					<string>Telegram-76.png</string>
+					<string>Telegram-76@2x.png</string>
+					<string>Telegram-83.5@2x.png</string>
+					<string>Telegram-72.png</string>
+					<string>Telegram-72@2x.png</string>
 				</array>
 				<key>UIPrerenderedIcon</key>
 				<true/>

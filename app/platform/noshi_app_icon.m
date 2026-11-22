@@ -20,7 +20,7 @@ static NSString *const NoshiIconError = @"NoshiAppIcon";
 static NSString *const NoshiIconNameKey = @"NoshiIconName";
 /* the icon entries of the packaged plist, saved before the first rewrite so that the icon of the app can come back */
 static NSString *const NoshiIconOriginalKey = @"NoshiOriginalIcons";
-/* the icon and the screen color the launch images in the bundle were drawn for ("Quack|15121f"), kept in the
+/* the icon and the screen color the launch images in the bundle were drawn for ("Telegram|15121f"), kept in the
    Info.plist so that a new install, which brings its own launch images and plist, drops it */
 static NSString *const NoshiLaunchIconKey = @"NoshiLaunchIcon";
 /* the splash and the launch images draw the icon this wide, in points, on the color of the screen under them (the dark one is also SPLASH_BACKGROUND in tools/make_assets.py) */
@@ -534,12 +534,6 @@ void NoshiSetAlternateIcon(NSString *name, void (^completion)(NSError *)) {
 NSArray *NoshiAlternateIconNames(void) {
     NSDictionary *icons = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleIcons"];
     NSDictionary *alternates = [icons objectForKey:@"CFBundleAlternateIcons"];
-    NSArray *names = [[alternates allKeys] sortedArrayUsingSelector:@selector(compare:)];
-    /* the plist is a dictionary, so the order is made here: the first icons first, then the others by name */
-    NSMutableArray *ordered = [NSMutableArray array];
-    for (NSString *first in [NSArray arrayWithObjects:@"Blueprint", @"Red", @"Nya", @"Quack", nil]) {
-        if ([names containsObject:first]) [ordered addObject:first];
-    }
-    for (NSString *name in names) if (![ordered containsObject:name]) [ordered addObject:name];
-    return ordered;
+    /* the plist is a dictionary, so the order is made here, by name */
+    return [[alternates allKeys] sortedArrayUsingSelector:@selector(compare:)];
 }
