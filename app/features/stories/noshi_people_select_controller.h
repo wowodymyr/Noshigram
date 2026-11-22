@@ -9,6 +9,9 @@
 - (id)initWithSession:(NoshiSession *)session title:(NSString *)title chosen:(NSArray *)chosen done:(void (^)(NSArray *people))done;
 /* the page in a navigation controller of its own, to be presented over a full screen; the classic theme gets a Close button, which hands the choice over too */
 - (UINavigationController *)presentableNavigation;
+/* a Next key on the right that hands the choice over and leaves the page where it is, as the new group of telegram for ios 4 asked for its people; the back arrow then
+   leaves without a choice */
+- (void)useNextKeyWithTitle:(NSString *)title;
 @end
 
 /* who sees a story, in the words of the app: Everyone, Everyone except, Contacts, Contacts except, Close friends, Selected contacts. the list of people of the

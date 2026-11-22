@@ -11,4 +11,8 @@
 - (id)initWithSession:(NoshiSession *)session avatars:(NoshiAvatarCache *)avatars media:(NoshiMediaCache *)media
              stickers:(NoshiStickerLibrary *)stickers;
 
+/* the new message screen of telegram for ios 4: set before the view loads, and the list is titled New Message with a row for a new group and one for a new channel over the
+   contacts, which open into their chats as in the tab */
+- (void)setComposeNewGroup:(void (^)(void))newGroup newChannel:(void (^)(void))newChannel;
+
 @end

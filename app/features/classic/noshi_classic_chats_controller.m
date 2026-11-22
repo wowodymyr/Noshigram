@@ -606,8 +606,8 @@
     }
 }
 
-/* the menu hangs from the right end of the bar, under the dots */
-- (void)showChatsMenu {
+/* the key of a new message opens the contacts under a row for a new group and one for a new channel, as in telegram for ios 4 */
+- (void)composeTapped {
     if (!_chatsMenu) {
         NoshiWeakReference *weak = [NoshiWeakReference referenceTo:self];
         _chatsMenu = [[NoshiChatsMenu alloc] initWithSession:_session host:self avatars:_avatars media:_media stickers:_stickers refresh:^{
@@ -617,20 +617,17 @@
             [list reload];
         }];
     }
-    UIView *host = self.navigationController.view;
-    CGRect bar = [host convertRect:self.navigationController.navigationBar.bounds fromView:self.navigationController.navigationBar];
-    [_chatsMenu showInView:host anchor:CGPointMake(CGRectGetMaxX(bar) - 10, CGRectGetMaxY(bar) - 4)];
+    [_chatsMenu openCompose];
 }
 
 /* the main list takes two choices of the appearance page: the field of search and the words of the title; the archive list keeps its own */
 - (void)syncChromeWithSettings {
     if (_folderId != 0 || _selection) return;
-    /* the three dots stand at the right edge */
+    /* the key of a new message stands at the right edge, the system compose button of ios 7 as telegram for ios 4 had it */
     if (!self.navigationItem.rightBarButtonItems.count) {
-        UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor]) style:UIBarButtonItemStyleBordered
-                                                                 target:self action:@selector(showChatsMenu)] autorelease];
-        dots.accessibilityLabel = NSLocalizedString(@"chats.menu", nil);
-        self.navigationItem.rightBarButtonItems = [NSArray arrayWithObject:dots];
+        UIBarButtonItem *compose = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemCompose target:self action:@selector(composeTapped)] autorelease];
+        compose.accessibilityLabel = NSLocalizedString(@"compose.title", nil);
+        self.navigationItem.rightBarButtonItems = [NSArray arrayWithObject:compose];
     }
     BOOL hideSearch = NoshiChatFlagGet(NoshiChatFlagHideSearchBar);
     _search.hidden = hideSearch;

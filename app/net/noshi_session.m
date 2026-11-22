@@ -1153,6 +1153,35 @@ static BOOL NoshiDialogIsPageCursor(NoshiDialog *item) {
     [name release];
 }
 
+- (void)createGroupTitled:(NSString *)title people:(NSArray *)people completion:(void (^)(NSString *errorName))completion {
+    void (^done)(NSString *) = [completion copy];
+    NSString *name = [title copy];
+    NSArray *members = [people copy];
+    [self invoke:"messages.createChat" configure:^noshi_status(noshi_arena *arena, noshi_tl_value *request) {
+        noshi_tl_value *users = noshi_tl_new_vec(arena, (uint32_t)members.count);
+        noshi_status status = users ? NOSHI_OK : NOSHI_E_NOMEM;
+        for (NSUInteger i = 0; status == NOSHI_OK && i < members.count; ++i) {
+            NoshiPerson *person = [members objectAtIndex:i];
+            noshi_tl_value *input = noshi_tl_new_obj(arena, "inputUser");
+            if (!input) return NOSHI_E_NOMEM;
+            status = noshi_tl_set_i64(arena, input, "user_id", person.userId);
+            if (status == NOSHI_OK) status = noshi_tl_set_i64(arena, input, "access_hash", person.accessHash);
+            if (status == NOSHI_OK) status = noshi_tl_vec_set(users, (uint32_t)i, input);
+        }
+        if (status == NOSHI_OK) status = noshi_tl_set(request, "users", users);
+        if (status == NOSHI_OK) status = noshi_tl_set_str(arena, request, "title", name.UTF8String);
+        return status;
+    } handler:^(const noshi_mt_rpc_result *result) {
+        NSString *error = result->status == NOSHI_OK ? nil : NoshiRpcErrorName(result);
+        NSLog(@"noshigram: createChat answered: %@", error ? error : @"ok");
+        if (NoshiIsRevokedError(error)) _dropKeyPending = YES;
+        NSString *delivered = [[error copy] autorelease];
+        dispatch_async(dispatch_get_main_queue(), ^{ done(delivered); [done release]; });
+    }];
+    [name release];
+    [members release];
+}
+
 - (void)searchPeers:(NSString *)query completion:(NoshiListCompletion)completion {
     NoshiListCompletion done = [completion copy];
     NSString *text = [query copy];

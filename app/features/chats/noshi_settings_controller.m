@@ -1,5 +1,7 @@
 #import "noshi_classic_chrome.h"
 #import "noshi_classic_profile_controller.h"
+#import "noshi_bookmarks_controller.h"
+#import "noshi_chat_controller.h"
 #import "noshi_profile_qr_controller.h"
 #import "noshi_folders_controller.h"
 #import "noshi_settings_controller.h"
@@ -185,6 +187,19 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     if (_person) [self showPerson];
 }
 
+/* the chat with oneself, which telegram for ios 4 kept as a row of its settings */
+- (void)openSavedMessages {
+    NoshiDialog *saved = _person ? [NoshiDialog savedMessagesWithPerson:_person] : nil;
+    if (!saved) return;
+    NoshiChatController *chat = [[[NoshiChatController alloc] initWithSession:_session dialog:saved avatars:_avatars media:_media stickers:_stickerLibrary] autorelease];
+    chat.hidesBottomBarWhenPushed = YES;
+    [self.navigationController pushViewController:chat animated:YES];
+}
+
+- (void)openBookmarks {
+    [self.navigationController pushViewController:[[[NoshiBookmarksController alloc] initWithSession:_session avatars:_avatars media:_media stickers:_stickerLibrary] autorelease] animated:YES];
+}
+
 /* the full profile of the account: its stories, gifts, music and channel, which the settings do not hold */
 - (void)openProfile {
     NoshiClassicProfileController *profile = [[[NoshiClassicProfileController alloc] initWithSession:_session avatars:_avatars] autorelease];
@@ -354,6 +369,10 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
     NoshiSettingsRow *profile = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPerson tone:NoshiSettingsToneRed title:NSLocalizedString(@"settings.myprofile", nil)
                                                            subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openProfile]; }];
+    NoshiSettingsRow *saved = [NoshiSettingsRow rowWithTileImage:[UIImage imageNamed:@"SettingsSavedMessagesIcon"] title:NSLocalizedString(@"menu.saved", nil) subtitle:nil
+                                                                 tap:^{ [(NoshiSettingsController *)weak.target openSavedMessages]; }];
+    NoshiSettingsRow *bookmarks = [NoshiSettingsRow rowWithSymbol:NoshiSymbolStar tone:NoshiSettingsToneOrange title:NSLocalizedString(@"bookmarks.title", nil)
+                                                             subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openBookmarks]; }];
     NoshiSettingsRow *account = [NoshiSettingsRow rowWithSymbol:NoshiSymbolSettingsAccount tone:NoshiSettingsToneBlue title:NSLocalizedString(@"account.title", nil)
                                                            subtitle:nil value:nil tap:^{
         NoshiSettingsController *me = weak.target;
@@ -424,6 +443,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NoshiSettingsSection *accounts = [self otherAccountsSection];
     if (accounts) [sections addObject:accounts];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, stickers, folders, devices, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:saved, bookmarks, nil]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:notifications, privacy, passcode, data, chats, power, language, nil]]];
     [sections addObject:app];
     self.sections = sections;

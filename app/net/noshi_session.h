@@ -250,6 +250,8 @@ typedef void (^NoshiListCompletion)(NSArray *items, NSString *errorName);
 /* makes a channel, or a supergroup when megagroup is set, with the title; the completion runs on the main thread with nil on
    success or the rpc error name */
 - (void)createChannelTitled:(NSString *)title megagroup:(BOOL)megagroup completion:(void (^)(NSString *errorName))completion;
+/* a group with these people in it (NoshiPerson), as the new group of telegram for ios 4 made one: messages.createChat, which the server turns into a supergroup as it grows */
+- (void)createGroupTitled:(NSString *)title people:(NSArray *)people completion:(void (^)(NSString *errorName))completion;
 /* every public user, bot, group and channel whose name or @username starts with the text, as NoshiDialog items:
    the chats the account has first */
 - (void)searchPeers:(NSString *)query completion:(NoshiListCompletion)completion;

@@ -15,6 +15,7 @@
     NSString *_status;
     NSString *_title;
     void (^_done)(NSArray *);
+    BOOL _nextKey;
 }
 @end
 
@@ -118,10 +119,23 @@
     return [self sectionsForPeople:matches footer:matches.count ? nil : NSLocalizedString(@"chats.nothing", nil)];
 }
 
-/* the choice is handed over when the page is left */
+- (void)useNextKeyWithTitle:(NSString *)title {
+    _nextKey = YES;
+    self.navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithTitle:title style:UIBarButtonItemStyleDone target:self action:@selector(nextTapped)] autorelease];
+}
+
+/* the Next key hands the choice over and stays: what comes next is asked for over this page */
+- (void)nextTapped {
+    if (!_done || !_order.count) return;
+    NSMutableArray *people = [NSMutableArray array];
+    for (NSNumber *key in _order) [people addObject:[_chosen objectForKey:key]];
+    _done(people);
+}
+
+/* the choice is handed over when the page is left, unless a Next key does that */
 - (void)goBack {
     if (self.searching) { [super goBack]; return; }
-    if (_done) {
+    if (_done && !_nextKey) {
         NSMutableArray *people = [NSMutableArray array];
         for (NSNumber *key in _order) [people addObject:[_chosen objectForKey:key]];
         void (^done)(NSArray *) = [[_done copy] autorelease];

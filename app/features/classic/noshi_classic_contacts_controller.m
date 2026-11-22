@@ -22,6 +22,8 @@
     UIBarButtonItem *_sortItem;
     BOOL _loaded;
     BOOL _loading;
+    void (^_newGroup)(void);
+    void (^_newChannel)(void);
 }
 @end
 
@@ -57,8 +59,42 @@
     [_spinner release];
     [_list release];
     [_sortItem release];
+    [_newGroup release];
+    [_newChannel release];
     [super dealloc];
 }
+
+- (void)setComposeNewGroup:(void (^)(void))newGroup newChannel:(void (^)(void))newChannel {
+    [_newGroup release];
+    _newGroup = [newGroup copy];
+    [_newChannel release];
+    _newChannel = [newChannel copy];
+    self.title = NSLocalizedString(@"compose.title", nil);
+}
+
+/* a row of the new message screen over the contacts: a glyph and the words in the accent, as telegram for ios 4 drew its new group and new channel */
+- (UIButton *)composeRowWithSymbol:(NoshiSymbol)symbol title:(NSString *)title action:(SEL)action frame:(CGRect)frame {
+    UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom];
+    row.frame = frame;
+    row.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    row.backgroundColor = NoshiColorCard();
+    [row setImage:NoshiSymbolImage(symbol, 24, NoshiColorAccent()) forState:UIControlStateNormal];
+    [row setTitle:title forState:UIControlStateNormal];
+    [row setTitleColor:NoshiColorAccent() forState:UIControlStateNormal];
+    row.titleLabel.font = [UIFont systemFontOfSize:17];
+    row.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeft;
+    row.imageEdgeInsets = UIEdgeInsetsMake(0, 20, 0, 0);
+    row.titleEdgeInsets = UIEdgeInsetsMake(0, 36, 0, 0);
+    [row addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(66, frame.size.height - 1.0f / NoshiScreenScale(), frame.size.width - 66, 1.0f / NoshiScreenScale())] autorelease];
+    line.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.1 : 0.15];
+    line.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    [row addSubview:line];
+    return row;
+}
+
+- (void)newGroupTapped { if (_newGroup) _newGroup(); }
+- (void)newChannelTapped { if (_newChannel) _newChannel(); }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -87,6 +123,16 @@
     _searchFacade = [NoshiClassicSearchFacade(searchHeader.bounds, NSLocalizedString(@"contacts.search", nil)) retain];
     [_searchFacade addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(beginSearch)] autorelease]];
     [searchHeader addSubview:_searchFacade];
+    if (_newGroup || _newChannel) {
+        CGFloat width = searchHeader.bounds.size.width, rowHeight = 50;
+        [searchHeader addSubview:[self composeRowWithSymbol:NoshiSymbolGroupsMenu title:NSLocalizedString(@"compose.group", nil) action:@selector(newGroupTapped)
+                                                        frame:CGRectMake(0, 44, width, rowHeight)]];
+        [searchHeader addSubview:[self composeRowWithSymbol:NoshiSymbolMegaphone title:NSLocalizedString(@"compose.channel", nil) action:@selector(newChannelTapped)
+                                                        frame:CGRectMake(0, 44 + rowHeight, width, rowHeight)]];
+        searchHeader.frame = CGRectMake(0, 0, width, 44 + 2 * rowHeight);
+        _search.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+        _searchFacade.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    }
     table.tableHeaderView = searchHeader;
     UIView *backdrop = [[[UIView alloc] initWithFrame:table.bounds] autorelease];
     _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:NoshiThemeIsDark() ? UIActivityIndicatorViewStyleWhite : UIActivityIndicatorViewStyleGray];
