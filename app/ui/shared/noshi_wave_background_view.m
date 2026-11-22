@@ -199,26 +199,6 @@
     [self refreshMotion];
 }
 
-/* the edge swings between its ripple and the opposite one: the same points, so the path interpolates */
-static void NoshiRipple(NoshiWaveLayer *layer, CGPathRef opposite, CFTimeInterval seconds) {
-    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"path"];
-    animation.fromValue = (id)layer.shape.path;
-    animation.toValue = (id)opposite;
-    animation.autoreverses = YES;
-    animation.repeatCount = HUGE_VALF;
-    animation.duration = seconds;
-    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [layer.shape addAnimation:animation forKey:@"ripple"];
-}
-
-/* the opposite ripple is the same outline with the ripple amplitude negated */
-- (void)rippleLayer:(NoshiWaveLayer *)layer seconds:(CFTimeInterval)seconds {
-    if (!layer.shape.path) return;
-    CGPathRef opposite = [self newPathForTop:layer == _top amplitude:-RIPPLE_AMPLITUDE * _builtSize.width];
-    NoshiRipple(layer, opposite, seconds);
-    CGPathRelease(opposite);
-}
-
 /* one pause on the layer of the backdrop holds the drift and the ripple of both waves and their masks together */
 - (void)applyScrolling {
     BOOL hold = _scrolling && (_top.animationKeys.count || _bottom.animationKeys.count);

@@ -370,11 +370,6 @@ static NSArray *NoshiQrPatternColors(BOOL night) {
     [self applyTheme];
 }
 
-- (void)toggleNight {
-    _night = !_night;
-    [self applyTheme];
-}
-
 - (void)drawCode {
     static uint8_t modules[NOSHI_QR_MAX_MODULES];
     int side = 0;

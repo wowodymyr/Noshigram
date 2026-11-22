@@ -384,13 +384,6 @@ typedef enum { NoshiSectionFaved, NoshiSectionRecent, NoshiSectionSet } NoshiSec
     for (NSDictionary *entry in [[_playing copy] autorelease]) [self stopOverlay:entry];
 }
 
-/* a row that is reused or leaves loses its overlays */
-- (void)stopAnimationsInRow:(NoshiStickerRow *)row {
-    for (NSDictionary *entry in [[_playing copy] autorelease]) {
-        if ([entry objectForKey:@"row"] == row) [self stopOverlay:entry];
-    }
-}
-
 /* starts what the rows of the table show: the files of a cached set arrive while the grid is laid out, before the panel stands in a window, and animateMedia drops
    an answer that finds no window, so the stickers of a panel opened from the cache stayed still */
 - (void)animateVisibleRows {

@@ -35,10 +35,6 @@ static NSString *NoshiBookmarkText(const char *bytes) {
     return [[[NoshiDialog alloc] initWithRow:&row] autorelease];
 }
 
-- (BOOL)isFor:(const noshi_bookmark *)other {
-    return _row.peer_kind == other->peer_kind && _row.peer_id == other->peer_id && _row.message_id == other->message_id;
-}
-
 @end
 
 @interface NoshiBookmarks () {

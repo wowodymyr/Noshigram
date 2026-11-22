@@ -101,15 +101,6 @@ static NSString *NoshiDeleteErrorText(NSString *errorName) {
 
 #pragma mark rows
 
-- (NoshiSettingsRow *)flagRow:(NSString *)titleKey info:(NSString *)infoKey flag:(NoshiChatFlag)flag rebuild:(BOOL)rebuild {
-    NoshiWeakReference *weak = _weak;
-    return [NoshiSettingsRow switchRowWithTitle:NSLocalizedString(titleKey, nil) subtitle:infoKey ? NSLocalizedString(infoKey, nil) : nil on:NoshiChatFlagGet(flag)
-                                           toggle:^(BOOL on) {
-        NoshiChatFlagSet(flag, on);
-        if (rebuild) [(NoshiMoreSettingsController *)weak.target apply];
-    }];
-}
-
 - (void)rebuild {
     NoshiWeakReference *weak = _weak;
     NSMutableArray *sections = [NSMutableArray array];

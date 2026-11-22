@@ -508,10 +508,6 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)updateBarFill {
 }
 
-- (CGFloat)statusInset {
-    return NoshiLayoutInsets(self).top;
-}
-
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
     (void)scrollView;
     [self updateBarFill];

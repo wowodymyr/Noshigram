@@ -134,26 +134,6 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
     [super dealloc];
 }
 
-/* the look of the bar for the tint and the shade it is in; set inside an animation block it moves there */
-- (void)refreshBarLook {
-    if (!_header) return;
-    if (_barOverPhoto) {
-        _header.backgroundColor = [UIColor clearColor];
-        _headerLine.hidden = YES;
-        _titleLabel.alpha = 0;
-        _back.inkColor = [UIColor whiteColor];
-        return;
-    }
-    BOOL tinted = _barTint != nil;
-    UIColor *plain = _clearBar ? [UIColor clearColor] : NoshiColorBar();
-    _header.backgroundColor = tinted ? (_barShaded ? _barTint : [UIColor clearColor]) : plain;
-    _headerLine.hidden = _clearBar || tinted;
-    _titleLabel.alpha = tinted && !_barShaded ? 0 : 1;
-    _titleLabel.textColor = tinted ? [UIColor whiteColor] : NoshiColorTitle();
-    /* the arrow has the ink of the dots at the other end of the bar, whatever picture a clear bar lies over */
-    _back.inkColor = tinted ? [UIColor whiteColor] : (_clearBar ? NoshiColorTitle() : nil);
-}
-
 - (void)setBarTint:(UIColor *)tint {
     if (tint == _barTint || (tint && [tint isEqual:_barTint])) return;
     [_barTint release];
@@ -242,26 +222,6 @@ void NoshiGiftAlert(NSString *title, NSString *message) {
                                                                                           style:UIBarButtonItemStyleBordered target:self
                                                                                          action:@selector(actionTapped)] autorelease] : nil;
     self.navigationItem.rightBarButtonItem.accessibilityLabel = label;
-}
-
-/* the bar is built in loadView, so a symbol set before it waits there */
-- (void)refreshActionIcon {
-    if (!_header) return;
-    if (!_symbolAction || !_actionHandler) {
-        [_actionIcon removeFromSuperview];
-        [_actionIcon release];
-        _actionIcon = nil;
-        return;
-    }
-    if (!_actionIcon) {
-        _actionIcon = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-        _actionIcon.contentMode = UIViewContentModeCenter;
-        [_actionIcon addTarget:self action:@selector(actionTapped) forControlEvents:UIControlEventTouchUpInside];
-        [_header addSubview:_actionIcon];
-    }
-    [_actionIcon setImage:NoshiSymbolImage(_actionSymbol, 24, _barOverPhoto || (_barTint && !_barShaded) ? [UIColor whiteColor] : NoshiColorTitle()) forState:UIControlStateNormal];
-    _actionIcon.accessibilityLabel = _actionLabel;
-    [self.view setNeedsLayout];
 }
 
 - (CGPoint)actionSymbolAnchor {

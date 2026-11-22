@@ -2315,11 +2315,6 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
     return _item.message.media.file.key;
 }
 
-- (BOOL)roundPlaying {
-    NoshiRoundPlayback *playback = [NoshiRoundPlayback sharedPlayback];
-    return [playback isActiveKey:[self roundKey]] && playback.playing;
-}
-
 /* the cell stops drawing the circle and the playback goes on: the row scrolled away, was taken for another message or its chat was
    left, and the circle floats until the person ends it. the button goes back to the triangle */
 - (void)detachRound {

@@ -47,12 +47,6 @@
                                                       userInfo:[NSDictionary dictionaryWithObject:[NSValue valueWithCGPoint:self.selectPoint] forKey:NoshiThemeOriginKey]];
 }
 
-/* a slider moves in many small steps, and the screens are built once it rests */
-- (void)applySoon {
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(apply) object:nil];
-    [self performSelector:@selector(apply) withObject:nil afterDelay:0.7];
-}
-
 - (void)themeDidChange {
     [self rebuild];
 }

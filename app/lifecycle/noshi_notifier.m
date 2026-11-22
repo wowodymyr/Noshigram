@@ -497,10 +497,6 @@ static void present_with_center(id center, NSString *title, NSString *body, NSDi
     ((void (*)(id, SEL, id, void (^)(NSError *)))objc_msgSend)(center, NSSelectorFromString(@"addNotificationRequest:withCompletionHandler:"), request, added);
 }
 
-- (void)presentWithCenter:(id)center title:(NSString *)title body:(NSString *)body userInfo:(NSDictionary *)info sound:(NSString *)sound {
-    present_with_center(center, title, body, info, sound);
-}
-
 static void present_notice(NSString *title, NSString *body, NSDictionary *info, NSString *sound, UIApplication *application) {
     id center = user_notification_center();
     if (center) {

@@ -132,12 +132,6 @@ static void NoshiChartScale(int64_t maximum, int64_t *top, int64_t *step) {
     return text;
 }
 
-- (BOOL)hasVisibleLine {
-    const noshi_chart *chart = _data.chart;
-    for (uint32_t i = 0; chart && i < chart->line_count; ++i) if (!_hidden[i]) return YES;
-    return NO;
-}
-
 /* the height each series reaches at a point: its own value, or the sum of the visible series below it when the chart is stacked */
 - (int64_t)topOfLine:(uint32_t)line at:(NSUInteger)index {
     const noshi_chart *chart = _data.chart;

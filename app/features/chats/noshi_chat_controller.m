@@ -18,7 +18,6 @@
 #import "noshi_text_parts.h"
 #include "noshi_text_split.h"
 #import "noshi_session_privacy.h"
-#import "noshi_chat_search.h"
 #import "noshi_attach_flow.h"
 #import "noshi_image_decoder.h"
 #import "noshi_attach_sheet.h"
@@ -469,11 +468,6 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     NSString *_startParam;
     NSString *_searchQuery;
     /* the search of the modern style, which stays on the chat itself: the bar over the header, the strip over the keyboard, and the matches newest first */
-    NoshiChatSearchBar *_searchBar;
-    NoshiChatSearchNav *_searchNav;
-    NSArray *_searchHits;
-    NSUInteger _searchPosition;
-    NSUInteger _searchToken;
     NoshiPerson *_historyPerson;
     int32_t _startMessageId;
     NSArray *_menuReactions;
@@ -569,10 +563,6 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     [_bots teardown];
     [_bots release];
     [_router release];
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(runChatSearch:) object:nil];
-    [_searchBar release];
-    [_searchNav release];
-    [_searchHits release];
     [_searchQuery release];
     [_historyPerson release];
     [_voiceJob cancel];
@@ -1087,10 +1077,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
                                                                    style:UIBarButtonItemStylePlain target:self action:@selector(showChatMenu)] autorelease];
     dotsItem.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
     self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:dotsItem, avatarItem, nil];
-}
-
-- (void)chatTitleTapped:(UITapGestureRecognizer *)tap {
-    [self openProfileGifts];
 }
 
 /* the ring round the picture follows the stories of the person: arcs coloured while unseen, grey once seen */
@@ -2310,96 +2296,6 @@ enum { NoshiChatAlertStylePlainTextInput = 2 };
 
 #pragma mark search of the chat
 
-/* the bar takes the place of the header and the strip the place of the field, until Cancel; the matches are looked up a moment after the last key, and the
-   chat scrolls to the one that is shown */
-- (void)beginChatSearch {
-    if (_searchBar) {
-        [_searchBar.field becomeFirstResponder];
-        return;
-    }
-    NoshiWeakReference *weak = _weak;
-    _searchBar = [[NoshiChatSearchBar alloc] init];
-    _searchBar.changeHandler = ^(NSString *text) { [(NoshiChatController *)weak.target chatSearchChanged:text]; };
-    _searchBar.cancelHandler = ^{ [(NoshiChatController *)weak.target endChatSearch]; };
-    [_header addSubview:_searchBar];
-    _searchNav = [[NoshiChatSearchNav alloc] init];
-    _searchNav.olderHandler = ^{ [(NoshiChatController *)weak.target stepChatSearch:1]; };
-    _searchNav.newerHandler = ^{ [(NoshiChatController *)weak.target stepChatSearch:-1]; };
-    [self.view addSubview:_searchNav];
-    [self layoutChat];
-    [_searchBar.field becomeFirstResponder];
-}
-
-- (void)endChatSearch {
-    if (!_searchBar) return;
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(runChatSearch:) object:nil];
-    ++_searchToken;
-    [_searchBar.field resignFirstResponder];
-    _searchBar.changeHandler = nil;
-    _searchBar.cancelHandler = nil;
-    _searchNav.olderHandler = nil;
-    _searchNav.newerHandler = nil;
-    [_searchBar removeFromSuperview];
-    [_searchNav removeFromSuperview];
-    [_searchBar release];
-    [_searchNav release];
-    _searchBar = nil;
-    _searchNav = nil;
-    [_searchHits release];
-    _searchHits = nil;
-    [self layoutChat];
-}
-
-- (void)chatSearchChanged:(NSString *)text {
-    NSString *query = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(runChatSearch:) object:nil];
-    ++_searchToken;
-    [_searchHits release];
-    _searchHits = nil;
-    if (!query.length) {
-        [_searchNav showIdle];
-        return;
-    }
-    [_searchNav showSearching];
-    [self performSelector:@selector(runChatSearch:) withObject:query afterDelay:0.4];
-}
-
-- (void)runChatSearch:(NSString *)query {
-    if (!_searchBar) return;
-    /* the request takes 256 bytes, so the text is cut to a length that fits whatever script it is in */
-    NSRange cut = [query rangeOfComposedCharacterSequencesForRange:NSMakeRange(0, MIN((NSUInteger)60, query.length))];
-    NSUInteger token = ++_searchToken;
-    NoshiWeakReference *weak = _weak;
-    [_session searchMessagesOfDialog:_dialog query:[query substringWithRange:cut] completion:^(NSArray *messages, NSDictionary *people, NSString *errorName) {
-        (void)people;
-        NoshiChatController *chat = weak.target;
-        if (!chat || !chat->_searchBar || token != chat->_searchToken) return;
-        if (errorName || !messages.count) {
-            if (errorName) NSLog(@"noshigram: chat search failed: %@", errorName);
-            [chat->_searchNav showNone];
-            return;
-        }
-        [chat->_searchHits release];
-        chat->_searchHits = [messages retain];
-        chat->_searchPosition = 0;
-        [chat showChatSearchHit];
-    }];
-}
-
-/* direction 1 goes to an older match, which is further along the list, and -1 to a newer one */
-- (void)stepChatSearch:(NSInteger)direction {
-    NSInteger next = (NSInteger)_searchPosition + direction;
-    if (next < 0 || next >= (NSInteger)_searchHits.count) return;
-    _searchPosition = (NSUInteger)next;
-    [self showChatSearchHit];
-}
-
-- (void)showChatSearchHit {
-    [_searchNav showPosition:_searchPosition + 1 of:_searchHits.count];
-    NoshiMessage *hit = [_searchHits objectAtIndex:_searchPosition];
-    if (hit.messageId > 0) [self jumpToMessageId:hit.messageId];
-}
-
 /* the matches open as a list of their own, the way the pinned messages do */
 - (void)openSearchResultsFor:(NSString *)text {
     NSString *query = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -2719,9 +2615,8 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     if (_keyboardOverlap > 0 && !_keyboardMoving && !_panelShown && ![_input.textView isFirstResponder]) _keyboardOverlap = 0;
     CGFloat bottomPad = _keyboardOverlap > 0 ? 0 : insets.bottom;
     BOOL hideReadOnly = _dialog.kind == NOSHI_DIALOG_CHANNEL && !_input.writable && !_input.actionTitle.length;
-    BOOL searching = _searchBar != nil;
-    _input.hidden = _pinnedList || hideReadOnly || _selecting || searching;
-    CGFloat inputHeight = _pinnedList ? 0 : (searching ? NOSHI_CHAT_SEARCH_NAV_HEIGHT : (_selecting ? [NoshiSelectionBar height] : (hideReadOnly ? 0 : [_input preferredHeight])));
+    _input.hidden = _pinnedList || hideReadOnly || _selecting;
+    CGFloat inputHeight = _pinnedList ? 0 : (_selecting ? [NoshiSelectionBar height] : (hideReadOnly ? 0 : [_input preferredHeight]));
     CGFloat inputY = size.height - _keyboardOverlap - bottomPad - inputHeight;
     /* the strip that names what the next send answers or changes stands right over the field, and the list ends above it */
     CGFloat contextHeight = _context.hidden || _pinnedList ? 0 : [NoshiComposeContext height];
@@ -2749,8 +2644,6 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     _title.frame = CGRectMake(textX, insets.top + (hasStatus ? 4 : 11), textWidth, 22);
     _subtitle.frame = CGRectMake(textX, insets.top + 25, textWidth, 16);
     _input.frame = CGRectMake(left, inputY, width, inputHeight + bottomPad);
-    _searchBar.frame = CGRectMake(0, 0, size.width, headerHeight - 1.0 / NoshiScreenScale());
-    _searchNav.frame = CGRectMake(left, inputY, width, inputHeight + bottomPad);
     _selectionBar.frame = _input.frame;
     BOOL wasBottom = _stickToBottom;
     CGRect previousViewport = _table.frame;
@@ -4123,19 +4016,6 @@ static NSInteger NoshiDayKey(NSCalendar *calendar, int32_t date, NoshiDaySpan *s
     }
 }
 
-
-- (void)showTitleBadge {
-    long long badge = NoshiDialogBadgeDocument(_dialog);
-    NSArray *entities = nil;
-    _title.text = NoshiNameWithBadge(_dialog.title, badge, &entities);
-    _title.entities = entities;
-    if (!_dialog.emojiStatus) return;
-    NoshiWeakReference *weak = _weak;
-    NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:_dialog.emojiStatus]], _session, _media, ^{
-        NoshiChatController *chat = weak.target;
-        if (chat) [chat->_title setNeedsDisplay];
-    });
-}
 
 /* the rows laid out before the words of a custom emoji were known are laid out again; every other row keeps its layout, where a flush of the whole cache made a chat of
    thousands of messages measure all of them again each time a batch of emoji arrived */

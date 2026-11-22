@@ -1537,10 +1537,6 @@ static UIImage *NoshiBatteryImage(float fill, UIColor *color) {
     [self showClassicTitle];
 }
 
-- (void)dropRetiredViews:(NSArray *)views {
-    (void)views;
-}
-
 /* the colors are read when a view is built, so a page that stays up across a change of the theme makes its own
    views again */
 - (void)themeNotified:(NSNotification *)note {
@@ -1620,18 +1616,6 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
     _flat = [flat retain];
 }
 
-/* the flat rows of one section, as index paths */
-- (NSArray *)pathsOfSection:(NSUInteger)index inFlat:(NSArray *)flat footersOnly:(BOOL)footersOnly {
-    NSMutableArray *paths = [NSMutableArray array];
-    for (NSUInteger i = 0; i < flat.count; ++i) {
-        NSDictionary *item = [flat objectAtIndex:i];
-        if ([[item objectForKey:@"section"] unsignedIntegerValue] != index) continue;
-        if (footersOnly && [[item objectForKey:@"kind"] intValue] != NoshiFlatFooter) continue;
-        [paths addObject:[NSIndexPath indexPathForRow:(NSInteger)i inSection:0]];
-    }
-    return paths;
-}
-
 - (void)replaceSectionAtIndex:(NSUInteger)index withSection:(NoshiSettingsSection *)section {
     if (index >= _sections.count) return;
     NSMutableArray *sections = [NSMutableArray arrayWithArray:_sections];
@@ -1673,11 +1657,6 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
 
 - (NSDictionary *)itemAt:(NSIndexPath *)indexPath {
     return [_flat objectAtIndex:(NSUInteger)indexPath.row];
-}
-
-- (CGFloat)sectionTextHeight:(NSString *)text width:(CGFloat)width font:(UIFont *)font minimum:(CGFloat)minimum {
-    CGFloat room = MAX(0, width - 2 * (CARD_INSET + ICON_PAD));
-    return MAX(minimum, NoshiWrappedHeight(text, font, room) + 20);
 }
 
 #pragma mark classic table
