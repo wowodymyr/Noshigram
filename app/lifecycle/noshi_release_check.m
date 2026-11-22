@@ -18,7 +18,6 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
 
 @interface NoshiReleaseNotice : UIView <UIGestureRecognizerDelegate> {
     UIView *_card;
-    UIImageView *_picture;
     UILabel *_title;
     UITextView *_notes;
     UILabel *_status;
@@ -59,11 +58,6 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     /* the plate of the classic menus, with its shadow outside the card, so the card does not clip */
     NoshiClassicApplyMenuPlate(_card, 14);
     [self addSubview:_card];
-    /* a jpeg of a photo size, with a file for each screen scale */
-    _picture = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"release_meme.jpg"]];
-    _picture.contentMode = UIViewContentModeScaleAspectFit;
-    _picture.clipsToBounds = YES;
-    [_card addSubview:_picture];
     _title = [[UILabel alloc] init];
     _title.backgroundColor = [UIColor clearColor];
     _title.textColor = NoshiClassicMenuTextColor();
@@ -104,7 +98,7 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _updater.onChange = nil;
     [_updater cancel];
     [_updater release];
-    [_card release]; [_picture release]; [_title release]; [_notes release]; [_status release]; [_wave release];
+    [_card release]; [_title release]; [_notes release]; [_status release]; [_wave release];
     [_primary release]; [_secondary release];
     [_version release]; [_releaseNotes release]; [_ipaURL release]; [_digestURL release];
     [super dealloc];
@@ -168,12 +162,8 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGFloat width = MAX(1, MIN(360, self.bounds.size.width - 32));
-    CGFloat height = MAX(1, MIN(520, self.bounds.size.height - 32));
+    CGFloat height = MAX(1, MIN(420, self.bounds.size.height - 32));
     CGFloat inner = width - 32;
-    UIImage *image = _picture.image;
-    /* the picture takes what the notes can spare: a photo of the whole meme on a tall screen, a strip of it on a small one */
-    CGFloat natural = image && image.size.width > 0 ? ceil(inner * image.size.height / image.size.width) : inner;
-    CGFloat pictureHeight = MIN(natural, MAX(96, MIN(190, floor(height * 0.3f))));
     CGFloat y = 14;
     /* the card keeps its size while it springs in or out, so the frame is set with the transform put aside */
     CGAffineTransform held = _card.transform;
@@ -181,8 +171,6 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _card.frame = CGRectMake(floor((self.bounds.size.width - width) / 2), floor((self.bounds.size.height - height) / 2), width, height);
     NoshiClassicFitPlate(_card, 0);
     _card.transform = held;
-    _picture.frame = CGRectMake(16, y, inner, pictureHeight);
-    y += pictureHeight + 8;
     _title.frame = CGRectMake(16, y, inner, 48);
     y += 52;
     CGFloat bottom = height - 108;

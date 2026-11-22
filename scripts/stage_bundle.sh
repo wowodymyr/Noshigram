@@ -9,7 +9,7 @@ shopt -s nullglob
 rm -rf "${dest}"
 mkdir -p "${dest}/noshigram-original-icons"
 files=(resources/icons/*.png resources/launch/*.png resources/animations/*.tgs
-    resources/phone/*.png resources/phone/*.txt resources/popup/*.jpg resources/popup/*.png
+    resources/phone/*.png resources/phone/*.txt
     resources/fonts/*.ttf resources/fonts/*.otf resources/fonts/*.txt
     resources/chat/*.jpg resources/chat/*.png resources/emoji/*.pack resources/emoji/*.txt
     resources/licenses/*.txt resources/maps/*.pem resources/web/*.pem

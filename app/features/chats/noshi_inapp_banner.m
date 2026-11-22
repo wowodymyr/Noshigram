@@ -5,7 +5,6 @@
 
 #import "noshi_avatar_view.h"
 #import "noshi_emoji_label.h"
-#import "noshi_image_decoder.h"
 #import "noshi_name_badge.h"
 #import "noshi_platform.h"
 #import "noshi_theme.h"
@@ -23,7 +22,6 @@ static NoshiInAppBanner *NoshiShownBanner;
 @interface NoshiInAppBanner () {
     void (^_tap)(void);
     NoshiAvatarView *_avatar;
-    UIImageView *_picture;
     NoshiEmojiLabel *_title;
     NoshiEmojiLabel *_body;
     UIView *_ground;
@@ -42,26 +40,12 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
 
 @implementation NoshiInAppBanner
 
-+ (void)showTitle:(NSString *)title body:(NSString *)body dialog:(NoshiDialog *)dialog avatars:(NoshiAvatarCache *)avatars tap:(void (^)(void))tap {
-    [self showTitle:title body:body dialog:dialog avatars:avatars tap:tap picture:nil];
-}
-
+/* the notice of a low battery is a plain band with its two lines, as a notice of the system would be */
 + (void)showPowerTitle:(NSString *)title body:(NSString *)body {
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-        NSString *path = [[NSBundle mainBundle] pathForResource:@"power_meme" ofType:@"png"];
-        UIImage *picture = [path ? NoshiDecodeImageAtURL([NSURL fileURLWithPath:path], 300) : nil retain];
-        if (!picture) NSLog(@"noshigram: power notice image is missing or invalid");
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if ([UIApplication sharedApplication].applicationState == UIApplicationStateActive)
-                [self showTitle:title body:body dialog:nil avatars:nil tap:nil picture:picture];
-            [picture release];
-        });
-        [pool drain];
-    });
+    [self showTitle:title body:body dialog:nil avatars:nil tap:nil];
 }
 
-+ (void)showTitle:(NSString *)title body:(NSString *)body dialog:(NoshiDialog *)dialog avatars:(NoshiAvatarCache *)avatars tap:(void (^)(void))tap picture:(UIImage *)picture {
++ (void)showTitle:(NSString *)title body:(NSString *)body dialog:(NoshiDialog *)dialog avatars:(NoshiAvatarCache *)avatars tap:(void (^)(void))tap {
     UIView *window = NoshiOverlayHost();
     if (!window) return;
     [NoshiShownBanner leaveNow];
@@ -85,13 +69,8 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
         [avatar setPhoto:dialog.saved || dialog.replies ? nil : dialog.photo cache:avatars];
         avatar.hidden = NO;
     }
-    if (picture) {
-        banner->_picture = [[UIImageView alloc] initWithImage:picture];
-        banner->_picture.contentMode = UIViewContentModeScaleAspectFit;
-        [banner addSubview:banner->_picture];
-    }
     banner->_contentTop = NoshiBannerContentTop(window);
-    CGFloat height = banner->_contentTop + (picture ? 132 : BAND);
+    CGFloat height = banner->_contentTop + BAND;
     banner.frame = CGRectMake(0, 0, window.bounds.size.width, height);
     /* the band keeps the width of the screen when the phone is turned while it is up; it was cut to the width it was shown at, half of a landscape screen */
     banner.autoresizingMask = UIViewAutoresizingFlexibleWidth;
@@ -159,7 +138,6 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [_tap release];
     [_avatar release];
-    [_picture release];
     [_title release];
     [_body release];
     [_ground release];
@@ -180,20 +158,18 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
         self.center = CGPointMake(self.center.x, height / 2);
     }
     CGSize size = self.bounds.size;
-    CGFloat band = size.height - _contentTop;
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     _press.frame = self.bounds;
     [CATransaction commit];
     _ground.frame = self.bounds;
     /* the text starts after the picture, and at the edge when the band has none */
-    CGFloat left = _picture ? 122 : (_avatar.hidden ? 14 : 10 + AVATAR + 10);
+    CGFloat left = _avatar.hidden ? 14 : 10 + AVATAR + 10;
     CGFloat width = MAX(0, size.width - left - 14);
-    if (_picture) _picture.frame = CGRectMake(8, _contentTop + 6, 104, band - 12);
     _avatar.frame = CGRectMake(10, _contentTop + 6, AVATAR, AVATAR);
-    CGFloat textTop = _contentTop + (_picture ? floor((band - 60) / 2) : 7);
+    CGFloat textTop = _contentTop + 7;
     _title.frame = CGRectMake(left, textTop, width, 18);
-    _body.frame = CGRectMake(left, textTop + 18, width, _picture ? 40 : 34);
+    _body.frame = CGRectMake(left, textTop + 18, width, 34);
     _handle.frame = CGRectMake(floor((size.width - HANDLE_WIDTH) / 2), size.height - HANDLE_HEIGHT - 4, HANDLE_WIDTH, HANDLE_HEIGHT);
 }
 
