@@ -707,6 +707,8 @@
 "channel.row.join" = "Join Channel";
 "group.row.join" = "Join Group";
 "group.row.add" = "Add Members";
+"profile.row.setphoto" = "Set Profile Photo";
+"profile.row.edit" = "Edit Profile";
 "profile.row.info" = "Info";
 "profile.row.message" = "Send Message";
 "profile.row.video" = "Video Call";

@@ -34,7 +34,8 @@
 #import "noshi_notifications_settings_controller.h"
 #import "noshi_person.h"
 #import "noshi_popup_menu.h"
-#import "noshi_profile_identity_view.h"
+#import "noshi_info_rows.h"
+#import "noshi_name_badge.h"
 #import "noshi_platform.h"
 #import "noshi_profile_photo_picker.h"
 #import "noshi_session_profile.h"
@@ -44,46 +45,119 @@
 #import "noshi_translator_controller.h"
 #import "noshi_weak_reference.h"
 
-/* the identity block starts 58 points under the top, like the one of the profile screen, and the table starts
-   under the status bar so that it scrolls up behind the bar list does */
-#define HEADER_HEIGHT (NOSHI_IDENTITY_BAR + NOSHI_IDENTITY_TOP + NOSHI_IDENTITY_HEIGHT + 24)
-/* the classic style puts the table under the system navigation bar, so the block needs no room for a bar of ours; the grouped table
-   adds a gap of its own above the first section, so the room under the @name is smaller than the 24 points of the modern one */
-#define CLASSIC_HEADER_HEIGHT (NOSHI_IDENTITY_TOP + NOSHI_IDENTITY_HEIGHT + 8)
-/* the title comes in once the header has gone up under the bar, over 420 ms */
-#define TITLE_FADE_SECONDS 0.42
+/* the head of the settings of telegram for ios 4: a white row of 97 points with the photo of 66 at the left, the name beside it and the number and the username under
+   the name; a tap on the photo changes it, a tap on the rest opens the profile */
+#define HEAD_HEIGHT 97.0
+#define HEAD_AVATAR 66.0
+#define HEAD_TEXT_X 92.0
+/* the grey above the head, the gap the grouped list keeps above its first group */
+#define HEAD_TOP 18.0
 static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
-/* the table header: the shared identity block, below the room the bar takes */
-@interface NoshiSettingsHeaderView : UIView {
-    NoshiProfileIdentityView *_identity;
-    CGFloat _identityTop;
+@interface NoshiSettingsHeaderView : UIControl {
+    UIView *_panel;
+    NoshiAvatarView *_avatar;
+    UIButton *_avatarHit;
+    UIActivityIndicatorView *_spinner;
+    NoshiEmojiLabel *_name;
+    UILabel *_phone;
+    UILabel *_username;
 }
-@property (nonatomic, readonly) NoshiProfileIdentityView *identity;
-- (id)initWithFrame:(CGRect)frame identityTop:(CGFloat)identityTop;
+@property (nonatomic, readonly) NoshiAvatarView *avatar;
+@property (nonatomic, readonly) UIButton *avatarHit;
+@property (nonatomic, readonly) NoshiEmojiLabel *name;
+- (void)setPhone:(NSString *)phone username:(NSString *)username;
+- (void)setUploading:(BOOL)uploading;
 @end
 
 @implementation NoshiSettingsHeaderView
 
-@synthesize identity = _identity;
+@synthesize avatar = _avatar;
+@synthesize avatarHit = _avatarHit;
+@synthesize name = _name;
 
-- (id)initWithFrame:(CGRect)frame identityTop:(CGFloat)identityTop {
+- (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    _identityTop = identityTop;
-    _identity = [[NoshiProfileIdentityView alloc] init];
-    [self addSubview:_identity];
+    self.backgroundColor = [UIColor clearColor];
+    _panel = NoshiNewInfoGroup();
+    _panel.userInteractionEnabled = NO;
+    [self addSubview:_panel];
+    _avatar = [[NoshiAvatarView alloc] init];
+    _avatar.userInteractionEnabled = NO;
+    [self addSubview:_avatar];
+    _avatarHit = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
+    _avatarHit.accessibilityLabel = NSLocalizedString(@"profile.choosephoto", nil);
+    [self addSubview:_avatarHit];
+    _spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
+    _spinner.hidesWhenStopped = YES;
+    [self addSubview:_spinner];
+    _name = [[NoshiEmojiLabel alloc] init];
+    _name.font = NoshiFontMedium(20);
+    _name.textColor = NoshiColorTitle();
+    _name.dropsUndrawable = YES;
+    _name.userInteractionEnabled = NO;
+    [self addSubview:_name];
+    for (int i = 0; i < 2; ++i) {
+        UILabel *line = [[UILabel alloc] init];
+        line.backgroundColor = [UIColor clearColor];
+        line.font = [UIFont systemFontOfSize:15];
+        line.textColor = NoshiColorSecondary();
+        line.userInteractionEnabled = NO;
+        [self addSubview:line];
+        if (i == 0) _phone = line;
+        else _username = line;
+    }
     return self;
 }
 
 - (void)dealloc {
-    [_identity release];
+    [_panel release];
+    [_avatar release];
+    [_avatarHit release];
+    [_spinner release];
+    [_name release];
+    [_phone release];
+    [_username release];
     [super dealloc];
+}
+
+- (void)setPhone:(NSString *)phone username:(NSString *)username {
+    _phone.text = phone;
+    _username.text = username;
+    [self setNeedsLayout];
+}
+
+- (void)setUploading:(BOOL)uploading {
+    if (uploading) [_spinner startAnimating];
+    else [_spinner stopAnimating];
+}
+
+- (void)setHighlighted:(BOOL)highlighted {
+    [super setHighlighted:highlighted];
+    _panel.backgroundColor = highlighted ? (NoshiThemeIsDark() ? [UIColor colorWithWhite:0.25 alpha:1] : [UIColor colorWithWhite:0.85 alpha:1]) : NoshiColorCard();
 }
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    _identity.frame = CGRectMake(0, _identityTop, self.bounds.size.width, NOSHI_IDENTITY_HEIGHT + [_identity extraHeightForWidth:self.bounds.size.width]);
+    CGFloat width = self.bounds.size.width;
+    _panel.frame = CGRectMake(0, HEAD_TOP, width, HEAD_HEIGHT);
+    NoshiFitInfoGroupLines(_panel, YES);
+    _avatar.frame = CGRectMake(15, HEAD_TOP + floor((HEAD_HEIGHT - HEAD_AVATAR) / 2), HEAD_AVATAR, HEAD_AVATAR);
+    _avatarHit.frame = _avatar.frame;
+    _spinner.center = _avatar.center;
+    /* the name over the number over the username, as one block in the middle of the row; a line with nothing on it takes no room */
+    CGFloat textWidth = MAX(0, width - HEAD_TEXT_X - 15);
+    BOOL phone = _phone.text.length > 0, username = _username.text.length > 0;
+    CGFloat block = 25 + (phone ? 20 : 0) + (username ? 20 : 0);
+    CGFloat y = HEAD_TOP + floor((HEAD_HEIGHT - block) / 2);
+    _name.frame = CGRectMake(HEAD_TEXT_X, y, textWidth, 25);
+    y += 25;
+    _phone.hidden = !phone;
+    _phone.frame = CGRectMake(HEAD_TEXT_X, y, textWidth, 20);
+    if (phone) y += 20;
+    _username.hidden = !username;
+    _username.frame = CGRectMake(HEAD_TEXT_X, y, textWidth, 20);
 }
 
 @end
@@ -99,9 +173,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NoshiPeopleAvatars *_faces;
     BOOL _uploading;
     BOOL _barFilled;
-    CGFloat _headerExtra;
     /* the words the classic bar shows now: the title view is made again only when they change */
-    NSString *_barHandle;
     BOOL _signingOut;
     UIButton *_more;
     UIButton *_qr;
@@ -138,7 +210,6 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     [_media release];
     [_stickerLibrary release];
     [_header release];
-    [_barHandle release];
     [_person release];
     [_faces invalidate];
     [_faces release];
@@ -153,26 +224,19 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)viewDidLoad {
     [super viewDidLoad];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(chatSettingsChanged) name:NoshiChatSettingsDidChangeNotification object:nil];
-    _header = [[NoshiSettingsHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, CLASSIC_HEADER_HEIGHT)
-                                                   identityTop:NOSHI_IDENTITY_TOP];
+    _header = [[NoshiSettingsHeaderView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, HEAD_TOP + HEAD_HEIGHT)];
     _header.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    /* the grouped table of the light classic style keeps the system's own background, which the modern ring color is not */
-    if (!NoshiThemeIsDark()) [_header.identity setBadgeRingColor:[UIColor clearColor]];
-    [_header.identity.avatarHit addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_header.identity.badge addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
-    /* the name and the line under it open the full profile */
-    for (UIView *words in [NSArray arrayWithObjects:_header.identity.name, _header.identity.line, nil]) {
-        words.userInteractionEnabled = YES;
-        [words addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfile)] autorelease]];
-    }
+    [_header.avatarHit addTarget:self action:@selector(avatarTapped) forControlEvents:UIControlEventTouchUpInside];
+    /* the rest of the row opens the full profile */
+    [_header addTarget:self action:@selector(openProfile) forControlEvents:UIControlEventTouchUpInside];
     self.headerView = _header;
     /* the same one-row menu as the dots of the modern bar, on the system bar, and the magnifier of its search
            in the corner at the left; the bars of this style are dark, so the pictures are drawn white */
     UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor])
                                                               style:UIBarButtonItemStyleBordered target:self action:@selector(showMenu)] autorelease];
     dots.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
-    /* the username of the account stands in the middle of the bar; the code of the profile is one tap away in the modern look and in the profile */
-    self.navigationItem.titleView = NoshiClassicTitleView(@"", nil);
+    /* the bar says Settings, as in telegram for ios 4; the name is in the head */
+    self.navigationItem.titleView = NoshiClassicTitleView(NSLocalizedString(@"tab.settings", nil), nil);
     UIBarButtonItem *search = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolMagnifier, 22, [UIColor whiteColor])
                                                                 style:UIBarButtonItemStyleBordered target:self action:@selector(focusSearch)] autorelease];
     search.accessibilityLabel = NSLocalizedString(@"settings.search", nil);
@@ -246,36 +310,26 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 }
 
 - (void)showPerson {
-    NoshiProfileIdentityView *identity = _header.identity;
-    identity.userId = _person.userId;
-    [identity setName:_person.name];
-    identity.line.text = _person.username.length ? [@"@" stringByAppendingString:_person.username] : NoshiOwnPhoneText(_person.phone);
-    NSString *handle = _person.username.length ? [@"@" stringByAppendingString:_person.username] : _person.name;
-    /* every return to this page asks the profile again, and a title view swapped while the page slides back jumps on the bar */
-    if (![handle isEqualToString:_barHandle]) {
-        [_barHandle release];
-        _barHandle = [handle copy];
-        self.navigationItem.titleView = NoshiClassicTitleView(handle, nil);
-    }
-    identity.avatar.initials = _person.initials;
-    identity.avatar.seed = (NSUInteger)(_person.userId % 1000003);
-    [identity.avatar setPhoto:_person.photo cache:_avatars];
-    /* a name with many badges runs to more lines, and the head of the page grows by them */
-    CGFloat extra = [identity extraHeightForWidth:_header.bounds.size.width];
-    if (extra != _headerExtra) {
-        _headerExtra = extra;
-        CGRect frame = _header.frame;
-        frame.size.height = (CLASSIC_HEADER_HEIGHT) + extra;
-        _header.frame = frame;
-        self.headerView = _header;
-        [_header setNeedsLayout];
-    }
+    NSArray *entities = nil;
+    /* the mark after the name is the one the lists and the chat show: the status the person chose, or the Premium star */
+    long long badge = NoshiPersonBadgeDocument(_person);
+    _header.name.text = NoshiNameWithBadge(_person.name, badge, &entities);
+    _header.name.entities = entities;
+    NoshiWeakReference *weak = _weak;
+    NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:badge]], _session, _media, ^{
+        NoshiSettingsController *me = weak.target;
+        if (me) [me->_header.name setNeedsDisplay];
+    });
+    [_header setPhone:_person.phone.length ? NoshiOwnPhoneText(_person.phone) : nil username:_person.username.length ? [@"@" stringByAppendingString:_person.username] : nil];
+    _header.avatar.initials = _person.initials;
+    _header.avatar.seed = (NSUInteger)(_person.userId % 1000003);
+    [_header.avatar setPhoto:_person.photo cache:_avatars];
 }
 
 /* a tap on the photo: it jumps, as the photo of exteraGram does when it is pressed, and the sheet of the library comes up under it */
 - (void)avatarTapped {
     if (_uploading || !_person) return;
-    CALayer *layer = _header.identity.avatar.layer;
+    CALayer *layer = _header.avatar.layer;
     CAKeyframeAnimation *jump = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
     jump.values = [NSArray arrayWithObjects:[NSNumber numberWithDouble:1], [NSNumber numberWithDouble:0.86], [NSNumber numberWithDouble:1.1], [NSNumber numberWithDouble:0.97],
                    [NSNumber numberWithDouble:1], nil];
@@ -306,13 +360,13 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)uploadPickedPath:(NSString *)path video:(BOOL)video {
     NoshiWeakReference *weak = _weak;
     _uploading = YES;
-    [_header.identity setUploading:YES];
+    [_header setUploading:YES];
     void (^finished)(NSString *) = ^(NSString *errorName) {
         [[NSFileManager defaultManager] removeItemAtPath:path error:NULL];
         NoshiSettingsController *again = weak.target;
         if (!again) return;
         again->_uploading = NO;
-        [again->_header.identity setUploading:NO];
+        [again->_header setUploading:NO];
         if (errorName) {
             NSLog(@"noshigram: the profile %@ was not set: %@", video ? @"video" : @"photo", errorName);
             NoshiShowNotice(nil, [NSString stringWithFormat:NSLocalizedString(@"error.unknown", nil), errorName]);

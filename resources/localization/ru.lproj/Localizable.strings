@@ -708,6 +708,8 @@
 "channel.row.join" = "Подписаться на канал";
 "group.row.join" = "Вступить в группу";
 "group.row.add" = "Добавить участников";
+"profile.row.setphoto" = "Выбрать фотографию";
+"profile.row.edit" = "Изменить профиль";
 "profile.row.info" = "Информация";
 "profile.row.message" = "Отправить сообщение";
 "profile.row.video" = "Видеозвонок";
