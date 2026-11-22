@@ -108,7 +108,8 @@ static NSArray *NoshiClassicSearchFieldsIn(UIView *view) {
 }
 
 void NoshiClassicStyleSearchBar(UISearchBar *bar) {
-    bar.barStyle = UIBarStyleBlack;
+    /* the black style was for the blue bars of before: on the light ones it drew the typed words white on a light pill, where they could not be seen */
+    bar.barStyle = NoshiThemeIsDark() ? UIBarStyleBlack : UIBarStyleDefault;
     NoshiClassicTintBar(bar);
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(1, 1), NO, 0);
     UIImage *clear = UIGraphicsGetImageFromCurrentImageContext();
@@ -119,9 +120,9 @@ void NoshiClassicStyleSearchBar(UISearchBar *bar) {
     for (UIView *view in NoshiClassicSearchFieldsIn(bar)) {
         UITextField *field = (UITextField *)view;
         field.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-        /* the field of the system is black on white; the pill of the dark themes is dark, so the typed words and the placeholder are white on it */
+        /* the typed words are the color of titles on the light pill, and white with a white placeholder on the dark pill of the dark themes */
+        field.textColor = NoshiThemeIsDark() ? [UIColor whiteColor] : NoshiColorTitle();
         if (NoshiThemeIsDark()) {
-            field.textColor = [UIColor whiteColor];
             if (field.placeholder.length && [field respondsToSelector:@selector(setAttributedPlaceholder:)]) {
                 NSDictionary *look = [NSDictionary dictionaryWithObject:[UIColor colorWithWhite:1 alpha:0.6] forKey:@"NSColor"];
                 [field setValue:[[[NSAttributedString alloc] initWithString:field.placeholder attributes:look] autorelease] forKey:@"attributedPlaceholder"];
@@ -196,7 +197,7 @@ UIView *NoshiClassicSearchFacade(CGRect frame, NSString *placeholder) {
     return view;
 }
 
-/* the text of the pill: one line tall on the middle of the pill, for the typed words, the hint and the clear button alike */
+/* the text of the pill: the hint one line tall on the middle of the pill, the typed words centered by the field, and the clear button at the end */
 @interface NoshiClassicSearchTextField : UITextField
 @end
 
@@ -207,8 +208,10 @@ UIView *NoshiClassicSearchFacade(CGRect frame, NSString *placeholder) {
     return CGRectMake(0, floor((bounds.size.height - line) / 2), MAX(0, bounds.size.width - 22), line);
 }
 
-- (CGRect)textRectForBounds:(CGRect)bounds { return [self lineRectForBounds:bounds]; }
-- (CGRect)editingRectForBounds:(CGRect)bounds { return [self lineRectForBounds:bounds]; }
+/* the typed words get the whole height and the field centers them: a box one line tall left the text system of ios 8 no room for the line, and nothing was drawn,
+   not even the caret */
+- (CGRect)textRectForBounds:(CGRect)bounds { return CGRectMake(0, 0, MAX(0, bounds.size.width - 22), bounds.size.height); }
+- (CGRect)editingRectForBounds:(CGRect)bounds { return [self textRectForBounds:bounds]; }
 - (CGRect)placeholderRectForBounds:(CGRect)bounds { return [self lineRectForBounds:bounds]; }
 
 - (CGRect)clearButtonRectForBounds:(CGRect)bounds {
@@ -246,6 +249,7 @@ UIView *NoshiClassicSearchFacade(CGRect frame, NSString *placeholder) {
     _field.returnKeyType = UIReturnKeySearch;
     _field.enablesReturnKeyAutomatically = YES;
     _field.clearButtonMode = UITextFieldViewModeWhileEditing;
+    _field.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
     _field.delegate = self;
     [_field addTarget:self action:@selector(edited) forControlEvents:UIControlEventEditingChanged];
     [self addSubview:_field];
