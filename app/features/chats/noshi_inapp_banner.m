@@ -34,6 +34,12 @@ static NoshiInAppBanner *NoshiShownBanner;
 }
 @end
 
+/* the band covers the status bar and starts its content under it; the frame of the bar is read and not its hidden flag, since ios 8 takes the bar away in landscape
+   on a phone without setting the flag */
+static CGFloat NoshiBannerContentTop(UIView *host) {
+    return MAX(NoshiSafeInsets(host).top, NoshiStatusBarHeight());
+}
+
 @implementation NoshiInAppBanner
 
 + (void)showTitle:(NSString *)title body:(NSString *)body dialog:(NoshiDialog *)dialog avatars:(NoshiAvatarCache *)avatars tap:(void (^)(void))tap {
@@ -84,11 +90,11 @@ static NoshiInAppBanner *NoshiShownBanner;
         banner->_picture.contentMode = UIViewContentModeScaleAspectFit;
         [banner addSubview:banner->_picture];
     }
-    UIEdgeInsets insets = NoshiSafeInsets(window);
-    /* the band covers the status bar and starts its content under it */
-    banner->_contentTop = MAX(insets.top, [UIApplication sharedApplication].statusBarHidden ? 0 : 20);
+    banner->_contentTop = NoshiBannerContentTop(window);
     CGFloat height = banner->_contentTop + (picture ? 132 : BAND);
     banner.frame = CGRectMake(0, 0, window.bounds.size.width, height);
+    /* the band keeps the width of the screen when the phone is turned while it is up; it was cut to the width it was shown at, half of a landscape screen */
+    banner.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     [window addSubview:banner];
     NoshiShownBanner = [banner retain];
     if (!NoshiReduceMotionEnabled()) {
@@ -143,10 +149,13 @@ static NoshiInAppBanner *NoshiShownBanner;
     [self addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tapped)] autorelease]];
     /* the band follows the finger to the left, to the right or up, and goes when it is let go far enough or flicked; a tap still opens the chat */
     [self addGestureRecognizer:[[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(dragged:)] autorelease]];
+    /* a turn of the phone shows or hides the status bar, and the room left for it follows in the layout */
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(setNeedsLayout) name:UIApplicationDidChangeStatusBarFrameNotification object:nil];
     return self;
 }
 
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [_tap release];
     [_avatar release];
@@ -161,6 +170,15 @@ static NoshiInAppBanner *NoshiShownBanner;
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+    /* the room for the status bar was worked out when the band came; a turn of the phone since then shows or hides the bar, and the band grows or shrinks by the
+       difference with its top edge kept at the top of the screen (the slide and the drag move it by its transform, which the center leaves alone) */
+    CGFloat top = self.superview ? NoshiBannerContentTop(self.superview) : _contentTop;
+    if (top != _contentTop) {
+        CGFloat height = self.bounds.size.height - _contentTop + top;
+        _contentTop = top;
+        self.bounds = CGRectMake(0, 0, self.bounds.size.width, height);
+        self.center = CGPointMake(self.center.x, height / 2);
+    }
     CGSize size = self.bounds.size;
     CGFloat band = size.height - _contentTop;
     [CATransaction begin];
