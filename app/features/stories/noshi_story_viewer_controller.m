@@ -51,11 +51,13 @@ static const NoshiSymbol kStorySpeedSymbols[SPEED_COUNT] = {NoshiSymbolSpeedVery
 static NSString *const kStorySpeedKeys[SPEED_COUNT] = {@"story.speed.veryslow", @"story.speed.slow", @"story.speed.normal", @"story.speed.fast", @"story.speed.veryfast"};
 
 /* the classic chrome is the black translucent bar of the old photo viewer: a bar of 44 points with the progress segments under it */
-#define CLASSIC_BAR 44.0
-#define CLASSIC_HEADER 58.0
-#define CLASSIC_TOOLBAR 44.0
-#define CLASSIC_SEGMENT 6.0
-#define CLASSIC_BUTTON_HEIGHT 30.0
+/* the flat chrome of ios 7 over a picture, as the photo viewer of telegram for ios 4 had it: thin white lines of progress at the very top, the poster under them and
+   plain white glyphs for the keys, on fades of black that keep them readable; the reply field is the dark rounded field of the keyboard of that time */
+#define CLASSIC_HEADER 64.0
+#define CLASSIC_TOOLBAR 50.0
+#define CLASSIC_SEGMENT 2.0
+#define SEGMENT_TOP 8.0
+#define FIELD_HEIGHT 34.0
 
 /* NSTimer retains its target, the weak bridge lets a closed viewer release its timer */
 @interface NoshiStoryTickTarget : NSObject {
@@ -269,8 +271,6 @@ static UILabel *NoshiStoryLabel(CGFloat size, BOOL bold) {
     label.backgroundColor = [UIColor clearColor];
     label.textColor = [UIColor whiteColor];
     label.font = bold ? NoshiFontSemibold(size) : NoshiFontRegular(size);
-    label.shadowColor = [UIColor colorWithWhite:0 alpha:0.6];
-    label.shadowOffset = CGSizeMake(0, 1);
     return label;
 }
 
@@ -284,35 +284,22 @@ static NoshiEmojiLabel *NoshiStoryTextLabel(CGFloat size, BOOL bold) {
 }
 
 /* a dark fade along the top or the bottom edge, so the text over a bright picture stays readable */
-static UIView *NoshiStoryShade(BOOL fromTop, BOOL classic) {
+static UIView *NoshiStoryShade(BOOL fromTop) {
     UIView *view = [[UIView alloc] init];
     view.userInteractionEnabled = NO;
     CAGradientLayer *shade = [CAGradientLayer layer];
-    if (classic) {
-        shade.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:0.36 alpha:0.82].CGColor, (id)[UIColor colorWithWhite:0.20 alpha:0.82].CGColor,
-                                                 (id)[UIColor colorWithWhite:0.07 alpha:0.82].CGColor, (id)[UIColor colorWithWhite:0.0 alpha:0.82].CGColor, nil];
-        shade.locations = [NSArray arrayWithObjects:[NSNumber numberWithFloat:0], [NSNumber numberWithFloat:0.5f], [NSNumber numberWithFloat:0.5f],
-                                                    [NSNumber numberWithFloat:1], nil];
-        [view.layer addSublayer:shade];
-        return view;
-    }
     id dark = (id)[UIColor colorWithWhite:0 alpha:0.55].CGColor, clear = (id)[UIColor colorWithWhite:0 alpha:0].CGColor;
     shade.colors = fromTop ? [NSArray arrayWithObjects:dark, clear, nil] : [NSArray arrayWithObjects:clear, dark, nil];
     [view.layer addSublayer:shade];
     return view;
 }
 
-/* a bar button of the viewer: a flat key in the accent with a white bold title */
-static UIButton *NoshiStoryClassicButton(NSString *title) {
+/* a key of the viewer: a white glyph with no plate, dimmed while it is held, as the bar buttons of ios 7 are */
+static UIButton *NoshiStoryGlyphButton(NoshiSymbol symbol, CGFloat size, NSString *label) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    [button setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
-    [button setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
-    if (title) {
-        button.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-        button.titleLabel.adjustsFontSizeToFitWidth = YES;
-        [button setTitle:title forState:UIControlStateNormal];
-        [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    }
+    [button setImage:NoshiSymbolImage(symbol, size, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [button setImage:NoshiSymbolImage(symbol, size, [UIColor colorWithWhite:1 alpha:0.4]) forState:UIControlStateHighlighted];
+    button.accessibilityLabel = label;
     return button;
 }
 
@@ -338,9 +325,9 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _notice.hidden = YES;
     [root addSubview:_notice];
 
-    _scrim = NoshiStoryShade(YES, YES);
+    _scrim = NoshiStoryShade(YES);
     [root addSubview:_scrim];
-    _scrimBottom = NoshiStoryShade(NO, YES);
+    _scrimBottom = NoshiStoryShade(NO);
     [root addSubview:_scrimBottom];
     /* a caption sits on a plate of its own, since the bottom bar is only as tall as the reply row */
     _captionPlate = [[UIView alloc] init];
@@ -358,7 +345,7 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     NoshiLabelFitToWidth(_time, 9);
     _time.textColor = [UIColor colorWithWhite:1 alpha:0.8];
     [_top addSubview:_time];
-    _sound = [(NoshiStoryClassicButton(nil)) retain];
+    _sound = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_sound addTarget:self action:@selector(soundTapped) forControlEvents:UIControlEventTouchUpInside];
     [_top addSubview:_sound];
     [self refreshSoundButton];
@@ -366,9 +353,9 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     [_menu setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_menu addTarget:self action:@selector(menuTapped) forControlEvents:UIControlEventTouchUpInside];
     _menu.accessibilityLabel = NSLocalizedString(@"story.menu", nil);
-    /* the bar has a close button of its own at the left, so there is no menu */
+    /* the bar has a close button of its own at the right, so there is no menu */
     _menu.hidden = YES;
-    _done = [NoshiStoryClassicButton(NSLocalizedString(@"story.close", nil)) retain];
+    _done = [NoshiStoryGlyphButton(NoshiSymbolClose, 18, NSLocalizedString(@"story.close", nil)) retain];
     [_done addTarget:self action:@selector(closeTapped) forControlEvents:UIControlEventTouchUpInside];
     [_top addSubview:_done];
     [_top addSubview:_menu];
@@ -385,18 +372,17 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _reply.placeholder = NSLocalizedString(@"story.reply", nil);
     _reply.font = NoshiFontRegular(15);
     _reply.textAlignment = NoshiTextAlignmentLeft;
-    /* the white rounded field of the old toolbars. The system draws its white fill only up to ios 6: from ios 7 a rounded-rect field has none, and the black words
-           lay straight on the dark story and could not be read, so the fill is the pill's own */
-    _reply.textColor = [UIColor blackColor];
-    _replyPill.backgroundColor = [UIColor whiteColor];
-    _replyPill.layer.cornerRadius = CLASSIC_BUTTON_HEIGHT / 2;
-    _replyPill.layer.borderColor = [UIColor colorWithWhite:0.55 alpha:1].CGColor;
-    _replyPill.layer.borderWidth = 1;
+    /* the dark field of ios 7: a see-through grey with a hairline round it and white words, so the story shows through */
+    _reply.textColor = [UIColor whiteColor];
+    _replyPill.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
+    _replyPill.layer.cornerRadius = 6;
+    _replyPill.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.35].CGColor;
+    _replyPill.layer.borderWidth = 1.0f / NoshiScreenScale();
     _reply.returnKeyType = UIReturnKeySend;
     _reply.keyboardAppearance = UIKeyboardAppearanceAlert;
     [_replyPill addSubview:_reply];
     [_bottom addSubview:_replyPill];
-    _locked = [(NoshiStoryClassicButton(nil)) retain];
+    _locked = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_locked setImage:NoshiSymbolImage(NoshiSymbolLock, 15, [UIColor colorWithWhite:1 alpha:0.55]) forState:UIControlStateNormal];
     [_locked setTitle:NSLocalizedString(@"story.locked", nil) forState:UIControlStateNormal];
     [_locked setTitleColor:[UIColor colorWithWhite:1 alpha:0.6] forState:UIControlStateNormal];
@@ -407,19 +393,14 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _locked.hidden = YES;
     [_locked addTarget:self action:@selector(lockedTapped) forControlEvents:UIControlEventTouchUpInside];
     [_bottom addSubview:_locked];
-    _heart = [(NoshiStoryClassicButton(nil)) retain];
+    _heart = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_heart addTarget:self action:@selector(heartTapped) forControlEvents:UIControlEventTouchUpInside];
     _heart.accessibilityLabel = NSLocalizedString(@"story.like", nil);
     /* the heart is a button of its own at the right of the pill */
     _heart.contentMode = UIViewContentModeCenter;
     [_bottom addSubview:_heart];
-    _share = [(NoshiStoryClassicButton(nil)) retain];
+    _share = [NoshiStoryGlyphButton(NoshiSymbolForward, 22, NSLocalizedString(@"story.share", nil)) retain];
     [_share addTarget:self action:@selector(shareTapped) forControlEvents:UIControlEventTouchUpInside];
-    _share.accessibilityLabel = NSLocalizedString(@"story.share", nil);
-    _share.contentMode = UIViewContentModeCenter;
-    [_share setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
-    [_share setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
-    [_share setImage:NoshiSymbolImage(NoshiSymbolForward, 18, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_bottom addSubview:_share];
     _views = [NoshiStoryLabel(14, NO) retain];
     /* the count of views opens the list of the people who looked */
@@ -436,7 +417,6 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _chipIcon.contentMode = UIViewContentModeCenter;
     [_chip addSubview:_chipIcon];
     _chipText = [NoshiStoryLabel(12, YES) retain];
-    _chipText.shadowColor = nil;
     [_chip addSubview:_chipText];
     [root addSubview:_chip];
 
@@ -510,14 +490,17 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _notice.frame = CGRectMake(left + 24, bounds.size.height / 2 - 40, width - 48, 80);
     _sound.hidden = !_current.music && _current.media.kind != NOSHI_PREVIEW_VIDEO;
     CGFloat barHeight = CLASSIC_TOOLBAR;
-    _scrim.frame = CGRectMake(shadeLeft, card ? stage.origin.y : 0, shadeWidth, CLASSIC_HEADER + (card ? 0 : top));
+    /* the fade runs well past the header, so it has no edge of its own */
+    _scrim.frame = CGRectMake(shadeLeft, card ? stage.origin.y : 0, shadeWidth, CLASSIC_HEADER + 40 + (card ? 0 : top));
     _top.frame = CGRectMake(left, top, width, CLASSIC_HEADER);
-    _done.frame = CGRectMake(8, 7, 72, CLASSIC_BUTTON_HEIGHT);
-    _avatar.frame = CGRectMake(90, 7, 30, 30);
-    _sound.frame = CGRectMake(width - 8 - 46, 7, 46, CLASSIC_BUTTON_HEIGHT);
-    CGFloat right = _sound.hidden ? 8 : 62;
-    _name.frame = CGRectMake(128, 4, MAX(0, width - 128 - right), 20);
-    _time.frame = CGRectMake(128, 24, MAX(0, width - 128 - right), 14);
+    /* the poster at the left under the lines, the sound and the cross at the right */
+    CGFloat rowY = SEGMENT_TOP + CLASSIC_SEGMENT + 8;
+    _avatar.frame = CGRectMake(12, rowY, 36, 36);
+    _done.frame = CGRectMake(width - 4 - SIDE_BUTTON, rowY - 4, SIDE_BUTTON, SIDE_BUTTON);
+    _sound.frame = CGRectMake(width - 4 - 2 * SIDE_BUTTON, rowY - 4, SIDE_BUTTON, SIDE_BUTTON);
+    CGFloat right = (_sound.hidden ? 1 : 2) * SIDE_BUTTON + 8;
+    _name.frame = CGRectMake(58, rowY - 1, MAX(0, width - 58 - right), 20);
+    _time.frame = CGRectMake(58, rowY + 19, MAX(0, width - 58 - right), 16);
     ((CALayer *)[_scrim.layer.sublayers objectAtIndex:0]).frame = _scrim.bounds;
     [self layoutSegmentsInWidth:width];
     CGFloat bottomInset = card ? 0 : MAX(insets.bottom, 0);
@@ -530,14 +513,15 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     _locked.hidden = own || !gated;
     _heart.hidden = own;
     _views.hidden = !own;
-    /* the pill and the heart beside it: the heart is a button of its own at the right end of the bar */
-    CGFloat heartX = width - 8 - 44;
-    CGFloat shareX = own ? heartX : heartX - 4 - 44;
-    _replyPill.frame = CGRectMake(8, 7, shareX - 8 - 8, CLASSIC_BUTTON_HEIGHT);
+    /* the field, then the share and the heart as glyphs at the right end of the bar */
+    CGFloat heartX = width - 4 - SIDE_BUTTON;
+    CGFloat shareX = own ? heartX : heartX - SIDE_BUTTON;
+    CGFloat fieldY = floor((barHeight - FIELD_HEIGHT) / 2);
+    _replyPill.frame = CGRectMake(8, fieldY, shareX - 8 - 4, FIELD_HEIGHT);
     _locked.frame = _replyPill.frame;
-    _heart.frame = CGRectMake(heartX, 7, 44, CLASSIC_BUTTON_HEIGHT);
-    _share.frame = CGRectMake(shareX, 7, 44, CLASSIC_BUTTON_HEIGHT);
-    _views.frame = CGRectMake(16, 11, shareX - 16 - 8, 22);
+    _heart.frame = CGRectMake(heartX, floor((barHeight - SIDE_BUTTON) / 2), SIDE_BUTTON, SIDE_BUTTON);
+    _share.frame = CGRectMake(shareX, floor((barHeight - SIDE_BUTTON) / 2), SIDE_BUTTON, SIDE_BUTTON);
+    _views.frame = CGRectMake(16, floor((barHeight - 22) / 2), shareX - 16 - 8, 22);
     /* the words start REPLY_INSET from the left edge of the pill (the view keeps 8 points of its own) and stand on its vertical middle */
     CGFloat replyHeight = ceil(_reply.font.lineHeight) + 8;
     _reply.frame = CGRectMake(REPLY_INSET - 8, floor((_replyPill.bounds.size.height - replyHeight) / 2), MAX(0, _replyPill.bounds.size.width - 2 * (REPLY_INSET - 8)), replyHeight);
@@ -558,7 +542,7 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     CGSize fit = [_caption sizeThatFits:room];
     CGFloat captionHeight = MIN(fit.height, 100);
     _caption.frame = CGRectMake(left + 16, chipTop - captionHeight - 8, width - 32, captionHeight);
-    _scrimBottom.frame = CGRectMake(shadeLeft, barY, shadeWidth, stageBottom - barY - _keyboardOverlap);
+    _scrimBottom.frame = CGRectMake(shadeLeft, barY - 40, shadeWidth, stageBottom - barY + 40 - _keyboardOverlap);
     _captionPlate.hidden = _caption.hidden;
     _captionPlate.frame = CGRectMake(shadeLeft, _caption.frame.origin.y - 8, shadeWidth, captionHeight + 16);
     ((CALayer *)[_scrimBottom.layer.sublayers objectAtIndex:0]).frame = _scrimBottom.bounds;
@@ -569,9 +553,9 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
 - (void)layoutSegmentsInWidth:(CGFloat)width {
     NSUInteger count = _segments.count;
     if (!count) return;
-    CGFloat gap = 4, left = 8, right = 8;
+    CGFloat gap = 3, left = 8, right = 8;
     CGFloat thickness = CLASSIC_SEGMENT;
-    CGFloat y = CLASSIC_BAR - 1;
+    CGFloat y = SEGMENT_TOP;
     CGFloat each = (width - left - right - gap * (count - 1)) / count;
     for (NSUInteger i = 0; i < count; ++i) {
         UIView *segment = [_segments objectAtIndex:i];
@@ -751,7 +735,7 @@ static UIButton *NoshiStoryClassicButton(NSString *title) {
     [_fills removeAllObjects];
     for (NSUInteger i = 0; i < count; ++i) {
         UIView *segment = [[[UIView alloc] init] autorelease];
-        segment.backgroundColor = [UIColor colorWithWhite:1 alpha:0.3];
+        segment.backgroundColor = [UIColor colorWithWhite:1 alpha:0.35];
         segment.layer.cornerRadius = CLASSIC_SEGMENT / 2;
         segment.layer.masksToBounds = YES;
         UIView *fill = [[[UIView alloc] init] autorelease];
@@ -990,7 +974,9 @@ static CATransform3D NoshiStoryCubeFace(CGFloat pivot, CGFloat angle) {
 #pragma mark sound
 
 - (void)refreshSoundButton {
-    [_sound setImage:NoshiSymbolImage(_muted ? NoshiSymbolSpeakerSlash : NoshiSymbolSpeaker, 18, [UIColor whiteColor]) forState:UIControlStateNormal];
+    NoshiSymbol symbol = _muted ? NoshiSymbolSpeakerSlash : NoshiSymbolSpeaker;
+    [_sound setImage:NoshiSymbolImage(symbol, 20, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [_sound setImage:NoshiSymbolImage(symbol, 20, [UIColor colorWithWhite:1 alpha:0.4]) forState:UIControlStateHighlighted];
     _sound.accessibilityLabel = NSLocalizedString(_muted ? @"story.unmute" : @"story.mute", nil);
 }
 
@@ -1558,11 +1544,11 @@ typedef enum {
 - (void)refreshHeart {
     NSNumber *override = _current ? [_reacted objectForKey:[NSNumber numberWithInt:_current.storyId]] : nil;
     BOOL liked = override ? override.boolValue : _current.reaction != nil;
-    /* a liked story turns the plate red, as the old badges did; the glyph stays white on either */
-    NoshiClassicKeyColor plate = liked ? NoshiClassicKeyRed : NoshiClassicKeyAccent;
-    [_heart setBackgroundImage:NoshiClassicKeyImage(plate, NO) forState:UIControlStateNormal];
-    [_heart setBackgroundImage:NoshiClassicKeyImage(plate, YES) forState:UIControlStateHighlighted];
-    [_heart setImage:NoshiSymbolImage(liked ? NoshiSymbolHeart : NoshiSymbolHeartOutline, 18, [UIColor whiteColor]) forState:UIControlStateNormal];
+    /* a liked story fills the heart with the red of ios 7; otherwise it is a white outline */
+    UIColor *ink = liked ? [UIColor colorWithRed:1 green:0.231f blue:0.188f alpha:1] : [UIColor whiteColor];
+    NoshiSymbol symbol = liked ? NoshiSymbolHeart : NoshiSymbolHeartOutline;
+    [_heart setImage:NoshiSymbolImage(symbol, 24, ink) forState:UIControlStateNormal];
+    [_heart setImage:NoshiSymbolImage(symbol, 24, [ink colorWithAlphaComponent:0.4f]) forState:UIControlStateHighlighted];
 }
 
 #pragma mark premium only replies
