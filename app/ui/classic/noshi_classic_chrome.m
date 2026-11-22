@@ -577,53 +577,53 @@ static UIImage *NoshiClassicRoundImage(NoshiSymbol symbol, CGFloat side, BOOL pr
     return NoshiClassicRemembered(key, ^UIImage *{ return NoshiClassicRoundImageMade(symbol, side, pressed, red); });
 }
 
+/* a round key of telegram for ios 4: a flat circle in the accent (or red) with a white glyph, a little deeper while pressed */
 static UIImage *NoshiClassicRoundImageMade(NoshiSymbol symbol, CGFloat side, BOOL pressed, BOOL red) {
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGRect bounds = CGRectMake(0.5, 0.5, side - 1, side - 1);
-    CGFloat dim = pressed ? 0.78 : 1;
-    CGFloat colors[] = {0.74 * dim, 0.58 * dim, 0.90 * dim, 1,
-                        0.50 * dim, 0.30 * dim, 0.72 * dim, 1,
-                        0.40 * dim, 0.20 * dim, 0.62 * dim, 1};
-    if (red) {
-        CGFloat redColors[] = {0.94 * dim, 0.42 * dim, 0.36 * dim, 1,
-                               0.80 * dim, 0.18 * dim, 0.14 * dim, 1,
-                               0.66 * dim, 0.10 * dim, 0.08 * dim, 1};
-        memcpy(colors, redColors, sizeof(colors));
-    }
-    for (NSUInteger i = 0; !red && i < 3; ++i) {
-        UIColor *tinted = NoshiThemeTinted([UIColor colorWithRed:colors[i * 4] green:colors[i * 4 + 1] blue:colors[i * 4 + 2] alpha:1]);
-        [tinted getRed:&colors[i * 4] green:&colors[i * 4 + 1] blue:&colors[i * 4 + 2] alpha:NULL];
-    }
-    CGFloat locations[] = {0, 0.5, 1};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, colors, locations, 3);
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, bounds);
-    CGContextClip(context);
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(0, side), 0);
-    CGContextRestoreGState(context);
-    /* the pale cap of the dome stands wholly inside the rim and fades towards its foot: an ellipse that ran past the rim was cut by it, and the cut showed as flat corners on the
-       top of the circle */
-    CGFloat capAlpha[] = {1, 1, 1, MIN(1, 0.34f * NoshiClassicGlossScale()),  1, 1, 1, MIN(1, 0.02f * NoshiClassicGlossScale())};
-    CGGradientRef cap = CGGradientCreateWithColorComponents(space, capAlpha, NULL, 2);
-    CGRect capRect = CGRectMake(side * 0.12, side * 0.06, side * 0.76, side * 0.46);
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, capRect);
-    CGContextClip(context);
-    CGContextDrawLinearGradient(context, cap, CGPointMake(0, capRect.origin.y), CGPointMake(0, CGRectGetMaxY(capRect)), 0);
-    CGContextRestoreGState(context);
-    CGGradientRelease(cap);
-    UIColor *outline = red ? [UIColor colorWithRed:0.40 green:0.04 blue:0.03 alpha:1]
-                           : NoshiThemeTinted([UIColor colorWithRed:0.12 green:0.25 blue:0.40 alpha:1]);
-    CGContextSetStrokeColorWithColor(context, outline.CGColor);
-    CGContextSetLineWidth(context, 1);
-    CGContextStrokeEllipseInRect(context, bounds);
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
+    UIColor *fill = red ? NoshiColorBadgeRed() : NoshiColorAccent();
+    if (pressed) fill = NoshiMixedColor(fill, [UIColor blackColor], 0.2);
+    [fill setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, side, side)] fill];
     CGFloat glyphSide = symbol == NoshiSymbolSendArrow ? side * 0.5 : side * 0.58;
     UIImage *glyph = NoshiSymbolImage(symbol, glyphSide, [UIColor whiteColor]);
     [glyph drawAtPoint:CGPointMake((side - glyph.size.width) / 2, (side - glyph.size.height) / 2)];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
+/* the key that takes a chat down to its newest message, as telegram for ios 4 had it: a white circle with a grey rim and a grey arrow (dark at night) */
+UIImage *NoshiFlatDownButtonImage(CGFloat side, BOOL pressed) {
+    BOOL dark = NoshiThemeIsDark();
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
+    CGRect ring = CGRectMake(0.5f, 0.5f, side - 1, side - 1);
+    UIColor *fill = dark ? [UIColor colorWithWhite:0.16 alpha:1] : [UIColor whiteColor];
+    if (pressed) fill = NoshiMixedColor(fill, dark ? [UIColor whiteColor] : [UIColor blackColor], 0.08);
+    [fill setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:ring] fill];
+    [(dark ? [UIColor colorWithWhite:0.3 alpha:1] : [UIColor colorWithWhite:0.82 alpha:1]) setStroke];
+    UIBezierPath *rim = [UIBezierPath bezierPathWithOvalInRect:ring];
+    rim.lineWidth = 1;
+    [rim stroke];
+    UIImage *glyph = NoshiSymbolImage(NoshiSymbolArrowDown, side * 0.5f, dark ? [UIColor colorWithWhite:0.7 alpha:1] : [UIColor colorWithWhite:0.55 alpha:1]);
+    [glyph drawAtPoint:CGPointMake((side - glyph.size.width) / 2, (side - glyph.size.height) / 2)];
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return image;
+}
+
+/* the back arrow of the bars of ios 7: a chevron of two strokes, drawn in black for the bar to tint */
+UIImage *NoshiBackChevronImage(void) {
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(13, 22), NO, 0);
+    UIBezierPath *chevron = [UIBezierPath bezierPath];
+    [chevron moveToPoint:CGPointMake(11, 1.5f)];
+    [chevron addLineToPoint:CGPointMake(2, 11)];
+    [chevron addLineToPoint:CGPointMake(11, 20.5f)];
+    chevron.lineWidth = 3;
+    chevron.lineCapStyle = kCGLineCapRound;
+    chevron.lineJoinStyle = kCGLineJoinRound;
+    [[UIColor blackColor] setStroke];
+    [chevron stroke];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return image;
@@ -699,66 +699,9 @@ UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle
     return view;
 }
 
-static UIImage *NoshiClassicCounterImage(void) {
-    static UIImage *cached;
-    static CGFloat key[3];
-    CGFloat rgb[3], alpha;
-    [NoshiColorAccent() getRed:&rgb[0] green:&rgb[1] blue:&rgb[2] alpha:&alpha];
-    if (cached && key[0] == rgb[0] && key[1] == rgb[1] && key[2] == rgb[2]) return cached;
-    const CGFloat side = 24, ring = 1.5;
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGRect outer = CGRectMake(1, 0.5, side - 2, side - 3.5);
-    CGContextSaveGState(context);
-    CGContextSetShadowWithColor(context, CGSizeMake(0, 1.5), 2, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
-    [[UIColor whiteColor] setFill];
-    [[UIBezierPath bezierPathWithRoundedRect:outer cornerRadius:outer.size.height / 2] fill];
-    CGContextRestoreGState(context);
-    CGRect inner = CGRectInset(outer, ring, ring);
-    UIBezierPath *face = [UIBezierPath bezierPathWithRoundedRect:inner cornerRadius:inner.size.height / 2];
-    CGContextSaveGState(context);
-    [face addClip];
-    CGFloat fill[] = {MIN(1, rgb[0] + (1 - rgb[0]) * 0.35), MIN(1, rgb[1] + (1 - rgb[1]) * 0.35), MIN(1, rgb[2] + (1 - rgb[2]) * 0.35), 1,
-                      rgb[0], rgb[1], rgb[2], 1,
-                      rgb[0] * 0.78, rgb[1] * 0.78, rgb[2] * 0.78, 1};
-    CGFloat at[] = {0, 0.5, 1};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, fill, at, 3);
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, inner.origin.y), CGPointMake(0, CGRectGetMaxY(inner)), 0);
-    CGFloat shine[] = {1, 1, 1, 0.55, 1, 1, 1, 0.08};
-    CGGradientRef gloss = CGGradientCreateWithColorComponents(space, shine, NULL, 2);
-    CGContextClipToRect(context, CGRectMake(0, inner.origin.y, side, inner.size.height * 0.5));
-    CGContextDrawLinearGradient(context, gloss, CGPointMake(0, inner.origin.y), CGPointMake(0, inner.origin.y + inner.size.height * 0.5), 0);
-    CGGradientRelease(gloss);
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    CGContextRestoreGState(context);
-    [[UIColor colorWithRed:rgb[0] * 0.55 green:rgb[1] * 0.55 blue:rgb[2] * 0.55 alpha:1] setStroke];
-    face.lineWidth = 0.5;
-    [face stroke];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    [cached release];
-    cached = [[image resizableImageWithCapInsets:UIEdgeInsetsMake(0, side / 2 - 1, 0, side / 2 - 1)] retain];
-    for (int i = 0; i < 3; ++i) key[i] = rgb[i];
-    return cached;
-}
-
+/* the count of the other unread chats beside the back arrow: the flat capsule of the list in the accent */
 UIView *NoshiClassicCounterBadge(NSString *text) {
-    UIFont *font = [UIFont boldSystemFontOfSize:13];
-    CGFloat width = MAX(24, ceil(NoshiStringSize(text, font).width) + 16);
-    UIImageView *badge = [[[UIImageView alloc] initWithImage:NoshiClassicCounterImage()] autorelease];
-    badge.frame = CGRectMake(0, 0, width, 24);
-    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(0, -1, width, 22)] autorelease];
-    label.backgroundColor = [UIColor clearColor];
-    label.text = text;
-    label.font = font;
-    label.textColor = [UIColor whiteColor];
-    label.textAlignment = NoshiTextAlignmentCenter;
-    label.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
-    label.shadowOffset = CGSizeMake(0, -1);
-    [badge addSubview:label];
-    return badge;
+    return NoshiClassicBadge(text, NO);
 }
 
 /* the count of a row: a capsule in the accent, drawn as a stretched picture under the text. a layer with a corner radius and a mask is drawn off screen at every frame of a scroll, and a

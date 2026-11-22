@@ -33,7 +33,7 @@ static NSString *NoshiSymbolMaskName(NoshiSymbol symbol) {
     case NoshiSymbolMapPin: return @"symbol_mappin";
     case NoshiSymbolLock: return @"symbol_lock";
     /* one shape of the dots in the whole app: the vertical one, whatever name a screen asks for */
-    case NoshiSymbolEllipsis: return @"symbol_ellipsisvertical";
+    case NoshiSymbolEllipsis: return @"symbol_ellipsis";
     case NoshiSymbolSun: return @"symbol_sun";
     case NoshiSymbolMoon: return @"symbol_moon";
     case NoshiSymbolMegaphone: return @"symbol_megaphone";

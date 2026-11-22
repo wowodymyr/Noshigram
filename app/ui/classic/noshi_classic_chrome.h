@@ -56,6 +56,10 @@ void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiTabIcon icon);
 UIColor *NoshiTabBarRestingColor(void);
 
 /* the round record or send button of the message bar: a glossy purple dome with its glyph, drawn whole so it needs no layers */
+/* the white key with a grey arrow that takes a chat to its newest message */
+UIImage *NoshiFlatDownButtonImage(CGFloat side, BOOL pressed);
+/* the chevron of the back button, black, for the bar to tint */
+UIImage *NoshiBackChevronImage(void);
 UIImage *NoshiClassicRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL pressed);
 UIImage *NoshiClassicRedRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL pressed);
 

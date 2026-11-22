@@ -198,7 +198,7 @@ static UILabel *GroupLabel(CGFloat size, BOOL bold, CGFloat alpha) {
     _subtitle = [GroupLabel(13, NO, 0.65f) retain];
     _minimize = [GroupButton(NoshiSymbolArrowDown, [UIColor colorWithWhite:1 alpha:0.18f], 40, self, @selector(minimizeTapped)) retain];
     _minimize.accessibilityLabel = NSLocalizedString(@"call.minimize", nil);
-    _more = [GroupButton(NoshiSymbolEllipsisVertical, [UIColor colorWithWhite:1 alpha:0.18f], 40, self, @selector(moreTapped)) retain];
+    _more = [GroupButton(NoshiSymbolEllipsis, [UIColor colorWithWhite:1 alpha:0.18f], 40, self, @selector(moreTapped)) retain];
     _more.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
     _table = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     _table.backgroundColor = [UIColor clearColor];

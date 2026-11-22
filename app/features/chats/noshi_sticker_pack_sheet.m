@@ -102,7 +102,7 @@
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _more.backgroundColor = NoshiColorField();
     _more.layer.cornerRadius = ROUND_BUTTON / 2;
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, NoshiColorTitle()) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, NoshiColorTitle()) forState:UIControlStateNormal];
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     _more.accessibilityLabel = NSLocalizedString(@"attach.more", nil);
     _more.hidden = YES;

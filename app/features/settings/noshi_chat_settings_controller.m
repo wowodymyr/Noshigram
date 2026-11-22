@@ -121,7 +121,7 @@ static void NoshiIconBusyHide(NoshiThemeBusyView *busy) {
     [_more release];
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _more.frame = CGRectMake(0, 0, 44, 44);
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, NoshiColorTitle()) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, NoshiColorTitle()) forState:UIControlStateNormal];
     _more.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     [self refreshMenu];

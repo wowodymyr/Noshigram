@@ -1007,8 +1007,8 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     /* the way back to the newest message, which shows once the list is more than a screen above its end */
     _toEnd = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     /* the classic style has no flat card: the same glossy dome as the send button of the bar */
-    [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, NO) forState:UIControlStateNormal];
-    [_toEnd setImage:NoshiClassicRoundButtonImage(NoshiSymbolArrowDown, 44, YES) forState:UIControlStateHighlighted];
+    [_toEnd setImage:NoshiFlatDownButtonImage(44, NO) forState:UIControlStateNormal];
+    [_toEnd setImage:NoshiFlatDownButtonImage(44, YES) forState:UIControlStateHighlighted];
     [_toEnd addTarget:self action:@selector(toEndTapped) forControlEvents:UIControlEventTouchUpInside];
     _toEnd.accessibilityLabel = NSLocalizedString(@"chat.toend", nil);
     _toEnd.alpha = 0;
@@ -1081,8 +1081,8 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
         [avatarBox addSubview:_topicIcon];
     } else [avatarBox addSubview:mini];
     UIBarButtonItem *avatarItem = [[[UIBarButtonItem alloc] initWithCustomView:avatarBox] autorelease];
-    UIBarButtonItem *dotsItem = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
-                                                                   style:UIBarButtonItemStyleBordered target:self action:@selector(showChatMenu)] autorelease];
+    UIBarButtonItem *dotsItem = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor])
+                                                                   style:UIBarButtonItemStylePlain target:self action:@selector(showChatMenu)] autorelease];
     dotsItem.accessibilityLabel = NSLocalizedString(@"profile.more", nil);
     self.navigationItem.rightBarButtonItems = [NSArray arrayWithObjects:dotsItem, avatarItem, nil];
 }
@@ -2876,11 +2876,9 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
     return MAX(60, MIN(190, MIN(screen.width, screen.height) - 2 * side));
 }
 
-/* the back button of the classic bar is the same bordered item as the dots, so the two plates match; the count of the other unread chats stands in a glossy badge of its own
-   right beside it, since a system item cannot hold a badge and a plate drawn by the app never matched the system's */
+/* the back button is the chevron of ios 7, and the count of the other unread chats stands in a flat capsule of its own right beside it, since a system item cannot hold a badge */
 - (void)refreshClassicBackWithCount:(NSInteger)count {
-    UIBarButtonItem *item = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolBack, 22, [UIColor whiteColor])
-                                                              style:UIBarButtonItemStyleBordered target:self action:@selector(goBack)] autorelease];
+    UIBarButtonItem *item = [[[UIBarButtonItem alloc] initWithImage:NoshiBackChevronImage() style:UIBarButtonItemStylePlain target:self action:@selector(goBack)] autorelease];
     item.accessibilityLabel = NSLocalizedString(@"phone.back", nil);
     CGFloat counterWidth = 0;
     if (count <= 0) {

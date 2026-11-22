@@ -273,7 +273,7 @@ static char NoshiMediaPlayerStatusContext;
     _headerEdit.accessibilityLabel = NSLocalizedString(@"media.edit", nil);
     _forward = [self button:NoshiSymbolShare action:@selector(forward) host:_top];
     _forward.accessibilityLabel = NSLocalizedString(@"media.share", nil);
-    _more = [self button:NoshiSymbolEllipsisVertical action:@selector(showMenu) host:_top];
+    _more = [self button:NoshiSymbolEllipsis action:@selector(showMenu) host:_top];
     _more.accessibilityLabel = NSLocalizedString(@"media.actions", nil);
     _play = [self button:NoshiSymbolPlay action:@selector(togglePlay) host:_bottom];
     /* the triangle and the bars are the glyph of the media button of the chat, which turns one into the other; the picture of a plain triangle stood to the left of the

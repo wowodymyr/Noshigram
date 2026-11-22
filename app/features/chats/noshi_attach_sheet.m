@@ -142,7 +142,7 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
     _title.shadowOffset = CGSizeMake(0, -1);
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     _more.accessibilityLabel = NSLocalizedString(@"attach.more", nil);
     _more.hidden = YES;

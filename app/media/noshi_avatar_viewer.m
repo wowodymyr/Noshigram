@@ -144,7 +144,7 @@
     _back.accessibilityLabel = NSLocalizedString(@"story.close", nil);
     [root addSubview:_back];
     _more = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [_more setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 24, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_more addTarget:self action:@selector(showMenu) forControlEvents:UIControlEventTouchUpInside];
     _more.accessibilityLabel = NSLocalizedString(@"avatar.save", nil);
     [root addSubview:_more];

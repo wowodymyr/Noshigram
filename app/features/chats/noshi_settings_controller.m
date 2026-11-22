@@ -157,7 +157,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     self.headerView = _header;
     /* the same one-row menu as the dots of the modern bar, on the system bar, and the magnifier of its search
            in the corner at the left; the bars of this style are dark, so the pictures are drawn white */
-    UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor])
+    UIBarButtonItem *dots = [[[UIBarButtonItem alloc] initWithImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor])
                                                               style:UIBarButtonItemStyleBordered target:self action:@selector(showMenu)] autorelease];
     dots.accessibilityLabel = NSLocalizedString(@"settings.more", nil);
     /* the username of the account stands in the middle of the bar; the code of the profile is one tap away in the modern look and in the profile */

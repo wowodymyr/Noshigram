@@ -384,7 +384,7 @@ static UIColor *NoshiStoryClassicPattern(BOOL fill) {
     [_top addSubview:_sound];
     [self refreshSoundButton];
     _menu = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_menu setImage:NoshiSymbolImage(NoshiSymbolEllipsisVertical, 22, [UIColor whiteColor]) forState:UIControlStateNormal];
+    [_menu setImage:NoshiSymbolImage(NoshiSymbolEllipsis, 22, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_menu addTarget:self action:@selector(menuTapped) forControlEvents:UIControlEventTouchUpInside];
     _menu.accessibilityLabel = NSLocalizedString(@"story.menu", nil);
     /* the bar has a close button of its own at the left, so there is no menu */
