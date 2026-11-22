@@ -3,7 +3,7 @@
 #import "noshi_media_cache.h"
 #import "noshi_message.h"
 
-/* the card of the song a profile shows: a rounded cover, the title over the artist, on a plate of the color of the cover; a tap on it is the owner's
+/* the row of the song a profile shows: the cover, the title over the artist, on the white of the group it stands in; a tap on it is the owner's
    to handle, and it hides itself when it has nothing to show, so ask hasContent before laying it out */
 @interface NoshiMusicPill : UIControl
 
@@ -19,7 +19,5 @@
 /* the emoji of the profile's Premium pattern and its color: a few of them run onto the right end of the card, fading out toward the left */
 @property (nonatomic, retain) UIImage *patternImage;
 @property (nonatomic, retain) UIColor *patternColor;
-/* the card takes the whole row it is given, so this is maxWidth */
-- (CGFloat)widthWithin:(CGFloat)maxWidth;
 
 @end

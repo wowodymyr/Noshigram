@@ -7,6 +7,7 @@
 #import "noshi_music_list_controller.h"
 #import "noshi_music_pill.h"
 #import "noshi_session_profile.h"
+#import "noshi_theme.h"
 #import "noshi_weak_reference.h"
 
 @interface NoshiSavedMediaController () <NoshiGroupTabsDelegate, UIScrollViewDelegate> {
@@ -52,6 +53,8 @@
     [_music addTarget:self action:@selector(openMusic) forControlEvents:UIControlEventTouchUpInside];
     NoshiWeakReference *weak = _weak;
     _music.contentHandler = ^{ [[(NoshiSavedMediaController *)weak.target view] setNeedsLayout]; };
+    /* the row of the song is on the white of the lists, the full width of the screen */
+    _music.backgroundColor = NoshiColorCard();
     [_scroll addSubview:_music];
     _tabs = [[NoshiGroupTabsView alloc] initWithSession:self.session dialog:_dialog avatars:self.avatars media:self.media forUser:YES];
     _tabs.delegate = self;
@@ -65,8 +68,7 @@
     _scroll.frame = body;
     CGFloat top = 0;
     if (_music.hasContent) {
-        CGFloat pillWidth = [_music widthWithin:MAX(0, body.size.width - 28)];
-        _music.frame = CGRectMake(floor((body.size.width - pillWidth) / 2), 12, pillWidth, [NoshiMusicPill height]);
+        _music.frame = CGRectMake(0, 0, body.size.width, [NoshiMusicPill height]);
         top = CGRectGetMaxY(_music.frame) + 12;
     }
     CGFloat height = [_tabs heightForWidth:body.size.width];

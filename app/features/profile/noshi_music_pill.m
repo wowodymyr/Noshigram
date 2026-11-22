@@ -9,12 +9,10 @@
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
 
-#define CARD_HEIGHT 72.0
-#define CARD_RADIUS 20.0
-#define COVER_INSET 8.0
-#define COVER_SIDE 56.0
-#define COVER_RADIUS 12.0
-#define KEY_SIDE 36.0
+#define CARD_HEIGHT 60.0
+#define COVER_INSET 15.0
+#define COVER_SIDE 44.0
+#define KEY_SIDE 30.0
 #define SLOT 34.0
 /* the part of the card, from its right edge, that the pattern may reach */
 #define PATTERN_REACH 0.42
@@ -78,30 +76,6 @@
 
 @end
 
-/* the average color of a cover, drawn into one pixel */
-static UIColor *NoshiCoverColor(UIImage *image) {
-    if (!image.CGImage) return nil;
-    uint8_t pixel[4] = {0, 0, 0, 0};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = CGBitmapContextCreate(pixel, 1, 1, 8, 4, space, kCGImageAlphaPremultipliedLast);
-    CGColorSpaceRelease(space);
-    if (!context) return nil;
-    CGContextSetInterpolationQuality(context, kCGInterpolationMedium);
-    CGContextDrawImage(context, CGRectMake(0, 0, 1, 1), image.CGImage);
-    CGContextRelease(context);
-    if (!pixel[3]) return nil;
-    return [UIColor colorWithRed:pixel[0] / 255.0f green:pixel[1] / 255.0f blue:pixel[2] / 255.0f alpha:1];
-}
-
-/* the plate is the cover's color pulled toward black until white text reads on it, as light covers would otherwise leave the words faint */
-static UIColor *NoshiPlateColor(UIColor *cover) {
-    CGFloat red = 0, green = 0, blue = 0, alpha = 0;
-    if (![cover getRed:&red green:&green blue:&blue alpha:&alpha]) return nil;
-    CGFloat luminance = 0.299f * red + 0.587f * green + 0.114f * blue;
-    CGFloat keep = luminance > 0.55f ? 0.5f : (luminance > 0.35f ? 0.68f : 0.85f);
-    return [UIColor colorWithRed:red * keep green:green * keep blue:blue * keep alpha:1];
-}
-
 @interface NoshiMusicPill () {
     NoshiMedia *_savedTrack;
     NoshiMediaCache *_media;
@@ -116,8 +90,6 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     NoshiMusicKey *_toggle;
     UIButton *_close;
     NSString *_coverKey;
-    UIColor *_plate;
-    CAGradientLayer *_glass;
     BOOL _hadContent;
 }
 @end
@@ -135,55 +107,50 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    self.backgroundColor = NoshiMusicTonalColor();
-    self.layer.cornerRadius = CARD_RADIUS;
+    /* a row of the white group it stands in, as the songs of telegram for ios 4 were listed: the cover, the title over the artist, and the keys in the accent */
+    self.backgroundColor = [UIColor clearColor];
     self.clipsToBounds = YES;
-    /* the classic card is a plate that is lit at the top and shades down to the bottom with no edge between the two, a dark rim round it, and the cover in a white slide mount */
-    self.layer.cornerRadius = 10;
-    self.layer.borderWidth = 1;
-    self.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.4].CGColor;
-    _glass = [[CAGradientLayer layer] retain];
-    _glass.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.14].CGColor, (id)[UIColor colorWithWhite:0 alpha:0.16].CGColor, nil];
-    [self.layer insertSublayer:_glass atIndex:0];
     _pattern = [[NoshiMusicPatternView alloc] init];
     CAGradientLayer *fade = [CAGradientLayer layer];
     fade.startPoint = CGPointMake(0, 0.5f);
     fade.endPoint = CGPointMake(1, 0.5f);
     fade.colors = [NSArray arrayWithObjects:(id)[UIColor clearColor].CGColor, (id)[UIColor blackColor].CGColor, nil];
     _pattern.layer.mask = fade;
+    /* the emoji of a Premium profile stay off the plain row of telegram for ios 4 */
+    _pattern.hidden = YES;
     [self addSubview:_pattern];
     _cover = [[UIImageView alloc] init];
     _cover.contentMode = UIViewContentModeScaleAspectFill;
     _cover.clipsToBounds = YES;
-    _cover.layer.cornerRadius = 5;
-    _cover.layer.borderWidth = 2;
-    _cover.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.92].CGColor;
-    _cover.backgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
+    _cover.layer.cornerRadius = 4;
+    _cover.backgroundColor = NoshiMusicTonalColor();
     _cover.userInteractionEnabled = NO;
     [self addSubview:_cover];
-    _note = [[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolPlayerNote, 24, [UIColor colorWithWhite:1 alpha:0.8])];
+    _note = [[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolPlayerNote, 20, NoshiColorAccent())];
     _note.contentMode = UIViewContentModeCenter;
     _note.userInteractionEnabled = NO;
     [self addSubview:_note];
     _title = [[NoshiEmojiLabel alloc] init];
-    _title.font = [UIFont boldSystemFontOfSize:17];
-    _title.textColor = [UIColor whiteColor];
+    _title.font = [UIFont systemFontOfSize:17];
+    _title.textColor = NoshiColorTitle();
     _title.dropsUndrawable = YES;
     _title.userInteractionEnabled = NO;
     [self addSubview:_title];
     _artist = [[NoshiEmojiLabel alloc] init];
-    _artist.font = [UIFont systemFontOfSize:15];
-    _artist.textColor = [UIColor colorWithWhite:1 alpha:0.7f];
+    _artist.font = [UIFont systemFontOfSize:14];
+    _artist.textColor = NoshiColorSecondary();
     _artist.dropsUndrawable = YES;
     _artist.userInteractionEnabled = NO;
     [self addSubview:_artist];
     _toggle = [[NoshiMusicKey buttonWithType:UIButtonTypeCustom] retain];
-    _toggle.backgroundColor = [UIColor colorWithWhite:1 alpha:0.22f];
+    _toggle.backgroundColor = [UIColor clearColor];
+    _toggle.layer.borderWidth = 1;
+    _toggle.layer.borderColor = NoshiColorAccent().CGColor;
     [_toggle setRestRadius:KEY_SIDE / 2 animated:NO];
     [_toggle addTarget:self action:@selector(togglePlayback) forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:_toggle];
     _close = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    [_close setImage:NoshiSymbolImage(NoshiSymbolClose, 14, [UIColor colorWithWhite:1 alpha:0.7f]) forState:UIControlStateNormal];
+    [_close setImage:NoshiSymbolImage(NoshiSymbolClose, 14, NoshiColorSecondary()) forState:UIControlStateNormal];
     [_close addTarget:self action:@selector(stopPlayback) forControlEvents:UIControlEventTouchUpInside];
     _close.accessibilityLabel = NSLocalizedString(@"music.stop", nil);
     [self addSubview:_close];
@@ -198,7 +165,6 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     [_media release];
     [_patternImage release];
     [_patternColor release];
-    [_glass release];
     [_contentHandler release];
     [_pattern release];
     [_cover release];
@@ -208,7 +174,6 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     [_toggle release];
     [_close release];
     [_coverKey release];
-    [_plate release];
     [super dealloc];
 }
 
@@ -255,15 +220,6 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     [self refresh];
 }
 
-- (void)setPlate:(UIColor *)color {
-    if (color == _plate) return;
-    [_plate release];
-    _plate = [color retain];
-    [UIView animateWithDuration:self.window ? 0.25 : 0 animations:^{
-        self.backgroundColor = _plate ? _plate : NoshiMusicTonalColor();
-    }];
-}
-
 /* shows the saved song, with the controls while it is the one that plays */
 - (void)refresh {
     NoshiMusicPlayer *player = [NoshiMusicPlayer sharedPlayer];
@@ -278,7 +234,7 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     _close.hidden = !active;
     if (active) {
         BOOL playing = player.state == NoshiMusicStatePlaying || player.state == NoshiMusicStateLoading;
-        [_toggle setImage:NoshiSymbolImage(playing ? NoshiSymbolPause : NoshiSymbolPlay, 16, [UIColor whiteColor]) forState:UIControlStateNormal];
+        [_toggle setImage:NoshiSymbolImage(playing ? NoshiSymbolPause : NoshiSymbolPlay, 14, NoshiColorAccent()) forState:UIControlStateNormal];
         _toggle.accessibilityLabel = NSLocalizedString(playing ? @"music.pause" : @"music.play", nil);
     }
     [self loadCoverOf:shown];
@@ -290,7 +246,7 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     }
 }
 
-/* the cover and the plate that takes its color; a song without a cover, or one that has not come yet, keeps the note and the tonal plate */
+/* the cover; a song without a cover, or one that has not come yet, keeps the note */
 - (void)loadCoverOf:(NoshiMedia *)track {
     NSString *key = track ? [NSString stringWithFormat:@"%lld:%@:%@", track.size, track.name, track.title] : nil;
     if (key == _coverKey || [key isEqualToString:_coverKey]) return;
@@ -298,15 +254,12 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     _coverKey = [key copy];
     _cover.image = nil;
     _note.hidden = NO;
-    [self setPlate:nil];
     if (!track || !_media) return;
     NSString *requested = _coverKey;
     [_media loadCoverForTrack:track maxSide:COVER_SIDE * NoshiScreenScale() completion:^(UIImage *image) {
         if (!image || ![requested isEqualToString:_coverKey]) return;
         _cover.image = image;
         _note.hidden = YES;
-        UIColor *plate = NoshiPlateColor(NoshiCoverColor(image));
-        if (plate) [self setPlate:plate];
     }];
 }
 
@@ -318,32 +271,22 @@ static UIColor *NoshiPlateColor(UIColor *cover) {
     [[NoshiMusicPlayer sharedPlayer] stop];
 }
 
-- (CGFloat)widthWithin:(CGFloat)maxWidth {
-    return maxWidth;
-}
-
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGSize size = self.bounds.size;
     BOOL active = [self playerActive];
-    if (_glass) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        _glass.frame = self.bounds;
-        [CATransaction commit];
-    }
     CGFloat reach = floor(size.width * PATTERN_REACH);
     _pattern.frame = CGRectMake(size.width - reach, 0, reach, size.height);
     /* the marks fade out toward the left edge of their area */
     _pattern.layer.mask.frame = _pattern.bounds;
-    _cover.frame = CGRectMake(COVER_INSET, COVER_INSET, COVER_SIDE, COVER_SIDE);
+    _cover.frame = CGRectMake(COVER_INSET, (size.height - COVER_SIDE) / 2, COVER_SIDE, COVER_SIDE);
     _note.frame = _cover.frame;
     CGFloat right = active ? KEY_SIDE + SLOT + 10 : 16;
-    CGFloat left = CGRectGetMaxX(_cover.frame) + 14;
+    CGFloat left = CGRectGetMaxX(_cover.frame) + 12;
     CGFloat width = MAX(0, size.width - left - right);
     BOOL hasArtist = _artist.text.length > 0;
-    _title.frame = CGRectMake(left, hasArtist ? 15 : (size.height - 22) / 2, width, 22);
-    _artist.frame = CGRectMake(left, 38, width, hasArtist ? 20 : 0);
+    _title.frame = CGRectMake(left, hasArtist ? 9 : (size.height - 22) / 2, width, 22);
+    _artist.frame = CGRectMake(left, 31, width, hasArtist ? 19 : 0);
     _toggle.frame = CGRectMake(size.width - SLOT - KEY_SIDE - 4, (size.height - KEY_SIDE) / 2, KEY_SIDE, KEY_SIDE);
     _close.frame = CGRectMake(size.width - SLOT - 4, 0, SLOT, size.height);
 }
