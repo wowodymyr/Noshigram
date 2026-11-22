@@ -418,12 +418,11 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)rebuildRows {
     NoshiWeakReference *weak = _weak;
     UIImage *logo = NoshiSettingsMarkTile(29);
-    NoshiSettingsRow *look = [NoshiSettingsRow rowWithTileImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
-                                                           subtitle:nil
+    NoshiSettingsRow *look = [NoshiSettingsRow rowWithIconImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
     NoshiSettingsRow *profile = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPerson tone:NoshiSettingsToneRed title:NSLocalizedString(@"settings.myprofile", nil)
                                                            subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openProfile]; }];
-    NoshiSettingsRow *saved = [NoshiSettingsRow rowWithTileImage:[UIImage imageNamed:@"SettingsSavedMessagesIcon"] title:NSLocalizedString(@"menu.saved", nil) subtitle:nil
+    NoshiSettingsRow *saved = [NoshiSettingsRow rowWithIconImage:[UIImage imageNamed:@"SettingsSavedMessagesIcon"] title:NSLocalizedString(@"menu.saved", nil)
                                                                  tap:^{ [(NoshiSettingsController *)weak.target openSavedMessages]; }];
     NoshiSettingsRow *bookmarks = [NoshiSettingsRow rowWithSymbol:NoshiSymbolStar tone:NoshiSettingsToneOrange title:NSLocalizedString(@"bookmarks.title", nil)
                                                              subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openBookmarks]; }];
@@ -490,15 +489,14 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NSString *architecture = @"armv7";
 #endif
     NSString *version = [NSString stringWithFormat:NSLocalizedString(@"settings.version.line", nil), [info objectForKey:@"CFBundleShortVersionString"], architecture];
-    /* the groups of telegram for ios 4: the most opened pages, what belongs to the account, how the app behaves, then the updates, each row a title alone */
-    NoshiSettingsSection *app = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:update, nil]];
+    /* the groups of telegram for ios 4: what belongs to the account, then how the app behaves, then the app itself, each row a title alone */
+    NoshiSettingsSection *app = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:look, update, nil]];
     app.centerFooter = YES;
     NSMutableArray *sections = [NSMutableArray array];
     NoshiSettingsSection *accounts = [self otherAccountsSection];
     if (accounts) [sections addObject:accounts];
-    /* the saved messages and the settings of the app itself stand first, the two pages opened most */
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:saved, look, nil]]];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, bookmarks, stickers, folders, devices, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, stickers, folders, devices, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:saved, bookmarks, nil]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:notifications, privacy, passcode, data, chats, power, language, nil]]];
     [sections addObject:app];
     self.sections = sections;

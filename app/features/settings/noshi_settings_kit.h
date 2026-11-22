@@ -47,6 +47,7 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side);
     NSString *_line3;
     UIImage *_picture;
     UIImage *_tileImage;
+    BOOL _iconTile;
     UIImage *_trailingImage;
     BOOL _trailingImageUnclipped;
     BOOL _bold;
@@ -77,6 +78,9 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side);
                                 value:(NSString *)value tap:(void (^)(void))tap;
 /* an icon row whose tile is a picture of its own, such as the logo of the app, shown round at the size of the tiles */
 + (NoshiSettingsRow *)rowWithTileImage:(UIImage *)image title:(NSString *)title subtitle:(NSString *)subtitle tap:(void (^)(void))tap;
+/* a row with an icon of its own in place of a symbol, such as the saved messages; it is drawn at the size of the symbols and the row keeps their height, where the
+   picture of rowWithTileImage is a face and makes the row taller */
++ (NoshiSettingsRow *)rowWithIconImage:(UIImage *)image title:(NSString *)title tap:(void (^)(void))tap;
 /* a row with no icon: the title, an optional value in the accent color on the right */
 + (NoshiSettingsRow *)rowWithTitle:(NSString *)title value:(NSString *)value tap:(void (^)(void))tap;
 /* a row with no icon: the title, a line under it and a value in the accent color on the right (any of the last two may be nil) */
@@ -115,6 +119,7 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side);
 @property (nonatomic, readonly, copy) NSString *line3;
 @property (nonatomic, readonly, retain) UIImage *picture;
 @property (nonatomic, readonly, retain) UIImage *tileImage;
+@property (nonatomic, readonly) BOOL iconTile;
 /* a small picture at the right end of the row, such as the icon of an app; set after the row is made */
 @property (nonatomic, retain) UIImage *trailingImage;
 @property (nonatomic, assign) BOOL trailingImageUnclipped;

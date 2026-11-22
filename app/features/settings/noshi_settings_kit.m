@@ -196,6 +196,7 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side) {
 @synthesize line3 = _line3;
 @synthesize picture = _picture;
 @synthesize tileImage = _tileImage;
+@synthesize iconTile = _iconTile;
 @synthesize trailingImage = _trailingImage;
 @synthesize trailingImageUnclipped = _trailingImageUnclipped;
 @synthesize customView = _customView;
@@ -260,6 +261,12 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side) {
     row->_subtitle = [subtitle copy];
     row->_value = [value copy];
     row->_tap = [tap copy];
+    return row;
+}
+
++ (NoshiSettingsRow *)rowWithIconImage:(UIImage *)image title:(NSString *)title tap:(void (^)(void))tap {
+    NoshiSettingsRow *row = [self rowWithTileImage:image title:title subtitle:nil tap:tap];
+    row->_iconTile = YES;
     return row;
 }
 
@@ -1779,7 +1786,8 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
 
 /* the classic cell has one line for its title, so "Pause music when recording a video" ended as "Pause music when" */
 static CGFloat NoshiClassicTextWidth(NoshiSettingsRow *row, CGFloat tableWidth) {
-    CGFloat left = 20 + (row.tileImage ? CLASSIC_FACE + 10 : (row.hasSymbol ? 29 + 10 : 0));
+    BOOL face = row.tileImage && !row.iconTile;
+    CGFloat left = 20 + (face ? CLASSIC_FACE + 10 : (row.hasSymbol || row.iconTile ? 29 + 10 : 0));
     CGFloat right = 14;
     if (row.hasSwitch) right = 20 + 79 + 8;
     else if (row.trailingImage) right = 20 + 29 + 8;
@@ -1788,13 +1796,23 @@ static CGFloat NoshiClassicTextWidth(NoshiSettingsRow *row, CGFloat tableWidth) 
     return MAX(40, tableWidth - 20 - left - right);
 }
 
+/* an icon drawn into the square of the symbol tiles, so a row with one lines up with the rows of symbols */
+static UIImage *NoshiSettingsIconOfSide(UIImage *image, CGFloat side) {
+    if (!image || (image.size.width == side && image.size.height == side)) return image;
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
+    [image drawInRect:CGRectMake(0, 0, side, side)];
+    UIImage *scaled = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return scaled;
+}
+
 static CGFloat NoshiClassicRowHeight(NoshiSettingsRow *row, CGFloat tableWidth) {
     if (row.hasSlider) return 84;
     CGFloat width = NoshiClassicTextWidth(row, tableWidth);
     CGFloat title = NoshiStringSizeIn(row.title, [UIFont boldSystemFontOfSize:17], CGSizeMake(width, 600)).height;
     CGFloat detail = row.subtitle.length ? NoshiStringSizeIn(row.subtitle, [UIFont systemFontOfSize:14], CGSizeMake(width, 600)).height : 0;
     /* ios 6 scales a cell's picture down to the row, so faces in rows of 44 and 59 points came out in two sizes; every row with a face is tall enough to show it whole */
-    return MAX(row.tileImage ? CLASSIC_FACE + 16 : 44, ceil(title) + ceil(detail) + 22);
+    return MAX(row.tileImage && !row.iconTile ? CLASSIC_FACE + 16 : 44, ceil(title) + ceil(detail) + 22);
 }
 
 - (UITableViewCell *)classicCellForRow:(NoshiSettingsRow *)row at:(NSIndexPath *)indexPath {
@@ -1866,6 +1884,7 @@ static CGFloat NoshiClassicRowHeight(NoshiSettingsRow *row, CGFloat tableWidth) 
         cell.accessoryView = value;
     }
     if (row.hasSymbol && !row.destructive) cell.imageView.image = NoshiSettingsTileImage(row.symbol, row.tone, 29);
+    else if (row.iconTile) cell.imageView.image = NoshiSettingsIconOfSide(row.tileImage, 29);
     else if (row.tileImage) cell.imageView.image = row.tileImage;
     if (row.trailingImage && !row.hasSwitch && !row.value.length) {
         UIImageView *mark = [[[UIImageView alloc] initWithImage:row.trailingImage] autorelease];
