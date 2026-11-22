@@ -21,7 +21,7 @@ BOOL NoshiTintHexAllowed(NSString *text);
 NSString *NoshiHexOfTint(float hue, float saturation, float brightness);
 
 /* the classic picker: a square of colors (the hue runs left to right and the saturation bottom to top, over the value of the light accent of the palette) with a
-   metal disc for a thumb and a metal swatch beside a hex field under it, the way the logo of the QR code is set in chrome */
+   disc in a white ring for a thumb and a swatch beside a hex field under it */
 @interface NoshiTintPicker : UIControl <NoshiTintControl, UITextFieldDelegate> {
     float _hue;
     float _saturation;

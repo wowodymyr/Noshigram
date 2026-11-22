@@ -7,7 +7,6 @@
 #import "noshi_customization_views.h"
 #import "noshi_person.h"
 #import "noshi_pill_tabs_view.h"
-#import "noshi_shape.h"
 #import "noshi_gift_screen.h"
 #import "noshi_profile_photo_picker.h"
 #import "noshi_session.h"
@@ -28,7 +27,6 @@
     NSUInteger _tab;
     NoshiPillTabsView *_tabs;
     NoshiClassicPreviewView *_classicPreview;
-    NoshiShapeGridView *_shapes;
     /* the classic style makes every page again after a change of the color, and the new table starts at the top; the offset of the old one is brought back */
     CGFloat _restoreOffset;
     BOOL _restoresOffset;
@@ -82,7 +80,6 @@
     [_picker release];
     [_tabs release];
     [_classicPreview release];
-    [_shapes release];
     [_session release];
     [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [super dealloc];
@@ -143,7 +140,7 @@
     NoshiWeakReference *previewWeak = _weak;
     _preview.heightHandler = ^{ [(NoshiWallpaperController *)previewWeak.target updateRowHeights]; };
     [_picker release];
-    /* the classic look keeps the square with metal discs; the modern one has the expressive editor */
+    /* the color is picked on the square with a disc for a thumb */
     _picker = (UIControl<NoshiTintControl> *)[[NoshiTintPicker alloc] init];
     [_picker addTarget:self action:@selector(tintCommitted:) forControlEvents:UIControlEventTouchUpInside];
     [_grid release];
@@ -198,16 +195,6 @@
     };
     [_classicPreview release];
     _classicPreview = [[NoshiClassicPreviewView alloc] init];
-    [_shapes release];
-    _shapes = [[NoshiShapeGridView alloc] init];
-    _shapes.chooseHandler = ^(NSInteger shape) {
-        NoshiWallpaperController *me = weak.target;
-        if (!me) return;
-        NoshiAvatarShapeStore(shape);
-        [me rebuild];
-        [me applyLook];
-        [me applyLookNow];
-    };
 }
 
 /* every screen reads its settings when it is built, so the main controller builds them again on this notification; this page stays and is made again */
@@ -247,67 +234,17 @@
 }
 
 - (NSArray *)classicCustomizationSections {
-    NoshiWeakReference *weak = _weak;
     NSMutableArray *sections = [NSMutableArray array];
     [sections addObject:[self tabsSection]];
     NoshiClassicPreviewView *preview = _classicPreview;
     [preview refresh];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:
         [NoshiSettingsRow viewRowWithView:preview height:^CGFloat(CGFloat width) { (void)width; return [NoshiClassicPreviewView height]; }]]]];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.gloss.header", nil) footer:NSLocalizedString(@"custom.gloss.info", nil)
-        rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.gloss.off", @"custom.gloss.normal", @"custom.gloss.strong", nil] current:NoshiClassicGlossLevel()
-                                store:^(NSInteger value) { NoshiClassicGlossStore(value); }]]];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.material.header", nil) footer:NSLocalizedString(@"custom.material.info", nil)
-        rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.material.accent", @"custom.material.steel", @"custom.material.graphite", @"custom.material.black", nil]
-                              current:NoshiClassicMaterial() store:^(NSInteger value) { NoshiClassicMaterialStore(value); }]]];
-    NSMutableArray *texture = [NSMutableArray arrayWithArray:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.texture.linen", @"custom.texture.plain", nil]
-                                                                              current:NoshiClassicTextureStyle() store:^(NSInteger value) { NoshiClassicTextureStyleStore(value); }]];
-    if (NoshiClassicTextureStyle() == 0) {
-        [texture addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"custom.texture.strength", nil) format:@"%.0f%%" value:(float)NoshiClassicTextureStrength()
-                                                          minimum:0 maximum:100 change:^(float value) {
-            NoshiClassicTextureStrengthStore((NSInteger)(value + 0.5f));
-            [(NoshiWallpaperController *)weak.target applyLook];
-        }]];
-        /* the linen follows the accent unless a hue of its own is set, which the slider below then moves */
-        BOOL ownHue = NoshiClassicTextureHue() >= 0;
-        [texture addObjectsFromArray:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.texture.follow", @"custom.texture.own", nil] current:ownHue ? 1 : 0
-                                                        store:^(NSInteger value) { NoshiClassicTextureHueStore(value ? 262 : -1); }]];
-        if (ownHue) {
-            [texture addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"custom.texture.hue", nil) format:@"%.0f°" value:(float)NoshiClassicTextureHue()
-                                                              minimum:0 maximum:359 change:^(float value) {
-                NoshiClassicTextureHueStore((NSInteger)(value + 0.5f));
-                [(NoshiWallpaperController *)weak.target applyLook];
-            }]];
-        }
-    }
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.texture.header", nil) footer:NSLocalizedString(@"custom.texture.info", nil) rows:texture]];
-    NoshiSettingsRow *avatarGloss = [NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"custom.avatar.gloss", nil) subtitle:nil on:NoshiClassicAvatarGloss() toggle:^(BOOL on) {
-        NoshiClassicAvatarGlossStore(on);
-        [(NoshiWallpaperController *)weak.target applyLookNow];
-    }];
-    NoshiSettingsRow *avatarShadow = [NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"custom.avatar.shadow", nil) subtitle:nil on:NoshiClassicAvatarShadow() toggle:^(BOOL on) {
-        NoshiClassicAvatarShadowStore(on);
-        [(NoshiWallpaperController *)weak.target applyLookNow];
-    }];
-    NoshiShapeGridView *shapes = _shapes;
-    shapes.selectedShape = NoshiAvatarShapeStored();
-    NSMutableArray *avatarRows = [NSMutableArray array];
-    [avatarRows addObject:[NoshiSettingsRow viewRowWithView:shapes height:^CGFloat(CGFloat width) { return [NoshiShapeGridView heightForWidth:width]; }]];
-    if (NoshiAvatarShapeStored() == NoshiShapeRounded) {
-        [avatarRows addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.avatar.corners", nil) format:@"%.0f%%" value:(float)NoshiAvatarCornerPercent()
-                                                             minimum:0 maximum:100 change:^(float value) {
-            NoshiAvatarCornerStore((NSInteger)(value + 0.5f));
-            [(NoshiWallpaperController *)weak.target applyLook];
-        }]];
-    }
-    [avatarRows addObject:avatarGloss];
-    [avatarRows addObject:avatarShadow];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.avatars.header", nil) footer:NSLocalizedString(@"custom.avatars.info", nil) rows:avatarRows]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.density.header", nil) footer:NSLocalizedString(@"custom.density.info", nil)
         rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.density.regular", @"custom.density.compact", nil] current:NoshiListDensityStored()
                                 store:^(NSInteger value) { NoshiListDensityStore(value); }]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"custom.separators.header", nil) footer:NSLocalizedString(@"custom.separators.info", nil)
-        rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.separators.thin", @"custom.separators.etched", @"custom.separators.none", nil] current:NoshiClassicSeparators()
+        rows:[self choiceRowsWithKeys:[NSArray arrayWithObjects:@"custom.separators.thin", @"custom.separators.none", nil] current:NoshiClassicSeparators()
                                 store:^(NSInteger value) { NoshiClassicSeparatorsStore(value); }]]];
     return sections;
 }

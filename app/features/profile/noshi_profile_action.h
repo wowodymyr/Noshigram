@@ -21,7 +21,7 @@
 /* the card over a wide photo: a dark blur of what is behind it where the system has one (ios 8 and later, found by class so the older slices never link it),
    and a darker veil elsewhere */
 - (void)setBlurred:(BOOL)blurred;
-/* the classic key takes the color of the ground it stands on, for a profile with a color of its own; nil puts the glossy slate key back. the modern card ignores it */
+/* the classic key takes the color of the ground it stands on, for a profile with a color of its own; nil puts the key in the accent back. the modern card ignores it */
 - (void)setGround:(UIColor *)ground;
 @property (nonatomic, readonly) NoshiSymbol symbol;
 @property (nonatomic, readonly) NSString *captionText;

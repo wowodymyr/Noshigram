@@ -107,17 +107,12 @@
         [row addSubview:label];
         [rows addSubview:row];
         if (i > 0) {
-            /* a dark groove over a lit line, the way the old menus split their rows */
-            CGFloat y = _rowHeight * (CGFloat)i;
-            BOOL charcoal = NoshiThemeIsDark();
-            UIView *groove = [[[UIView alloc] initWithFrame:CGRectMake(0, y - 1, CARD_WIDTH, 1)] autorelease];
-            groove.backgroundColor = [UIColor colorWithWhite:0 alpha:charcoal ? 0.45 : 0.12];
-            groove.userInteractionEnabled = NO;
-            [rows addSubview:groove];
-            UIView *lit = [[[UIView alloc] initWithFrame:CGRectMake(0, y, CARD_WIDTH, 1)] autorelease];
-            lit.backgroundColor = [UIColor colorWithWhite:1 alpha:charcoal ? 0.08 : 0.8];
-            lit.userInteractionEnabled = NO;
-            [rows addSubview:lit];
+            /* a hairline between the rows */
+            CGFloat y = _rowHeight * (CGFloat)i, pixel = 1.0f / NoshiScreenScale();
+            UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, y - pixel, CARD_WIDTH, pixel)] autorelease];
+            line.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.15];
+            line.userInteractionEnabled = NO;
+            [rows addSubview:line];
         }
     }
     [self addSubview:_card];

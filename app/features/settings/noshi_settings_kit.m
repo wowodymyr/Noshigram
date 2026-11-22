@@ -1730,7 +1730,7 @@ enum { NoshiFlatHeader, NoshiFlatRow, NoshiFlatFooter, NoshiFlatSpace };
     if (!NoshiThemeIsDark()) return nil;
     NSString *text = [[[self shownSections] objectAtIndex:(NSUInteger)section] header];
     if (!text.length) return nil;
-    return NoshiClassicGroupedHeader(text, tableView.bounds.size.width, 34, [UIColor whiteColor]);
+    return NoshiClassicGroupedHeader(text, tableView.bounds.size.width, 34, NoshiColorSecondary());
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {

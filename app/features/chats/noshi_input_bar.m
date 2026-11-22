@@ -12,7 +12,6 @@
 #import "noshi_weak_reference.h"
 #import "noshi_platform.h"
 #import "noshi_symbol.h"
-#import "noshi_shape.h"
 #import "noshi_theme.h"
 
 #define MARGIN 8.0
@@ -219,9 +218,9 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     /* the bot's menu stands outside the field, as a pill on the bar */
     _menuPill = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _menuPill.titleLabel.font = NoshiFontSemibold(15);
-    /* a flat fill sits beside the glossy send key and breaks the skeuomorphic bar */
-    [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, NO) forState:UIControlStateNormal];
-    [_menuPill setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), FIELD_MIN / 2, YES) forState:UIControlStateHighlighted];
+    /* the bar has no fill of its own beside the send key */
+    [_menuPill setBackgroundImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), FIELD_MIN / 2, NO) forState:UIControlStateNormal];
+    [_menuPill setBackgroundImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), FIELD_MIN / 2, YES) forState:UIControlStateHighlighted];
     [_menuPill setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_menuPill addTarget:self action:@selector(menuTapped) forControlEvents:UIControlEventTouchUpInside];
     _menuPill.hidden = YES;
@@ -232,7 +231,6 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _senderButton.accessibilityLabel = NSLocalizedString(@"chat.sendas", nil);
     [_senderButton addTarget:self action:@selector(senderTapped) forControlEvents:UIControlEventTouchUpInside];
     _senderAvatar = [[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, FIELD_MIN, FIELD_MIN)];
-    _senderAvatar.circular = YES;
     _senderAvatar.userInteractionEnabled = NO;
     [_senderButton addSubview:_senderAvatar];
     [self addSubview:_senderButton];
@@ -698,14 +696,6 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     [_text refreshEmoji];
     if ([_delegate respondsToSelector:@selector(inputBarDidChangeText:)]) [_delegate inputBarDidChangeText:self];
     [self updateTextHeight];
-}
-
-/* the outline the customization gave the round button: a circle, a rounded square, or the shape of the avatars, which an outline shape cuts with a mask */
-- (void)applySendShape {
-    NSInteger choice = NoshiSendShapeStored();
-    NoshiShape shape = choice == 2 ? (NoshiShape)NoshiAvatarShapeStored() : (choice == 1 ? NoshiShapeRounded : NoshiShapeCircle);
-    /* the rounded square of the avatars follows their corner; the button's own is the one the Material buttons have */
-    NoshiApplyShapeToLayer(_send.layer, shape, BUTTON, choice == 2 ? NoshiAvatarCornerPercent() : 33);
 }
 
 - (void)updateTextHeight {

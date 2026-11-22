@@ -73,7 +73,6 @@ static UILabel *GroupLabel(CGFloat size, BOOL bold, CGFloat alpha) {
     _ring.hidden = YES;
     [self.contentView addSubview:_ring];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     [self.contentView addSubview:_avatar];
     _name = [[NoshiEmojiLabel alloc] init];
     _name.textColor = [UIColor whiteColor];

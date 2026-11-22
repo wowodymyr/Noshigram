@@ -8,7 +8,6 @@ extern NSString *const NoshiThemeDidChangeNotification;
 /* the optional key of its userInfo: an NSValue with the point in window coordinates the change of colors spreads from, which the screens that ask for a change give
    as the spot that was touched */
 extern NSString *const NoshiThemeOriginKey;
-/* ios 7 and later: UIKit draws flat bars for the app (it is linked against a current sdk), and the look follows them; ios 5 and 6 keep their glossy bars */
 BOOL NoshiThemeStoredDark(void);
 void NoshiThemeStoreDark(BOOL dark);
 BOOL NoshiThemeIsDark(void);

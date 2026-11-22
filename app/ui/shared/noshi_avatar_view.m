@@ -1,10 +1,8 @@
 #import "noshi_image_decoder.h"
 #import "noshi_avatar_view.h"
 
-#import "noshi_chat_settings.h"
 #import "noshi_emoji_label.h"
 #import "noshi_platform.h"
-#import "noshi_shape.h"
 #import "noshi_theme.h"
 #import <QuartzCore/QuartzCore.h>
 #import "noshi_wave.h"
@@ -16,52 +14,9 @@
     NoshiEmojiLabel *_label;
     UIImage *_image;
     BOOL _imageHasAlpha;
-    BOOL _imageIsRound;
     NSString *_photoKey;
 }
 @end
-
-/* the outline of a picture inset by a point or so for its rims: a shape of the customization (outline is set), or the rounded square of the corner */
-static UIBezierPath *NoshiAvatarRimPath(CGRect bounds, CGFloat inset, CGFloat radius, NoshiShape outline) {
-    if (outline != NoshiShapeCount) return NoshiShapePath(outline, CGRectInset(bounds, inset, inset), 0);
-    return [UIBezierPath bezierPathWithRoundedRect:CGRectInset(bounds, inset, inset) cornerRadius:MAX(0, radius - inset)];
-}
-
-/* the gloss, the dark rim and the lit edge of a classic avatar of one size and outline, as a picture kept for the next ones; outline is NoshiShapeCount for the rounded square */
-static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius, NoshiShape outline) {
-    static NSCache *cache;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        cache = [[NSCache alloc] init];
-        cache.countLimit = 24;
-    });
-    NSString *key = [NSString stringWithFormat:@"%.1f|%.1f|%.1f|%.1f|%ld|%d", size.width, size.height, radius, NoshiScreenScale(), (long)NoshiClassicGlossLevel(), (int)outline];
-    UIImage *kept = [[[cache objectForKey:key] retain] autorelease];
-    if (kept) return kept;
-    CGRect bounds = CGRectMake(0, 0, size.width, size.height);
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    /* the gloss level of the customization lights the top of the picture: none, as before, or half again as strong */
-    static const CGFloat levels[3] = {0, 1, 1.6f};
-    CGFloat lit = levels[NoshiClassicGlossLevel()];
-    const CGFloat gloss[8] = {1, 1, 1, MIN(1, 0.26f * lit), 1, 1, 1, MIN(1, 0.02f * lit)};
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, CGRectMake(-bounds.size.width * 0.15, -bounds.size.height * 0.52, bounds.size.width * 1.3, bounds.size.height * 1.1));
-    CGContextClip(context);
-    NoshiFillGradient(context, CGPointZero, CGPointMake(0, bounds.size.height * 0.6), gloss, 2);
-    CGContextRestoreGState(context);
-    UIBezierPath *rim = NoshiAvatarRimPath(bounds, 0.5, radius, outline);
-    [[UIColor colorWithWhite:0 alpha:0.24] setStroke];
-    [rim stroke];
-    CGContextClipToRect(context, CGRectMake(0, 0, bounds.size.width, bounds.size.height * 0.5));
-    UIBezierPath *highlight = NoshiAvatarRimPath(bounds, 1.5, radius, outline);
-    [[UIColor colorWithWhite:1 alpha:0.28] setStroke];
-    [highlight stroke];
-    UIImage *made = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    if (made) [cache setObject:made forKey:key];
-    return made;
-}
 
 @implementation NoshiAvatarView
 
@@ -70,7 +25,6 @@ static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius, NoshiShape 
 @synthesize symbol = _symbol;
 @synthesize accent = _accent;
 @synthesize seed = _seed;
-@synthesize circular = _circular;
 @synthesize transparentPhoto = _transparentPhoto;
 @synthesize deleted = _deleted;
 
@@ -106,27 +60,8 @@ static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius, NoshiShape 
     [self setNeedsDisplay];
 }
 
-/* the soft shadow of the classic customization falls under the picture, along its outline; a path keeps it from being worked out from the pixels at every frame */
-- (void)applyClassicShadow {
-    BOOL on = NoshiClassicAvatarShadow() && !CGRectIsEmpty(self.bounds);
-    if (!on) {
-        if (self.layer.shadowOpacity > 0) self.layer.shadowOpacity = 0;
-        return;
-    }
-    CGFloat side = MIN(self.bounds.size.width, self.bounds.size.height);
-    BOOL forcedRound = _circular || (_image && _imageIsRound);
-    NoshiShape shape = (NoshiShape)NoshiAvatarShapeStored();
-    CGFloat radius = side * (forcedRound || shape == NoshiShapeCircle ? 0.5 : (CGFloat)NoshiAvatarCornerPercent() / 200.0);
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.layer.shadowOpacity = 0.45f;
-    self.layer.shadowRadius = MAX(1.5f, side * 0.05f);
-    self.layer.shadowOffset = CGSizeMake(0, 1.5f);
-    self.layer.shadowPath = (!forcedRound && NoshiShapeIsOutline(shape) ? NoshiShapePath(shape, self.bounds, 0) : [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:radius]).CGPath;
-}
-
 - (void)layoutSubviews {
     [super layoutSubviews];
-    [self applyClassicShadow];
     /* the text layout uses at least 20 points, so center that width on small avatars */
     CGFloat labelWidth = MAX(20, self.bounds.size.width);
     _label.frame = CGRectMake((self.bounds.size.width - labelWidth) / 2, 0, labelWidth, self.bounds.size.height);
@@ -143,7 +78,6 @@ static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius, NoshiShape 
     _image = [image retain];
     CGImageAlphaInfo alpha = image.CGImage ? CGImageGetAlphaInfo(image.CGImage) : kCGImageAlphaNone;
     _imageHasAlpha = alpha != kCGImageAlphaNone && alpha != kCGImageAlphaNoneSkipFirst && alpha != kCGImageAlphaNoneSkipLast;
-    _imageIsRound = image && NoshiImageIsRound(image);
     _label.hidden = _showsSymbol || _image != nil;
     [self setNeedsDisplay];
 }
@@ -179,7 +113,6 @@ static UIImage *NoshiAvatarGlossOverlay(CGSize size, CGFloat radius, NoshiShape 
 - (void)setAccent:(BOOL)accent { if (accent == _accent) return; _accent = accent; [self setNeedsDisplay]; }
 - (void)setSeed:(NSUInteger)seed { if (seed == _seed) return; _seed = seed; [self setNeedsDisplay]; }
 - (void)setDeleted:(BOOL)deleted { if (deleted == _deleted) return; _deleted = deleted; [self setNeedsDisplay]; }
-- (void)setCircular:(BOOL)circular { if (circular == _circular) return; _circular = circular; [self setNeedsDisplay]; }
 - (void)setTransparentPhoto:(BOOL)transparentPhoto { if (transparentPhoto == _transparentPhoto) return; _transparentPhoto = transparentPhoto; [self setNeedsDisplay]; }
 
 /* the accent color of the app as the two ends of the gradient: a lighter top over the color itself */
@@ -209,18 +142,10 @@ static void NoshiAccentGradient(CGFloat out[8]) {
     CGContextRef context = UIGraphicsGetCurrentContext();
     CGRect bounds = self.bounds;
     CGFloat side = MIN(bounds.size.width, bounds.size.height);
-    /* a photo that is a round shape on white or on nothing is cut to its circle in every shape of avatar, or the white of the corners shows */
-    /* the shape the person chose in the customization; a view that asks to be circular and a round picture keep their circle */
-    NoshiShape shape = (NoshiShape)NoshiAvatarShapeStored();
-    BOOL forcedRound = (_circular) || (_image && _imageIsRound);
-    BOOL outline = !forcedRound && NoshiShapeIsOutline(shape);
-    CGFloat radius = side * (forcedRound || shape == NoshiShapeCircle ? 0.5 : (CGFloat)NoshiAvatarCornerPercent() / 200.0);
-    BOOL classicSymbol = _showsSymbol && !_image &&
-                         (_symbol == NoshiSymbolArchive || _symbol == NoshiSymbolBookmark || _symbol == NoshiSymbolReply);
+    /* every picture is a circle, as in telegram; a view that is not square is a capsule */
+    CGFloat radius = side * 0.5;
     CGContextSaveGState(context);
-    if (outline) {
-        CGContextAddPath(context, NoshiShapePath(shape, bounds, 0).CGPath);
-    } else if (radius >= side * 0.5 && bounds.size.width == bounds.size.height) {
+    if (bounds.size.width == bounds.size.height) {
         CGContextAddEllipseInRect(context, bounds);
     } else {
         CGContextMoveToPoint(context, CGRectGetMinX(bounds) + radius, CGRectGetMinY(bounds));
@@ -244,19 +169,13 @@ static void NoshiAccentGradient(CGFloat out[8]) {
         NoshiFillGradient(context, CGPointMake(0, 0), CGPointMake(0, bounds.size.height),
                             _accent ? accent : palette[_seed % AVATAR_COLORS], 2);
     }
-    /* the classic style lights every picture like a glass button: a gloss over the top half and a lit rim. a list has dozens of pictures, and the gloss, the two outlines and their
-       clips were worked out again for each at every redraw, so they are drawn once for a size and a corner and the picture is laid over */
-    if (NoshiClassicAvatarGloss()) [NoshiAvatarGlossOverlay(bounds.size, radius, outline ? shape : NoshiShapeCount) drawInRect:bounds];
     CGContextRestoreGState(context);
 
     if (_showsSymbol && !_image) {
         CGFloat glyph = side * 0.46;
         UIImage *image = NoshiSymbolImage(_symbol, glyph, [UIColor whiteColor]);
-        CGContextSaveGState(context);
-        if (classicSymbol) CGContextSetShadowWithColor(context, CGSizeMake(0, 1), 1, [UIColor colorWithWhite:0 alpha:0.3].CGColor);
         [image drawInRect:CGRectMake((bounds.size.width - image.size.width) / 2, (bounds.size.height - image.size.height) / 2,
                                      image.size.width, image.size.height)];
-        CGContextRestoreGState(context);
     } else if (_deleted && !_image) {
         /* the mask is the ghost.webp canv, 32 units drawn on a 54 unit avatar */
         UIImage *ghost = NoshiSymbolImage(NoshiSymbolGhost, side * 0.6, [UIColor whiteColor]);

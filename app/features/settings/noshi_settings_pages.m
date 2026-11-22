@@ -10,60 +10,9 @@
 #import "noshi_theme.h"
 #import "noshi_weak_reference.h"
 
-#define PREVIEW_AVATARS 4
-#define PREVIEW_SIDE 56.0
-
-/* a row of four pictures that take the corner the slider gives them as it moves, so the person sees the shape before it reaches the rest of the app */
-@interface NoshiAvatarCornerPreview : UIView {
-    NSMutableArray *_avatars;
-}
-- (void)refresh;
-@end
-
-@implementation NoshiAvatarCornerPreview
-
-- (id)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (!self) return nil;
-    self.backgroundColor = [UIColor clearColor];
-    static NSString *const initials[PREVIEW_AVATARS] = {@"A", @"Б", @"V", @"Ж"};
-    _avatars = [[NSMutableArray alloc] init];
-    for (NSUInteger i = 0; i < PREVIEW_AVATARS; ++i) {
-        NoshiAvatarView *avatar = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, PREVIEW_SIDE, PREVIEW_SIDE)] autorelease];
-        avatar.initials = initials[i];
-        avatar.seed = i * 3 + 1;
-        [self addSubview:avatar];
-        [_avatars addObject:avatar];
-    }
-    return self;
-}
-
-- (void)dealloc {
-    [_avatars release];
-    [super dealloc];
-}
-
-- (void)refresh {
-    for (NoshiAvatarView *avatar in _avatars) [avatar setNeedsDisplay];
-}
-
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    CGFloat gap = (self.bounds.size.width - PREVIEW_AVATARS * PREVIEW_SIDE) / (PREVIEW_AVATARS + 1);
-    CGFloat scale = NoshiScreenScale();
-    for (NSUInteger i = 0; i < PREVIEW_AVATARS; ++i) {
-        CGFloat x = round((gap + i * (PREVIEW_SIDE + gap)) * scale) / scale;
-        CGFloat y = round((self.bounds.size.height - PREVIEW_SIDE) * scale / 2) / scale;
-        ((UIView *)[_avatars objectAtIndex:i]).frame = CGRectMake(x, y, PREVIEW_SIDE, PREVIEW_SIDE);
-    }
-}
-
-@end
-
 @interface NoshiAppearanceSettingsController () {
     NoshiSession *_session;
     NoshiWeakReference *_weak;
-    NoshiAvatarCornerPreview *_preview;
 }
 @end
 
@@ -83,7 +32,6 @@
     [_weak clear];
     [_weak release];
     [_session release];
-    [_preview release];
     [super dealloc];
 }
 
@@ -128,21 +76,6 @@
         }]];
     }
     return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.layout.header", nil) footer:NSLocalizedString(@"look.layout.info", nil) rows:rows];
-}
-
-- (NoshiSettingsSection *)avatarSection {
-    NoshiWeakReference *weak = _weak;
-    NSMutableArray *rows = [NSMutableArray array];
-    if (!_preview) _preview = [[NoshiAvatarCornerPreview alloc] initWithFrame:CGRectMake(0, 0, 320, 88)];
-    NoshiAvatarCornerPreview *preview = _preview;
-    [rows addObject:[NoshiSettingsRow viewRowWithView:preview height:^CGFloat(CGFloat width) { (void)width; return 88; }]];
-    [rows addObject:[NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.avatar.corners", nil) format:@"%.0f%%" value:(float)NoshiAvatarCornerPercent()
-                                                   minimum:0 maximum:100 change:^(float value) {
-        NoshiAvatarCornerStore((NSInteger)(value + 0.5f));
-        [preview refresh];
-        [(NoshiAppearanceSettingsController *)weak.target applySoon];
-    }]];
-    return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.avatar.header", nil) footer:NSLocalizedString(@"look.avatar.info", nil) rows:rows];
 }
 
 - (void)chooseTitle {
@@ -232,7 +165,7 @@
 }
 
 - (void)rebuild {
-    self.sections = [NSArray arrayWithObjects:[self layoutSection], [self avatarSection], [self chatListSection], [self foldersSection], [self cardsSection], nil];
+    self.sections = [NSArray arrayWithObjects:[self layoutSection], [self chatListSection], [self foldersSection], [self cardsSection], nil];
     [self reloadSettings];
 }
 

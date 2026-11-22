@@ -126,7 +126,6 @@
     _badge.font = NoshiFontRegular(12);
     [self addSubview:_badge];
     _sender = [[NoshiAvatarView alloc] init];
-    _sender.circular = YES;
     [self addSubview:_sender];
     _spy = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"gift_anonymous"]];
     _spy.contentMode = UIViewContentModeScaleAspectFit;

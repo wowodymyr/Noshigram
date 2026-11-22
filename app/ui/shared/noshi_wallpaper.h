@@ -1,7 +1,6 @@
 #import <UIKit/UIKit.h>
 
-/* sets view up as the wallpaper of a chat for the day or the night: the picture of the modern style, or the linen
-   tile of the classic one */
+/* sets view up as the wallpaper of a chat for the day or the night */
 void NoshiApplyChatWallpaper(UIImageView *view, BOOL dark);
 
 /* the same for a view of a known size, such as a preview: the picked wallpaper is drawn at that size and not at the size of the screen */
@@ -9,8 +8,7 @@ void NoshiApplyChatWallpaperSized(UIImageView *view, BOOL dark, CGSize size);
 /* makes the picture of the chat wallpaper in the background, so the first chat that opens finds it ready */
 void NoshiWallpaperWarm(void);
 
-/* the wallpaper the person picked in the chat settings, which both styles draw behind the chat in place of the
-   standard picture (the classic one its linen) */
+/* the wallpaper the person picked in the chat settings, drawn behind the chat in place of the standard picture */
 typedef enum {
     NoshiWallpaperStandard = 0,
     NoshiWallpaperColors,
@@ -77,5 +75,3 @@ void NoshiStoreChatWallpaper(int32_t peerKind, long long peerId, CGSize size, NS
 /* the chat has no background of its own any more */
 void NoshiDropChatWallpaper(int32_t peerKind, long long peerId);
 
-/* the background color of the classic chat: the linen of the customization, its tile laid at the chosen strength over the plain color, or the plain color alone */
-UIColor *NoshiClassicLinenColor(BOOL dark);

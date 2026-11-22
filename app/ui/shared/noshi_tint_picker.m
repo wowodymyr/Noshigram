@@ -16,16 +16,6 @@
 
 @implementation NoshiTintPicker
 
-/* the color alone, as the face of a disc */
-static UIImage *NoshiSolidImage(UIColor *color) {
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(4, 4), YES, 1);
-    [color setFill];
-    UIRectFill(CGRectMake(0, 0, 4, 4));
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
-
 @synthesize hue = _hue;
 @synthesize saturation = _saturation;
 @synthesize brightness = _brightness;
@@ -144,7 +134,7 @@ static UIImage *NoshiSolidImage(UIColor *color) {
     CGRect square = [self squareRect];
     _thumb.bounds = CGRectMake(0, 0, THUMB_SIDE, THUMB_SIDE);
     _thumb.center = CGPointMake(square.origin.x + square.size.width * _hue / 360.0, square.origin.y + square.size.height * (1 - _saturation));
-    _thumb.image = NoshiClassicMetalDisc(NoshiSolidImage(NoshiThemeCustomTintColor(_hue, _saturation, _brightness)), THUMB_SIDE);
+    _thumb.image = NoshiClassicColorDisc(NoshiThemeCustomTintColor(_hue, _saturation, _brightness), THUMB_SIDE);
     [self showHex];
 }
 
@@ -208,7 +198,7 @@ BOOL NoshiTintHexAllowed(NSString *text) {
 - (CGRect)editingRect { return _plate.frame; }
 
 - (void)showHex {
-    _swatch.image = NoshiClassicMetalDisc(NoshiSolidImage(NoshiThemeCustomTintColor(_hue, _saturation, _brightness)), SWATCH_SIDE);
+    _swatch.image = NoshiClassicColorDisc(NoshiThemeCustomTintColor(_hue, _saturation, _brightness), SWATCH_SIDE);
     if (!_field.isFirstResponder) _field.text = NoshiHexOfTint(_hue, _saturation, _brightness);
 }
 

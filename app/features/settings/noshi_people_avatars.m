@@ -59,7 +59,6 @@
 /* the colors and initials of the avatar view, drawn once into a picture */
 static UIImage *NoshiPlaceholderImage(NSString *initials, NSUInteger seed, BOOL deleted) {
     NoshiAvatarView *view = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, SIDE, SIDE)] autorelease];
-    view.circular = YES;
     view.initials = initials;
     view.seed = seed;
     view.deleted = deleted;
@@ -74,7 +73,6 @@ static UIImage *NoshiPlaceholderImage(NSString *initials, NSUInteger seed, BOOL 
    circle shows the white of the table behind it */
 static UIImage *NoshiRoundImage(UIImage *photo, NSUInteger seed) {
     NoshiAvatarView *view = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, SIDE, SIDE)] autorelease];
-    view.circular = YES;
     view.seed = seed;
     [view showImage:photo];
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(SIDE, SIDE), NO, 0);

@@ -249,7 +249,6 @@ static CGImageRef CreateMeshImage(noshi_call_mood mood) {
     [root.layer addSublayer:_videoShade];
 
     _avatarView = [[[NoshiAvatarView alloc] init] autorelease];
-    _avatarView.circular = YES;
     [root addSubview:_avatarView];
     _name = [CallEmojiLabel(28, YES) retain];
     [root addSubview:_name];

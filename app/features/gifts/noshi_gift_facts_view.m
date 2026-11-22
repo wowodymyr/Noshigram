@@ -145,7 +145,6 @@ static NoshiEmojiLabel *NoshiFactsValue(UIColor *color, NSString *text) {
         return;
     }
     row->person = [[NoshiAvatarView alloc] init];
-    row->person.circular = YES;
     row->person.seed = seed;
     row->person.initials = NoshiInitialsOfName(name);
     [row->person setPhoto:photo cache:_avatars];

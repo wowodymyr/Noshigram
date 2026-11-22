@@ -48,8 +48,8 @@
         for (NoshiMarkupButton *button in row) {
             NoshiEmojiTitleButton *key = [[[NoshiEmojiTitleButton alloc] initWithFrame:CGRectZero] autorelease];
             /* white keys with dark words, a little grey while pressed, as the keys of the system keyboard */
-            [key setBackgroundImage:NoshiClassicTintedGlossImage(NoshiClassicInputFill(), 6, NO) forState:UIControlStateNormal];
-            [key setBackgroundImage:NoshiClassicTintedGlossImage(NoshiClassicInputFill(), 6, YES) forState:UIControlStateHighlighted];
+            [key setBackgroundImage:NoshiClassicTintedKeyImage(NoshiClassicInputFill(), 6, NO) forState:UIControlStateNormal];
+            [key setBackgroundImage:NoshiClassicTintedKeyImage(NoshiClassicInputFill(), 6, YES) forState:UIControlStateHighlighted];
             [key setFaceText:button.text font:[UIFont systemFontOfSize:16] color:NoshiColorTitle()];
             key.contentEdgeInsets = UIEdgeInsetsMake(0, 8, 0, 8);
             key.enabled = button.enabled;

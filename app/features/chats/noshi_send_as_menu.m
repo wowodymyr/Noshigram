@@ -57,7 +57,7 @@
         UIButton *row = [UIButton buttonWithType:UIButtonTypeCustom]; row.frame = CGRectMake(0, i * 54, width, 54); row.tag = (NSInteger)i;
         [row addTarget:self action:@selector(picked:) forControlEvents:UIControlEventTouchUpInside];
         NoshiAvatarView *avatar = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(12, 7, 40, 40)] autorelease];
-        avatar.circular = YES; avatar.initials = identity.initials; avatar.seed = (NSUInteger)(identity.peerId % 1000003);
+        avatar.initials = identity.initials; avatar.seed = (NSUInteger)(identity.peerId % 1000003);
         [avatar setPhoto:identity.photo cache:_avatars]; [row addSubview:avatar];
         NoshiEmojiLabel *title = [[[NoshiEmojiLabel alloc] initWithFrame:CGRectMake(62, 0, MAX(1, width - 100), 54)] autorelease];
         title.font = NoshiFontMedium(16); title.textColor = NoshiColorTitle(); title.text = identity.title; [row addSubview:title];

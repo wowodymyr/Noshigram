@@ -27,7 +27,7 @@
 @property (nonatomic, retain) NSArray *entities;
 /* the label holds a person's name: characters no font can draw (and that show as boxes, or throw the first emoji after them off its place) are left out */
 @property (nonatomic, assign) BOOL dropsUndrawable;
-/* the engraved shadow of the old bars, with the meaning UILabel gives it: a nil color draws none, and the offset is in points with y down */
+/* a shadow under the text, with the meaning UILabel gives it: a nil color draws none, and the offset is in points with y down */
 @property (nonatomic, retain) UIColor *shadowColor;
 @property (nonatomic, assign) CGSize shadowOffset;
 /* leave the emoji's space in the text while an animation draws it */

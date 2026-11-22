@@ -37,7 +37,7 @@
 
 static UIView *NoshiSheetCard(void) {
     UIView *card = [[[UIView alloc] init] autorelease];
-    /* the classic card is a plate of polished metal, which is put on once the card has its size, and its shadow must not be clipped */
+    /* the card is the plate of the menus, which is put on once the card has its size, and its shadow must not be clipped */
     return card;
 }
 
@@ -132,16 +132,11 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
         UIButton *button = [self buttonWithTitle:[options objectAtIndex:i] color:color font:[UIFont boldSystemFontOfSize:17] tag:(NSInteger)i];
         button.frame = CGRectMake(0, ROW_HEIGHT * (CGFloat)i, width, ROW_HEIGHT);
         [button addTarget:self action:@selector(picked:) forControlEvents:UIControlEventTouchUpInside];
-        /* a dark groove over a lit line, the way the old menus split their rows */
-        BOOL charcoal = NoshiThemeIsDark();
-        UIView *groove = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 1)] autorelease];
-        groove.backgroundColor = [UIColor colorWithWhite:0 alpha:charcoal ? 0.45 : 0.14];
-        groove.userInteractionEnabled = NO;
-        [button addSubview:groove];
-        UIView *lit = [[[UIView alloc] initWithFrame:CGRectMake(0, 1, width, 1)] autorelease];
-        lit.backgroundColor = [UIColor colorWithWhite:1 alpha:charcoal ? 0.08 : 0.85];
-        lit.userInteractionEnabled = NO;
-        [button addSubview:lit];
+        /* a hairline between the rows */
+        UIView *line = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 1.0f / NoshiScreenScale())] autorelease];
+        line.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.15];
+        line.userInteractionEnabled = NO;
+        [button addSubview:line];
         [list addSubview:button];
     }
     [card addSubview:list];
@@ -152,11 +147,9 @@ static UILabel *NoshiSheetLabel(UIFont *font, UIColor *color) {
     cancel.frame = CGRectMake(0, cardHeight + GAP, width, cancelHeight);
     UIButton *cancelButton = [self buttonWithTitle:cancelTitle color:[UIColor whiteColor] font:[UIFont boldSystemFontOfSize:17] tag:-1];
     cancelButton.frame = cancel.bounds;
-    /* the cancel key is a glossy slate key of its own, apart from the plate, as on the old action sheets */
-    [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [cancelButton setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-    cancelButton.titleLabel.shadowOffset = CGSizeMake(0, -1);
-    [cancelButton setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
+    /* the cancel key is a key of its own in the accent, apart from the plate */
+    [cancelButton setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
+    [cancelButton setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
     [cancelButton addTarget:self action:@selector(cancel) forControlEvents:UIControlEventTouchUpInside];
     [cancel addSubview:cancelButton];
 

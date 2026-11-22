@@ -5,6 +5,7 @@
 #import "noshi_classic_chrome.h"
 #import "noshi_emoji_label.h"
 #import "noshi_link_router.h"
+#import "noshi_platform.h"
 #include "noshi_links.h"
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
@@ -32,7 +33,7 @@
 - (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-    /* the card is a plate of polished metal, as the menus are, with a groove between its rows */
+    /* the card is the plate of the menus, with a hairline between its rows */
     NoshiClassicApplyMenuPlate(self, 10);
     _rows = [[NSMutableArray alloc] init];
     self.hidden = YES;
@@ -96,17 +97,12 @@ NSArray *NoshiInfoMentions(NSString *text) {
         [row addSubview:small];
         [row addTarget:self action:@selector(copyRow:event:) forControlEvents:UIControlEventTouchUpInside];
         if (_rows.count) {
-            BOOL charcoal = NoshiThemeIsDark();
-            UIView *groove = [[[UIView alloc] init] autorelease];
-            groove.tag = 11;
-            groove.userInteractionEnabled = NO;
-            groove.backgroundColor = [UIColor colorWithWhite:0 alpha:charcoal ? 0.45 : 0.14];
-            [row addSubview:groove];
-            UIView *lit = [[[UIView alloc] init] autorelease];
-            lit.tag = 12;
-            lit.userInteractionEnabled = NO;
-            lit.backgroundColor = [UIColor colorWithWhite:1 alpha:charcoal ? 0.09 : 0.85];
-            [row addSubview:lit];
+            /* a hairline between the rows */
+            UIView *line = [[[UIView alloc] init] autorelease];
+            line.tag = 11;
+            line.userInteractionEnabled = NO;
+            line.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.15];
+            [row addSubview:line];
         }
         if (_codeHandler && [caption isEqualToString:_codeCaption]) {
             UIButton *code = [UIButton buttonWithType:UIButtonTypeCustom];
@@ -174,8 +170,7 @@ NSArray *NoshiInfoMentions(NSString *text) {
         value.frame = CGRectMake(16, 10, textWidth, fit.height);
         caption.frame = CGRectMake(16, 10 + fit.height + 2, textWidth, 16);
         [row viewWithTag:3].frame = CGRectMake(width - CODE_SIDE - 4, (height - CODE_SIDE) / 2, CODE_SIDE, CODE_SIDE);
-        [row viewWithTag:11].frame = CGRectMake(0, 0, width, 1);
-        [row viewWithTag:12].frame = CGRectMake(0, 1, width, 1);
+        [row viewWithTag:11].frame = CGRectMake(0, 0, width, 1.0f / NoshiScreenScale());
         y += height;
     }
     if (_starsRow) {

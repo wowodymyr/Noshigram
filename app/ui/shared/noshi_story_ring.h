@@ -13,8 +13,6 @@ void NoshiStoryRingColors(BOOL unseen, BOOL closeFriends, UIColor **from, UIColo
 /* count stories, unseen of them not seen yet (the newest ones) */
 - (void)setCount:(NSInteger)count unseen:(NSInteger)unseen closeFriends:(BOOL)closeFriends;
 - (void)setPeer:(NoshiStoryPeer *)peer;
-/* the ring takes the corner percent the person chose for avatars instead of a circle: for the avatars of the chat list, which are cut to it */
-@property (nonatomic, assign) BOOL followsAvatarShape;
 /* how far the ring stands outside the picture it surrounds */
 + (CGFloat)outset;
 

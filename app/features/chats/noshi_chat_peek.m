@@ -75,7 +75,7 @@
     _header.backgroundColor = NoshiColorCard();
     [_card addSubview:_header];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES; _avatar.initials = dialog.initials; _avatar.seed = dialog.avatarSeed;
+    _avatar.initials = dialog.initials; _avatar.seed = dialog.avatarSeed;
     [_avatar setPhoto:dialog.photo cache:avatars];
     [_header addSubview:_avatar];
     /* the name is drawn as in the chat header: emoji as pictures, the marks and the status after it */

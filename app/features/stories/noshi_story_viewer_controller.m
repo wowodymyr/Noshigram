@@ -50,7 +50,7 @@ static const float kStorySpeeds[SPEED_COUNT] = {0.2f, 0.5f, 1.0f, 1.5f, 2.0f};
 static const NoshiSymbol kStorySpeedSymbols[SPEED_COUNT] = {NoshiSymbolSpeedVerySlow, NoshiSymbolSpeedSlow, NoshiSymbolSpeedNormal, NoshiSymbolSpeedFast, NoshiSymbolSpeedVeryFast};
 static NSString *const kStorySpeedKeys[SPEED_COUNT] = {@"story.speed.veryslow", @"story.speed.slow", @"story.speed.normal", @"story.speed.fast", @"story.speed.veryfast"};
 
-/* the classic chrome is the black translucent bar of the old photo viewer: a bar of 44 points with the progress groove under it */
+/* the classic chrome is the black translucent bar of the old photo viewer: a bar of 44 points with the progress segments under it */
 #define CLASSIC_BAR 44.0
 #define CLASSIC_HEADER 58.0
 #define CLASSIC_TOOLBAR 44.0
@@ -302,38 +302,18 @@ static UIView *NoshiStoryShade(BOOL fromTop, BOOL classic) {
     return view;
 }
 
-/* a glossy bar button of the classic chrome: a violet grey plate with a white bold title engraved under a dark shadow */
+/* a bar button of the viewer: a flat key in the accent with a white bold title */
 static UIButton *NoshiStoryClassicButton(NSString *title) {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
-    [button setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [button setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    [button setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
+    [button setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
     if (title) {
         button.titleLabel.font = [UIFont boldSystemFontOfSize:13];
         button.titleLabel.adjustsFontSizeToFitWidth = YES;
         [button setTitle:title forState:UIControlStateNormal];
         [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        [button setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-        button.titleLabel.shadowOffset = CGSizeMake(0, -1);
     }
     return button;
-}
-
-/* the progress groove and its fill are one pixel wide patterns, so they repeat along any width; the groove is sunk and the fill a lit purple bead */
-static UIColor *NoshiStoryClassicPattern(BOOL fill) {
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(2, CLASSIC_SEGMENT), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGFloat groove[] = {0.02, 0.02, 0.03, 1, 0.22, 0.22, 0.25, 1};
-    CGFloat bead[] = {0.82, 0.68, 0.97, 1, 0.50, 0.30, 0.76, 1};
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, fill ? bead : groove, NULL, 2);
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(0, CLASSIC_SEGMENT), 0);
-    CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:1 alpha:fill ? 0.55 : 0.14].CGColor);
-    CGContextFillRect(context, CGRectMake(0, fill ? 0 : CLASSIC_SEGMENT - 1, 2, 1));
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return [UIColor colorWithPatternImage:image];
 }
 
 - (void)loadView {
@@ -371,7 +351,6 @@ static UIColor *NoshiStoryClassicPattern(BOOL fill) {
     _top = [[UIView alloc] init];
     [root addSubview:_top];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     [_top addSubview:_avatar];
     _name = [NoshiStoryTextLabel(15, YES) retain];
     [_top addSubview:_name];
@@ -438,8 +417,8 @@ static UIColor *NoshiStoryClassicPattern(BOOL fill) {
     [_share addTarget:self action:@selector(shareTapped) forControlEvents:UIControlEventTouchUpInside];
     _share.accessibilityLabel = NSLocalizedString(@"story.share", nil);
     _share.contentMode = UIViewContentModeCenter;
-    [_share setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [_share setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
+    [_share setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
+    [_share setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
     [_share setImage:NoshiSymbolImage(NoshiSymbolForward, 18, [UIColor whiteColor]) forState:UIControlStateNormal];
     [_bottom addSubview:_share];
     _views = [NoshiStoryLabel(14, NO) retain];
@@ -770,15 +749,13 @@ static UIColor *NoshiStoryClassicPattern(BOOL fill) {
     for (UIView *segment in _segments) [segment removeFromSuperview];
     [_segments removeAllObjects];
     [_fills removeAllObjects];
-    UIColor *groove = NoshiStoryClassicPattern(NO);
-    UIColor *bead = NoshiStoryClassicPattern(YES);
     for (NSUInteger i = 0; i < count; ++i) {
         UIView *segment = [[[UIView alloc] init] autorelease];
-        segment.backgroundColor = groove;
+        segment.backgroundColor = [UIColor colorWithWhite:1 alpha:0.3];
         segment.layer.cornerRadius = CLASSIC_SEGMENT / 2;
         segment.layer.masksToBounds = YES;
         UIView *fill = [[[UIView alloc] init] autorelease];
-        fill.backgroundColor = bead;
+        fill.backgroundColor = [UIColor whiteColor];
         [segment addSubview:fill];
         [_top addSubview:segment];
         [_segments addObject:segment];
@@ -1582,9 +1559,9 @@ typedef enum {
     NSNumber *override = _current ? [_reacted objectForKey:[NSNumber numberWithInt:_current.storyId]] : nil;
     BOOL liked = override ? override.boolValue : _current.reaction != nil;
     /* a liked story turns the plate red, as the old badges did; the glyph stays white on either */
-    NoshiClassicGloss plate = liked ? NoshiClassicGlossRed : NoshiClassicGlossSlate;
-    [_heart setBackgroundImage:NoshiClassicGlossButtonImage(plate, NO) forState:UIControlStateNormal];
-    [_heart setBackgroundImage:NoshiClassicGlossButtonImage(plate, YES) forState:UIControlStateHighlighted];
+    NoshiClassicKeyColor plate = liked ? NoshiClassicKeyRed : NoshiClassicKeyAccent;
+    [_heart setBackgroundImage:NoshiClassicKeyImage(plate, NO) forState:UIControlStateNormal];
+    [_heart setBackgroundImage:NoshiClassicKeyImage(plate, YES) forState:UIControlStateHighlighted];
     [_heart setImage:NoshiSymbolImage(liked ? NoshiSymbolHeart : NoshiSymbolHeartOutline, 18, [UIColor whiteColor]) forState:UIControlStateNormal];
 }
 

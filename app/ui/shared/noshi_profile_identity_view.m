@@ -3,8 +3,6 @@
 
 #import <QuartzCore/QuartzCore.h>
 
-#import "noshi_chat_settings.h"
-#import "noshi_shape.h"
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
 
@@ -38,7 +36,6 @@
     self = [super initWithFrame:frame];
     if (!self) return nil;
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     _avatar.transparentPhoto = YES;
     _avatar.accent = YES;
     _avatar.userInteractionEnabled = NO;

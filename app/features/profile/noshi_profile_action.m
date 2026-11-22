@@ -13,8 +13,8 @@
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
     NoshiAttachBounce(self, 0.06);
-    /* the classic card is a glossy metal key: the slate plate of the app's buttons under a white symbol and word */
-    _plate = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
+    /* the card is a flat key in the accent under a white symbol and word */
+    _plate = [[UIImageView alloc] initWithImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO)];
     _plate.userInteractionEnabled = NO;
     [self addSubview:_plate];
     _symbol = symbol;
@@ -26,8 +26,6 @@
     _caption.textAlignment = NoshiTextAlignmentCenter;
     _caption.font = [UIFont boldSystemFontOfSize:12];
     _caption.textColor = [UIColor whiteColor];
-    _caption.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-    _caption.shadowOffset = CGSizeMake(0, -1);
     _caption.adjustsFontSizeToFitWidth = YES;
     _caption.text = title;
     [self addSubview:_caption];
@@ -46,7 +44,7 @@
 }
 
 - (UIImage *)plateImagePressed:(BOOL)pressed {
-    return _ground ? NoshiClassicGroundKeyImage(_ground, pressed) : NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, pressed);
+    return _ground ? NoshiClassicGroundKeyImage(_ground, pressed) : NoshiClassicKeyImage(NoshiClassicKeyAccent, pressed);
 }
 
 - (void)setGround:(UIColor *)ground {
@@ -57,7 +55,7 @@
 }
 
 - (void)setInk:(UIColor *)ink {
-    /* the metal key keeps its own colors on any ground */
+    /* the key keeps its own colors on any ground */
     if (_plate || ink == _ink) return;
     [_ink release];
     _ink = [ink retain];
@@ -78,7 +76,7 @@
 
 - (void)setBlurred:(BOOL)blurred {
     if (_plate) {
-        /* over the wide photo the metal key lets it show: the plate and its symbol fade as the avatar grows, and come back as it closes; the caller runs this inside its animation */
+        /* over the wide photo the key lets it show: the plate and its symbol fade as the avatar grows, and come back as it closes; the caller runs this inside its animation */
         _blurred = blurred;
         _plate.alpha = blurred ? 0.3 : 1;
         _icon.alpha = _caption.alpha = blurred ? 0.7 : 1;

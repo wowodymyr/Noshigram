@@ -5,14 +5,12 @@
 
 #import "noshi_chat_settings.h"
 #import "noshi_avatar_view.h"
-#import "noshi_classic_chrome.h"
 #import "noshi_alert.h"
 #import "noshi_emoji_label.h"
 #import "noshi_person.h"
 #import "noshi_profile_photo_picker.h"
 #import "noshi_story.h"
 #import "noshi_story_camera_controller.h"
-#import "noshi_shape.h"
 #import "noshi_story_ring.h"
 #import "noshi_story_viewer_controller.h"
 #import "noshi_theme.h"
@@ -25,10 +23,6 @@
 #define REFRESH_SECONDS 45.0
 #define RING_WIDTH 2.0
 #define SEEN_WIDTH 1.3
-#define CLASSIC_STRIP_HEIGHT 90.0
-#define CLASSIC_ITEM_WIDTH 76.0
-#define CLASSIC_TILE 58.0
-#define CLASSIC_MAT 3.0
 
 /* the ring of the Telegram story cell: an unseen story is a stroke that runs from blue to green, one for close
    friends from lime to green, and a seen one a thin grey line */
@@ -37,14 +31,8 @@
     NoshiEmojiLabel *_name;
     CAGradientLayer *_gradient;
     CAShapeLayer *_stroke;
-    BOOL _classic;
-    UIView *_mat;
-    CAGradientLayer *_gloss;
-    UIImageView *_badge;
-    UILabel *_count;
     UIButton *_plus;
 }
-- (id)initWithFrame:(CGRect)frame classic:(BOOL)classic;
 /* selfDialog is the account as a chat with oneself, which has the photo that the own cell shows: the story list names the own cell by a chat that has none */
 - (void)configureWithPeer:(NoshiStoryPeer *)peer avatars:(NoshiAvatarCache *)avatars selfDialog:(NoshiDialog *)selfDialog;
 /* the plus of the own cell, which adds a story; hidden on every other cell */
@@ -55,72 +43,32 @@
 
 @synthesize plus = _plus;
 
-- (id)initWithFrame:(CGRect)frame classic:(BOOL)classic {
+- (id)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (!self) return nil;
     NoshiAttachBounce(self, 0.06);
-    _classic = classic;
-    CGFloat itemWidth = classic ? CLASSIC_ITEM_WIDTH : ITEM_WIDTH;
-    if (classic) {
-        [self buildClassicTileInWidth:itemWidth];
-    } else {
-        CGRect box = CGRectMake((itemWidth - RING) / 2, 6, RING, RING);
-        _gradient = [[CAGradientLayer layer] retain];
-        _gradient.frame = box;
-        _gradient.startPoint = CGPointMake(1, 0);
-        _gradient.endPoint = CGPointMake(0, 1);
-        _stroke = [[CAShapeLayer layer] retain];
-        _stroke.frame = CGRectMake(0, 0, RING, RING);
-        _stroke.fillColor = nil;
-        _stroke.strokeColor = [UIColor blackColor].CGColor;
-        _gradient.mask = _stroke;
-        [self.layer addSublayer:_gradient];
-        _avatar = [[NoshiAvatarView alloc] initWithFrame:CGRectMake((itemWidth - PHOTO) / 2, 6 + (RING - PHOTO) / 2, PHOTO, PHOTO)];
-        _avatar.circular = YES;
-        [self addSubview:_avatar];
-    }
+    CGFloat itemWidth = ITEM_WIDTH;
+    CGRect box = CGRectMake((itemWidth - RING) / 2, 6, RING, RING);
+    _gradient = [[CAGradientLayer layer] retain];
+    _gradient.frame = box;
+    _gradient.startPoint = CGPointMake(1, 0);
+    _gradient.endPoint = CGPointMake(0, 1);
+    _stroke = [[CAShapeLayer layer] retain];
+    _stroke.frame = CGRectMake(0, 0, RING, RING);
+    _stroke.fillColor = nil;
+    _stroke.strokeColor = [UIColor blackColor].CGColor;
+    _gradient.mask = _stroke;
+    [self.layer addSublayer:_gradient];
+    _avatar = [[NoshiAvatarView alloc] initWithFrame:CGRectMake((itemWidth - PHOTO) / 2, 6 + (RING - PHOTO) / 2, PHOTO, PHOTO)];
+    [self addSubview:_avatar];
     [self buildPlusInWidth:itemWidth];
     /* a name stays inside its cell with two points to spare on either side, so the name next to it never touches it; one that does not fit ends in dots */
-    _name = [[NoshiEmojiLabel alloc] initWithFrame:CGRectMake(2, classic ? 72 : 68, itemWidth - 4, 16)];
-    _name.font = classic ? [UIFont boldSystemFontOfSize:10.5] : NoshiFontRegular(10.5);
+    _name = [[NoshiEmojiLabel alloc] initWithFrame:CGRectMake(2, 68, itemWidth - 4, 16)];
+    _name.font = NoshiFontRegular(10.5);
     _name.textAlignment = NoshiTextAlignmentCenter;
     _name.textColor = NoshiColorSecondary();
     [self addSubview:_name];
     return self;
-}
-
-/* the classic tile is a slide in a mount, white on the light theme and near black on the dark one, where a white frame glared on the dark shelf: a rounded square photo with a
-   glass cap over its upper half, a shadow under the mount, and a lit outline while a story is unseen */
-- (void)buildClassicTileInWidth:(CGFloat)itemWidth {
-    CGFloat mat = CLASSIC_MAT;
-    _mat = [[UIView alloc] initWithFrame:CGRectMake((itemWidth - CLASSIC_TILE) / 2, 8, CLASSIC_TILE, CLASSIC_TILE)];
-    _mat.userInteractionEnabled = NO;
-    _mat.backgroundColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:0.08 alpha:1] : [UIColor whiteColor];
-    _mat.layer.cornerRadius = 11;
-    _mat.layer.borderWidth = 1;
-    _mat.layer.shadowOffset = CGSizeMake(0, 1);
-    _mat.layer.shadowRadius = 2;
-    [self addSubview:_mat];
-    _avatar = [[NoshiAvatarView alloc] initWithFrame:CGRectMake(mat, mat, CLASSIC_TILE - 2 * mat, CLASSIC_TILE - 2 * mat)];
-    _avatar.userInteractionEnabled = NO;
-    _avatar.layer.cornerRadius = 8;
-    _avatar.layer.masksToBounds = YES;
-    [_mat addSubview:_avatar];
-    _gloss = [[CAGradientLayer layer] retain];
-    _gloss.frame = CGRectMake(mat, mat, CLASSIC_TILE - 2 * mat, (CLASSIC_TILE - 2 * mat) / 2);
-    _gloss.colors = [NSArray arrayWithObjects:(id)[UIColor colorWithWhite:1 alpha:0.42].CGColor, (id)[UIColor colorWithWhite:1 alpha:0.06].CGColor, nil];
-    _gloss.cornerRadius = 8;
-    [_mat.layer addSublayer:_gloss];
-    _badge = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossRed, NO)];
-    _badge.hidden = YES;
-    _badge.userInteractionEnabled = NO;
-    [self addSubview:_badge];
-    _count = [[UILabel alloc] init];
-    _count.backgroundColor = [UIColor clearColor];
-    _count.font = [UIFont boldSystemFontOfSize:12];
-    _count.textColor = [UIColor whiteColor];
-    _count.textAlignment = NoshiTextAlignmentCenter;
-    [_badge addSubview:_count];
 }
 
 /* the plus on the corner of the own photo; the button is wider than the disc so a finger finds it */
@@ -128,24 +76,20 @@
     _plus = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _plus.hidden = YES;
     _plus.accessibilityLabel = NSLocalizedString(@"story.add", nil);
-    CGFloat disc = _classic ? 22 : 24;
+    CGFloat disc = 24;
     CGFloat hit = 34;
-    CGFloat photoRight = _classic ? CGRectGetMaxX(_mat.frame) : (itemWidth + PHOTO) / 2;
-    CGFloat photoBottom = _classic ? CGRectGetMaxY(_mat.frame) : 6 + (RING - PHOTO) / 2 + PHOTO;
+    CGFloat photoRight = (itemWidth + PHOTO) / 2;
+    CGFloat photoBottom = 6 + (RING - PHOTO) / 2 + PHOTO;
     _plus.frame = CGRectMake(photoRight - disc / 2 - hit / 2 + 2, photoBottom - disc / 2 - hit / 2 + 2, hit, hit);
     CGFloat inset = (hit - disc) / 2;
     UIImageView *face = [[[UIImageView alloc] initWithFrame:CGRectMake(inset, inset, disc, disc)] autorelease];
     face.userInteractionEnabled = NO;
-    if (_classic) {
-        face.image = NoshiClassicGlossButtonImage(NoshiClassicGlossGreen, NO);
-    } else {
-        face.backgroundColor = NoshiColorAccent();
-        face.layer.cornerRadius = disc / 2;
-        face.layer.borderWidth = 2.5;
-        face.layer.borderColor = NoshiColorScreen().CGColor;
-    }
+    face.backgroundColor = NoshiColorAccent();
+    face.layer.cornerRadius = disc / 2;
+    face.layer.borderWidth = 2.5;
+    face.layer.borderColor = NoshiColorScreen().CGColor;
     UIColor *ink = [UIColor whiteColor];
-    CGFloat arm = _classic ? 12 : 11, thick = _classic ? 3 : 2.5;
+    CGFloat arm = 11, thick = 2.5;
     for (int i = 0; i < 2; ++i) {
         CALayer *bar = [CALayer layer];
         bar.backgroundColor = ink.CGColor;
@@ -163,10 +107,6 @@
     [_name release];
     [_gradient release];
     [_stroke release];
-    [_mat release];
-    [_gloss release];
-    [_badge release];
-    [_count release];
     [super dealloc];
 }
 
@@ -175,37 +115,17 @@
     CGFloat width = unseen ? RING_WIDTH : SEEN_WIDTH;
     CGFloat inset = width / 2;
     _stroke.lineWidth = width;
-    /* the ring runs round the photo in the shape the person chose for avatars */
-    NoshiShape shape = (NoshiShape)NoshiAvatarShapeStored();
-    _stroke.path = NoshiShapePath(shape, CGRectMake(inset, inset, RING - width, RING - width), shape == NoshiShapeCircle ? 100 : NoshiAvatarCornerPercent()).CGPath;
+    _stroke.path = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(inset, inset, RING - width, RING - width)].CGPath;
     UIColor *from, *to;
     NoshiStoryRingColors(unseen, peer.closeFriends, &from, &to);
     _gradient.colors = [NSArray arrayWithObjects:(id)from.CGColor, (id)to.CGColor, nil];
 }
 
-- (void)configureClassicRingForPeer:(NoshiStoryPeer *)peer {
-    BOOL unseen = peer.unread > 0;
-    UIColor *lit = peer.closeFriends ? [UIColor colorWithRed:0.30 green:0.78 blue:0.30 alpha:1] : NoshiColorAccent();
-    _mat.layer.borderColor = (unseen ? lit : [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.16 : 0.28]).CGColor;
-    _mat.layer.borderWidth = unseen ? 2 : 1;
-    _mat.layer.shadowColor = (unseen ? lit : [UIColor blackColor]).CGColor;
-    _mat.layer.shadowOpacity = unseen ? 0.95f : 0.4f;
-    _mat.layer.shadowRadius = unseen ? 4 : 2;
-    _mat.layer.shadowOffset = unseen ? CGSizeZero : CGSizeMake(0, 1);
-    _badge.hidden = !unseen || peer.owner.saved;
-    if (_badge.hidden) return;
-    _count.text = peer.unread > 99 ? @"99+" : [NSString stringWithFormat:@"%d", (int)peer.unread];
-    CGFloat width = MAX(20, ceil([_count sizeThatFits:CGSizeMake(100, 20)].width) + 12);
-    _badge.frame = CGRectMake(CGRectGetMaxX(_mat.frame) - width + 7, 1, width, 20);
-    _count.frame = _badge.bounds;
-}
-
 - (void)configureWithPeer:(NoshiStoryPeer *)peer avatars:(NoshiAvatarCache *)avatars selfDialog:(NoshiDialog *)selfDialog {
     NoshiDialog *owner = peer.owner;
     BOOL unseen = peer.unread > 0;
-    if (_classic) [self configureClassicRingForPeer:peer];
-    else [self configureRingForPeer:peer];
-    /* the own cell without a story of its own has no ring at all, only the photo and the plus; the classic tile is already a quiet mount for it */
+    [self configureRingForPeer:peer];
+    /* the own cell without a story of its own has no ring at all, only the photo and the plus */
     _gradient.hidden = owner.saved && peer.count == 0;
     _plus.hidden = !owner.saved;
     BOOL borrows = owner.saved && !owner.photo && selfDialog;
@@ -216,36 +136,10 @@
     NSString *title = owner.saved ? NSLocalizedString(@"story.mine", nil) : owner.title;
     _name.text = title;
     _name.textColor = unseen ? NoshiColorTitle() : NoshiColorSecondary();
-    if (_classic) {
-        /* the light theme prints the name into the shelf, with a pale shadow under it */
-        _name.shadowColor = NoshiThemeIsDark() ? nil : [UIColor colorWithWhite:1 alpha:0.85];
-        _name.shadowOffset = CGSizeMake(0, 1);
-    }
     self.accessibilityLabel = unseen ? [NSString stringWithFormat:@"%@, %d", title, (int)peer.unread] : title;
 }
 
 @end
-
-/* the shelf the classic rings stand on: a pale metal band with a lit upper edge and a dark lower one, one pixel wide so that it repeats along the row */
-static UIColor *NoshiStoryShelfColor(CGFloat height) {
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(2, height), YES, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    BOOL dark = NoshiThemeIsDark();
-    CGFloat light[] = {0.97, 0.97, 0.98, 1, 0.86, 0.86, 0.89, 1};
-    CGFloat night[] = {0.24, 0.23, 0.27, 1, 0.13, 0.12, 0.16, 1};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, dark ? night : light, NULL, 2);
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(0, height), 0);
-    CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:1 alpha:dark ? 0.12 : 0.9].CGColor);
-    CGContextFillRect(context, CGRectMake(0, 0, 2, 1));
-    CGContextSetFillColorWithColor(context, [UIColor colorWithWhite:0 alpha:dark ? 0.7 : 0.38].CGColor);
-    CGContextFillRect(context, CGRectMake(0, height - 1, 2, 1));
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return [UIColor colorWithPatternImage:image];
-}
 
 @interface NoshiStoryStrip () {
     NoshiSession *_session;
@@ -258,7 +152,6 @@ static UIColor *NoshiStoryShelfColor(CGFloat height) {
     UIScrollView *_scroll;
     NSArray *_peers;
     CGFloat _height;
-    BOOL _classic;
     BOOL _loading;
     BOOL _viewerOpen;
     /* the signed in person as a chat with oneself, which stands for the own cell when the server lists no story of ours */
@@ -287,8 +180,7 @@ static UIColor *NoshiStoryShelfColor(CGFloat height) {
     _weak = [[NoshiWeakReference referenceTo:self] retain];
     _scroll = [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 320, 0)];
     _scroll.showsHorizontalScrollIndicator = NO;
-    _classic = YES;
-    _scroll.backgroundColor = _classic ? NoshiStoryShelfColor(CLASSIC_STRIP_HEIGHT) : [UIColor clearColor];
+    _scroll.backgroundColor = [UIColor clearColor];
     _scroll.clipsToBounds = YES;
     _peers = [[NSArray alloc] init];
     _cells = [[NSArray alloc] init];
@@ -390,11 +282,11 @@ static UIColor *NoshiStoryShelfColor(CGFloat height) {
     [_cells release];
     _cells = [cells copy];
     for (UIView *old in [[_scroll.subviews copy] autorelease]) [old removeFromSuperview];
-    CGFloat rowHeight = _classic ? CLASSIC_STRIP_HEIGHT : STRIP_HEIGHT;
-    CGFloat itemWidth = _classic ? CLASSIC_ITEM_WIDTH : ITEM_WIDTH;
+    CGFloat rowHeight = STRIP_HEIGHT;
+    CGFloat itemWidth = ITEM_WIDTH;
     CGFloat height = _cells.count ? rowHeight : 0;
     for (NSUInteger i = 0; i < _cells.count; ++i) {
-        NoshiStoryRingView *ring = [[[NoshiStoryRingView alloc] initWithFrame:CGRectMake(8 + i * itemWidth, 2, itemWidth, rowHeight - 4) classic:_classic] autorelease];
+        NoshiStoryRingView *ring = [[[NoshiStoryRingView alloc] initWithFrame:CGRectMake(8 + i * itemWidth, 2, itemWidth, rowHeight - 4)] autorelease];
         ring.tag = (NSInteger)i;
         [ring configureWithPeer:[_cells objectAtIndex:i] avatars:_avatars selfDialog:_selfDialog];
         [ring addTarget:self action:@selector(ringTapped:) forControlEvents:UIControlEventTouchUpInside];

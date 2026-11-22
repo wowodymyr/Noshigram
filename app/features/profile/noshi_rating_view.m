@@ -32,54 +32,25 @@ static void NoshiAddShield(CGContextRef c, CGFloat w, CGFloat h) {
     CGContextClosePath(c);
 }
 
-/* the shield of the classic theme is a glossy plate like the badges of the old system: a vertical shade, a pale cap on the upper half and a dark rim */
-static void NoshiDrawGlossShield(CGContextRef c, CGFloat w, CGFloat h, UIColor *base) {
-    CGFloat red = 0, green = 0, blue = 0, alpha = 0;
-    if (![base getRed:&red green:&green blue:&blue alpha:&alpha]) {
-        CGFloat white = 0;
-        [base getWhite:&white alpha:&alpha];
-        red = green = blue = white;
-    }
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGFloat shade[8] = {MIN(1, red + (1 - red) * 0.35f), MIN(1, green + (1 - green) * 0.35f), MIN(1, blue + (1 - blue) * 0.35f), 1,
-                        red * 0.7f, green * 0.7f, blue * 0.7f, 1};
-    CGFloat cap[8] = {1, 1, 1, 0.75f, 1, 1, 1, 0.12f};
-    CGGradientRef body = CGGradientCreateWithColorComponents(space, shade, NULL, 2);
-    CGGradientRef gloss = CGGradientCreateWithColorComponents(space, cap, NULL, 2);
+/* the shield is a flat plate in one color */
+static void NoshiDrawShield(CGContextRef c, CGFloat w, CGFloat h, UIColor *base) {
     CGContextSaveGState(c);
     NoshiAddShield(c, w, h);
-    CGContextClip(c);
-    CGContextDrawLinearGradient(c, body, CGPointMake(0, 2), CGPointMake(0, h - 2), 0);
-    CGContextSaveGState(c);
-    CGContextAddEllipseInRect(c, CGRectMake(-w * 0.25f, -h * 0.62f, w * 1.5f, h * 1.12f));
-    CGContextClip(c);
-    CGContextDrawLinearGradient(c, gloss, CGPointMake(0, 2), CGPointMake(0, h * 0.5f), 0);
+    CGContextSetFillColorWithColor(c, base.CGColor);
+    CGContextFillPath(c);
     CGContextRestoreGState(c);
-    /* the rim is stroked double wide inside the clip, so only the inner half shows and the plate keeps its size */
-    NoshiAddShield(c, w, h);
-    CGContextSetLineWidth(c, 2);
-    CGContextSetRGBStrokeColor(c, 0, 0, 0, 0.4f);
-    CGContextStrokePath(c);
-    CGContextRestoreGState(c);
-    CGGradientRelease(body);
-    CGGradientRelease(gloss);
-    CGColorSpaceRelease(space);
 }
 
 - (void)drawRect:(CGRect)rect {
     (void)rect;
     CGContextRef c = UIGraphicsGetCurrentContext();
     CGFloat w = self.bounds.size.width, h = self.bounds.size.height;
-    NoshiDrawGlossShield(c, w, h, NoshiColorTitle());
+    NoshiDrawShield(c, w, h, NoshiColorTitle());
     NSString *text = [NSString stringWithFormat:@"%d", (int)_level];
     UIFont *font = NoshiFontBold(10);
     CGSize size = [text sizeWithFont:font];
-    CGContextSaveGState(c);
-    /* the digit is pressed into the plate: a light edge under it */
-    CGContextSetShadowWithColor(c, CGSizeMake(0, 1), 0, [UIColor colorWithWhite:1 alpha:0.6f].CGColor);
     [NoshiColorScreen() setFill];
     [text drawAtPoint:CGPointMake(floor((w - size.width) / 2), floor((h - size.height) / 2) - 1) withFont:font];
-    CGContextRestoreGState(c);
 }
 @end
 
@@ -145,18 +116,15 @@ static void NoshiAddCrown(CGContextRef c, CGRect box) {
     CGContextRef c = UIGraphicsGetCurrentContext();
     CGFloat w = self.bounds.size.width;
     CGRect body = CGRectMake(0, 0, w, PILL_HEIGHT);
-    /* the plate is a glossy capsule, as the badges of the old home screen are; its shadow is the layer's */
-    [NoshiClassicTintedGlossImage(NoshiColorAccent(), PILL_HEIGHT / 2 - 2, NO) drawInRect:body];
-    CGFloat r = 0, g = 0, b = 0;
-    [NoshiColorAccent() getRed:&r green:&g blue:&b alpha:NULL];
-    [[UIColor colorWithRed:r * 0.74 green:g * 0.74 blue:b * 0.74 alpha:1] setFill];
+    /* the plate is a capsule in the accent; its shadow is the layer's */
+    [NoshiClassicTintedKeyImage(NoshiColorAccent(), PILL_HEIGHT / 2 - 2, NO) drawInRect:body];
+    [NoshiColorAccent() setFill];
     CGContextMoveToPoint(c, w / 2 - 9, PILL_HEIGHT - 1);
     CGContextAddLineToPoint(c, w / 2, PILL_HEIGHT + PILL_TAIL);
     CGContextAddLineToPoint(c, w / 2 + 9, PILL_HEIGHT - 1);
     CGContextClosePath(c);
     CGContextFillPath(c);
     [[UIColor whiteColor] setFill];
-    CGContextSetShadowWithColor(c, CGSizeMake(0, -1), 0, [UIColor colorWithWhite:0 alpha:0.5].CGColor);
     CGFloat x = 16;
     NoshiAddCrown(c, CGRectMake(x, (PILL_HEIGHT - PILL_CROWN * 0.8) / 2, PILL_CROWN, PILL_CROWN * 0.8));
     x += PILL_CROWN + 6;
@@ -230,7 +198,7 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     /* the rounded top is a stretched picture and not a mask of the layer: a masked layer is drawn off screen at every frame of its move, which made the sheet judder when it left */
     _panel.backgroundColor = [UIColor clearColor];
     _panelBack = [[UIImageView alloc] initWithImage:NoshiRatingSheetImage()];
-    /* the classic sheet is a plate of polished metal, as the menus are, and runs below the screen so that its lower corners are not seen */
+    /* the sheet is the plate of the menus, and runs below the screen so that its lower corners are not seen */
     _panelBack.hidden = YES;
     NoshiClassicApplyMenuPlate(_panel, 10);
     [_panel addSubview:_panelBack];
@@ -239,14 +207,12 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     _scroll.showsVerticalScrollIndicator = NO;
     [_panel addSubview:_scroll];
     _track = [[UIView alloc] init];
-    /* the bar is a groove cut into the plate, with a dark line along its upper edge and a lit one along its lower, and the fill is a glossy accent capsule */
-    _track.backgroundColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.40 : 0.16];
+    /* the bar is a flat grey track with a capsule of the accent in it */
+    _track.backgroundColor = [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.08];
     _track.layer.cornerRadius = 20;
-    _track.layer.borderWidth = 1;
-    _track.layer.borderColor = [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.7 : 0.3].CGColor;
     _track.clipsToBounds = YES;
     [_scroll addSubview:_track];
-    _fill = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 18, NO)];
+    _fill = [[UIImageView alloc] initWithImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), 18, NO)];
     [_track addSubview:_fill];
     _level = [ratingLabel(@"", NoshiFontSemibold(16), [UIColor whiteColor], NoshiTextAlignmentLeft) retain];
     _level.numberOfLines = 1;
@@ -265,9 +231,6 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     [_scroll addSubview:_preview];
     UIColor *ink = NoshiClassicMenuTextColor();
     UILabel *title = ratingLabel(NSLocalizedString(@"rating.title", nil), [UIFont boldSystemFontOfSize:23], ink, NoshiTextAlignmentCenter);
-    /* the letters are cut into the plate: a light edge under them on the pale plate, a dark one on the charcoal */
-    title.shadowColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:0 alpha:0.6] : [UIColor colorWithWhite:1 alpha:0.9];
-    title.shadowOffset = CGSizeMake(0, NoshiThemeIsDark() ? -1 : 1);
     title.tag = 100;
     [_scroll addSubview:title];
     UILabel *about = ratingLabel(NSLocalizedString(@"rating.about", nil), [UIFont systemFontOfSize:15], ink, NoshiTextAlignmentCenter);
@@ -279,7 +242,7 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     NSInteger tag = 200;
     for (NSMutableDictionary *row in _rows) {
         NoshiSymbol symbol = (NoshiSymbol)[[row objectForKey:@"symbol"] intValue];
-        /* the classic row has the colored glossy tile with a white sign of the settings lists and of the old messaging apps */
+        /* the row has the colored tile with a white sign of the settings lists */
         UIImageView *icon = [[[UIImageView alloc] initWithImage:NoshiSettingsTileImage(symbol, tag == 200 ? NoshiSettingsTonePurple : (tag == 210 ? NoshiSettingsToneBlue : NoshiSettingsToneOrange), 32)] autorelease];
         icon.contentMode = UIViewContentModeCenter;
         icon.tag = tag;
@@ -295,8 +258,6 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
         mark.backgroundColor = adds ? [UIColor colorWithRed:0.25 green:0.62 blue:0.22 alpha:1] : [UIColor colorWithRed:0.78 green:0.20 blue:0.16 alpha:1];
         mark.layer.borderWidth = 1;
         mark.layer.borderColor = [UIColor colorWithWhite:0 alpha:0.35].CGColor;
-        mark.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        mark.shadowOffset = CGSizeMake(0, -1);
         mark.layer.cornerRadius = 5;
         mark.clipsToBounds = YES;
         mark.tag = tag + 2;
@@ -309,12 +270,10 @@ static NSMutableDictionary *NoshiRatingRow(NoshiSymbol symbol, NSString *titleKe
     _close = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_close setTitle:NSLocalizedString(@"rating.ok", nil) forState:UIControlStateNormal];
     [_close setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-    /* the blue key of the old messaging apps, in the accent: a glossy plate with a white word on it */
+    /* a flat key in the accent with a white word on it */
     _close.titleLabel.font = [UIFont boldSystemFontOfSize:17];
-    _close.titleLabel.shadowOffset = CGSizeMake(0, -1);
-    [_close setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-    [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, NO) forState:UIControlStateNormal];
-    [_close setBackgroundImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 10, YES) forState:UIControlStateHighlighted];
+    [_close setBackgroundImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), 10, NO) forState:UIControlStateNormal];
+    [_close setBackgroundImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), 10, YES) forState:UIControlStateHighlighted];
     [_close addTarget:self action:@selector(close) forControlEvents:UIControlEventTouchUpInside];
     [_panel addSubview:_close];
     [self updateRating];

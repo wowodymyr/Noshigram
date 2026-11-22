@@ -226,7 +226,7 @@ static void NoshiFillCapsule(CGContextRef context, CGRect rect, UIColor *color) 
 - (void)drawPill:(CGContextRef)context {
     CGRect rect = self.bounds;
     NoshiTextLayout *text = _item.pillLayout;
-    /* the classic capsule is a plain grey wash, lighter than the modern one so it does not read as a stain on the linen */
+    /* the classic capsule is a plain grey wash, lighter than the modern one so it does not read as a stain on the wallpaper */
     NoshiFillCapsule(context, rect, [UIColor colorWithWhite:0 alpha:NoshiThemeIsDark() ? 0.42 : 0.3]);
     [text drawAtPoint:CGPointMake(11 - _item.pillShift, (rect.size.height - text.size.height) / 2)];
 }
@@ -424,7 +424,6 @@ static void NoshiDrawCallArrow(CGContextRef context, CGPoint origin, BOOL incomi
     /* the picture holds the tail, so it takes the whole bounds, which are as wide as the bubble and its tail */
     UIImage *bubble = NoshiClassicBubbleImage(outgoing, _tailWidth > 0);
     [bubble drawInRect:self.bounds];
-    if (bubble) NoshiClassicBubbleGloss(context, self.bounds, outgoing, _tailWidth > 0);
     /* the content is laid out from the bubble's own corner, so a bubble with its tail on the left slides over by the tail */
     if (_tailWidth > 0 && !outgoing) CGContextTranslateCTM(context, _tailWidth, 0);
     if (_item.senderName.length) {
@@ -1008,7 +1007,6 @@ static float NoshiSpoilerRandom(void) {
     _replyPreview.userInteractionEnabled = NO;
     [self.contentView addSubview:_replyPreview];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     _avatar.hidden = YES;
     [self.contentView addSubview:_avatar];
     _avatarButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
@@ -1609,7 +1607,6 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
         _pollVoters = [[NSMutableArray alloc] init];
         for (int i = 0; i < 3; ++i) {
             NoshiAvatarView *view = [[[NoshiAvatarView alloc] init] autorelease];
-            view.circular = YES;
             [self.contentView addSubview:view];
             [_pollVoters addObject:view];
         }
@@ -1637,7 +1634,6 @@ static CGFloat NoshiPictureSide(NoshiChatItem *item) {
         _commenters = [[NSMutableArray alloc] init];
         for (int i = 0; i < 3; ++i) {
             NoshiAvatarView *view = [[[NoshiAvatarView alloc] init] autorelease];
-            view.circular = YES;
             [self.contentView addSubview:view];
             [_commenters addObject:view];
         }

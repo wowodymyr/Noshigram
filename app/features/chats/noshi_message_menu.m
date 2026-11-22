@@ -137,7 +137,7 @@
 
 static BOOL NoshiMenuClassic(void) { return YES; }
 
-/* the classic plate is charcoal on the dark tone, and a pale glossy one on the white tone, where a black plate sat on the light list like a hole */
+/* the classic plate is charcoal on the dark tone, and a pale one on the white tone, where a black plate sat on the light list like a hole */
 static BOOL NoshiMenuCharcoal(void) { return NoshiMenuClassic() && NoshiThemeIsDark(); }
 
 static UIColor *NoshiMenuText(void) { return NoshiMenuCharcoal() ? NoshiClassicMenuTextColor() : NoshiColorTitle(); }
@@ -147,7 +147,7 @@ static UIColor *NoshiMenuBand(void) {
     return NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.07] : [UIColor colorWithWhite:0 alpha:0.06];
 }
 
-/* the plate behind the rows: a flat card in the modern style, a glossy charcoal plate with a lit edge in the classic one */
+/* the plate behind the rows: the flat plate of the menus */
 static void NoshiMenuSkin(UIView *view, CGFloat radius) {
     if (NoshiMenuClassic()) {
         NoshiClassicApplyMenuPlate(view, radius);
@@ -290,7 +290,6 @@ static void NoshiMenuSkin(UIView *view, CGFloat radius) {
     for (NSUInteger i = 0; i < faces; ++i) {
         NoshiPerson *person = [people objectAtIndex:i];
         NoshiAvatarView *face = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(width - 14 - facesWidth + (CGFloat)i * faceStep, (HEADER_HEIGHT - faceSide) / 2, faceSide, faceSide)] autorelease];
-        face.circular = YES;
         face.seed = (NSUInteger)(person.userId % 1000003);
         face.initials = person.initials;
         face.deleted = person.deleted;
@@ -654,7 +653,7 @@ static void NoshiRevealCard(UIView *card, BOOL fromTop) {
 }
 
 /* the classic card closes the way it opened, backwards: its plate shrinks back into the edge that is next to the message while it fades, and the rows go first. the plate has a
-   gloss layer and a shadow, which the fade and the slip of the modern card left as a plain blink */
+   layer of its own and a shadow, which a plain fade left as a blink */
 static void NoshiConcealCard(UIView *card, BOOL towardTop, void (^done)(void)) {
     UIView *content = nil;
     if (card.subviews.count) {

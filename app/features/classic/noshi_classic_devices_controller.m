@@ -37,7 +37,7 @@ static NSString *NoshiClassicTtlText(int32_t days) {
 
 #pragma mark detail
 
-/* one session: its picture, name and time over a grouped table of what the server knows, with the two switches and a glossy red button */
+/* one session: its picture, name and time over a grouped table of what the server knows, with the two switches and a red button */
 @interface NoshiClassicDeviceDetailController : UITableViewController {
     NoshiSession *_session;
     NoshiDeviceSession *_device;
@@ -113,13 +113,11 @@ static NSString *NoshiClassicTtlText(int32_t days) {
         UIButton *end = [UIButton buttonWithType:UIButtonTypeCustom];
         end.frame = CGRectMake(10, 14, width - 20, 44);
         end.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-        [end setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossRed, NO) forState:UIControlStateNormal];
-        [end setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossRed, YES) forState:UIControlStateHighlighted];
+        [end setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyRed, NO) forState:UIControlStateNormal];
+        [end setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyRed, YES) forState:UIControlStateHighlighted];
         end.titleLabel.font = [UIFont boldSystemFontOfSize:18];
         [end setTitle:NSLocalizedString(@"devices.end", nil) forState:UIControlStateNormal];
         [end setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        [end setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-        end.titleLabel.shadowOffset = CGSizeMake(0, -1);
         [end addTarget:self action:@selector(endTapped) forControlEvents:UIControlEventTouchUpInside];
         [footer addSubview:end];
         self.tableView.tableFooterView = footer;
@@ -437,7 +435,7 @@ enum { RowLink, RowThis, RowEndOthers };
     if (!NoshiThemeIsDark()) return nil;
     NSString *text = [[self sectionAt:section] objectForKey:@"header"];
     if (!text.length) return nil;
-    return NoshiClassicGroupedHeader(text, tableView.bounds.size.width, 34, [UIColor whiteColor]);
+    return NoshiClassicGroupedHeader(text, tableView.bounds.size.width, 34, NoshiColorSecondary());
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {

@@ -239,17 +239,15 @@
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
     NSString *text = [self tableView:tableView titleForHeaderInSection:section];
     if (!text.length) return nil;
-    BOOL dark = NoshiThemeIsDark();
+    /* the letter strip of the contacts of telegram for ios 4: the light grey of the bars with a dark letter */
     UIView *strip = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, tableView.bounds.size.width, 22)] autorelease];
     strip.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    strip.backgroundColor = NoshiThemeTinted(dark ? [UIColor colorWithRed:0.27 green:0.42 blue:0.56 alpha:1] : [UIColor colorWithRed:0.44 green:0.61 blue:0.78 alpha:1]);
+    strip.backgroundColor = NoshiThemeIsDark() ? [UIColor colorWithRed:0.11 green:0.11 blue:0.114 alpha:1] : [UIColor colorWithRed:0.969 green:0.969 blue:0.969 alpha:1];
     UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(12, 0, strip.bounds.size.width - 24, 22)] autorelease];
     label.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     label.backgroundColor = [UIColor clearColor];
-    label.textColor = [UIColor whiteColor];
-    label.shadowColor = [UIColor colorWithWhite:0 alpha:0.35];
-    label.shadowOffset = CGSizeMake(0, 1);
-    label.font = [UIFont boldSystemFontOfSize:17];
+    label.textColor = NoshiColorTitle();
+    label.font = [UIFont boldSystemFontOfSize:15];
     label.text = text;
     [strip addSubview:label];
     return strip;

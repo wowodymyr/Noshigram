@@ -12,24 +12,6 @@
 #import "noshi_theme.h"
 #import "noshi_wave_background_view.h"
 
-/* the blue of the bars of telegram: deep enough in the dark theme that the gloss of ios 5 and 6 still reads, lighter in the white
-   theme where the deep one looks heavy next to white rows; both keep the white text */
-static UIColor *NoshiClassicBarColor(void) {
-    /* the material of the customization: steel blue, graphite and black glass are fixed colors, and only the first keeps the hue of the app */
-    BOOL dark = NoshiThemeIsDark();
-    switch (NoshiClassicMaterial()) {
-    case 1: return dark ? [UIColor colorWithRed:0.22 green:0.34 blue:0.52 alpha:1] : [UIColor colorWithRed:0.31 green:0.47 blue:0.68 alpha:1];
-    case 2: return dark ? [UIColor colorWithRed:0.20 green:0.20 blue:0.22 alpha:1] : [UIColor colorWithRed:0.36 green:0.36 blue:0.39 alpha:1];
-    case 3: return dark ? [UIColor colorWithRed:0.06 green:0.06 blue:0.07 alpha:1] : [UIColor colorWithRed:0.14 green:0.14 blue:0.16 alpha:1];
-    default: break;
-    }
-    /* an imported theme gives the bars its accent, a little deeper so the white words and the gloss still read */
-    UIColor *imported = NoshiImportedThemeColor("list.accent");
-    if (imported) return NoshiMixedColor(imported, [UIColor blackColor], dark ? 0.35 : 0.15);
-    if (NoshiThemeIsDark()) return NoshiThemeTinted([UIColor colorWithRed:0.20 green:0.32 blue:0.47 alpha:1]);
-    return NoshiThemeTinted([UIColor colorWithRed:0.33 green:0.51 blue:0.71 alpha:1]);
-}
-
 /* every picture of the classic chrome is drawn once for a palette and then kept: the lists, the bars and the buttons ask for the same few pictures at every configure and every touch, and
    each ask drew a gradient into a new bitmap on the main thread. the key holds the revision of the theme, so a change of colors never finds a picture of the old ones */
 static NSCache *NoshiClassicImageCache(void) {
@@ -44,18 +26,12 @@ static NSCache *NoshiClassicImageCache(void) {
 
 static UIImage *NoshiClassicRemembered(NSString *key, UIImage *(^make)(void)) {
     NSCache *cache = NoshiClassicImageCache();
-    NSString *full = [NSString stringWithFormat:@"%lu|%.1f|%@|%@", (unsigned long)NoshiThemeRevision(), NoshiScreenScale(), NoshiClassicLookSignature(), key];
+    NSString *full = [NSString stringWithFormat:@"%lu|%.1f|%@", (unsigned long)NoshiThemeRevision(), NoshiScreenScale(), key];
     UIImage *image = [[[cache objectForKey:full] retain] autorelease];
     if (image) return image;
     image = make();
     if (image) [cache setObject:image forKey:full];
     return image;
-}
-
-/* how strong the lights of the glossy pictures are: none, as the style was drawn before the setting, or half again as strong */
-static CGFloat NoshiClassicGlossScale(void) {
-    static const CGFloat scales[3] = {0, 1, 1.6f};
-    return scales[NoshiClassicGlossLevel()];
 }
 
 static UIColor *NoshiTabBarGround(void);
@@ -99,7 +75,7 @@ void NoshiClassicStyleToolbar(UIToolbar *bar) {
     NoshiClassicTintBar(bar);
 }
 
-/* a stretchable pill: the fill is a little darker than the screen and light falls on its lower rim, with no shadow inside */
+/* a stretchable flat pill, a little darker than the bar; the point under it is left clear so the field keeps the height it had */
 static UIImage *NoshiClassicSearchWellMade(void);
 
 static UIImage *NoshiClassicSearchWell(void) {
@@ -109,15 +85,11 @@ static UIImage *NoshiClassicSearchWell(void) {
 static UIImage *NoshiClassicSearchWellMade(void) {
     BOOL dark = NoshiThemeIsDark();
     CGFloat side = 30, rim = 1;
-    /* one point wider than the two caps, or ios 6 leaves a seam down the middle of the pill */
+    /* one point wider than the two caps, so the middle has a column to stretch */
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side + 1, side), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
     CGRect pill = CGRectMake(0, 0, side + 1, side - rim);
     CGFloat radius = (side - rim) / 2;
     UIBezierPath *shape = [UIBezierPath bezierPathWithRoundedRect:pill cornerRadius:radius];
-    UIBezierPath *lower = [UIBezierPath bezierPathWithRoundedRect:CGRectOffset(pill, 0, rim) cornerRadius:radius];
-    [(dark ? [UIColor colorWithWhite:1 alpha:0.1] : [UIColor colorWithWhite:1 alpha:0.9]) setFill];
-    [lower fill];
     [NoshiThemeTinted(dark ? [UIColor colorWithRed:0.07 green:0.11 blue:0.13 alpha:1] : [UIColor colorWithRed:0.89 green:0.89 blue:0.91 alpha:1]) setFill];
     [shape fill];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
@@ -156,7 +128,7 @@ void NoshiClassicStyleSearchBar(UISearchBar *bar) {
             }
         }
     }
-    /* the pill of the image has a lit rim under it, which the field counts in its height, so the line sat a point
+    /* the pill of the image has a clear point under it, which the field counts in its height, so the line sat a point
        or two below the middle of what is seen */
     bar.searchTextPositionAdjustment = UIOffsetMake(0, -3.0f);
 }
@@ -206,7 +178,7 @@ void NoshiClassicStyleSearchBar(UISearchBar *bar) {
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGSize size = self.bounds.size;
-    /* the lit rim lies under the pill, so the pill proper is the well without its last point, and the word stands on the middle of that */
+    /* a clear point lies under the pill, so the pill proper is the well without its last point, and the word stands on the middle of that */
     CGFloat top = floor((size.height - FACADE_WELL_HEIGHT) / 2);
     _well.frame = CGRectMake(FACADE_SIDE, top, MAX(0, size.width - 2 * FACADE_SIDE), FACADE_WELL_HEIGHT);
     CGFloat pillHeight = FACADE_WELL_HEIGHT - FACADE_WELL_RIM;
@@ -318,7 +290,7 @@ UIView *NoshiClassicSearchFacade(CGRect frame, NSString *placeholder) {
     CGSize size = self.bounds.size;
     CGFloat top = floor((size.height - FACADE_WELL_HEIGHT) / 2);
     _well.frame = CGRectMake(FACADE_SIDE, top, MAX(0, size.width - 2 * FACADE_SIDE), FACADE_WELL_HEIGHT);
-    /* the lit rim lies under the pill, so the line is centered on the pill without it */
+    /* a clear point lies under the pill, so the line is centered on the pill without it */
     CGFloat pillHeight = FACADE_WELL_HEIGHT - FACADE_WELL_RIM;
     _glass.frame = CGRectMake(FACADE_SIDE + 10, top + floor((pillHeight - _glass.image.size.height) / 2), _glass.image.size.width, _glass.image.size.height);
     CGFloat fieldX = CGRectGetMaxX(_glass.frame) + 6;
@@ -363,11 +335,7 @@ void NoshiClassicStyleTabBar(UITabBar *bar) {
 
 UITableViewCellSeparatorStyle NoshiClassicListSeparatorStyle(BOOL hasRows) {
     if (!hasRows) return UITableViewCellSeparatorStyleNone;
-    switch (NoshiClassicSeparators()) {
-    case 1: return UITableViewCellSeparatorStyleSingleLineEtched;
-    case 2: return UITableViewCellSeparatorStyleNone;
-    default: return UITableViewCellSeparatorStyleSingleLine;
-    }
+    return NoshiClassicSeparators() ? UITableViewCellSeparatorStyleNone : UITableViewCellSeparatorStyleSingleLine;
 }
 
 void NoshiClassicStyleTable(UITableView *table) {
@@ -381,8 +349,7 @@ void NoshiClassicStyleTable(UITableView *table) {
     if (NoshiClassicSeparators() != 0) table.separatorStyle = NoshiClassicListSeparatorStyle(YES);
     if (!NoshiThemeIsDark()) return;
     table.backgroundColor = NoshiColorScreen();
-    /* the etched line of a grouped table on ios 5 and 6 adds a white line under the dark one, which glows on the dark cards; a single faint line sits quietly between the rows and
-       along the edge of each card */
+    /* a single faint line sits quietly between the dark rows and along the edge of each card */
     if (NoshiClassicSeparators() == 0) table.separatorStyle = UITableViewCellSeparatorStyleSingleLine;
     table.separatorColor = [UIColor colorWithWhite:1 alpha:0.055];
 }
@@ -408,13 +375,10 @@ CGFloat NoshiClassicGroupedTextInset(CGFloat width) {
     _label = [[UILabel alloc] init];
     _label.backgroundColor = [UIColor clearColor];
     _label.textColor = color;
-    _label.font = [UIFont boldSystemFontOfSize:17];
+    /* the small capitals of the grouped lists of ios 7 */
+    _label.font = [UIFont systemFontOfSize:13];
     _label.numberOfLines = 0;
-    _label.text = text;
-    if ([color isEqual:[UIColor whiteColor]]) {
-        _label.shadowColor = [UIColor colorWithWhite:0 alpha:0.6];
-        _label.shadowOffset = CGSizeMake(0, 1);
-    }
+    _label.text = [text uppercaseString];
     [self addSubview:_label];
     return self;
 }
@@ -486,7 +450,7 @@ void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiTabIcon icon) {
                                 [UIColor clearColor], UITextAttributeTextShadowColor, nil];
     [item setTitleTextAttributes:restingText forState:UIControlStateNormal];
     [item setTitleTextAttributes:chosenText forState:UIControlStateSelected];
-    /* both pictures carry their own color, so the system neither greys nor glosses them */
+    /* both pictures carry their own color, so the system does not grey them */
     if ([item respondsToSelector:@selector(setFinishedSelectedImage:withFinishedUnselectedImage:)]) {
         [item setFinishedSelectedImage:NoshiTabIconImage(icon, chosen) withFinishedUnselectedImage:NoshiTabIconImage(icon, resting)];
     }
@@ -667,141 +631,42 @@ UILabel *NoshiClassicAlertBadge(NSString *text) {
     return label;
 }
 
-/* one image for the glossy things: a rounded rect with a three stop fill, an outline, a lit line just inside the
-   top and, for a button */
-static UIImage *NoshiClassicGlossImageMade(const CGFloat *fill, const CGFloat *outline, CGFloat radius, CGFloat gloss, CGFloat lit);
-
-static UIImage *NoshiClassicGlossImage(const CGFloat *fill, const CGFloat *outline, CGFloat radius, CGFloat gloss, CGFloat lit) {
-    gloss = MIN(1, gloss * NoshiClassicGlossScale());
-    lit = MIN(1, lit * NoshiClassicGlossScale());
-    NSMutableString *key = [NSMutableString stringWithFormat:@"gloss|%.1f|%.3f|%.3f", radius, gloss, lit];
-    for (int i = 0; i < 12; ++i) [key appendFormat:@"|%.3f", fill[i]];
-    for (int i = 0; i < 3; ++i) [key appendFormat:@"|%.3f", outline[i]];
-    return NoshiClassicRemembered(key, ^UIImage *{ return NoshiClassicGlossImageMade(fill, outline, radius, gloss, lit); });
-}
-
-static UIImage *NoshiClassicGlossImageMade(const CGFloat *fill, const CGFloat *outline, CGFloat radius, CGFloat gloss, CGFloat lit) {
-    CGFloat side = radius * 2 + 4;
-    /* with the lights of the customization off, as by default, the plate is flat as telegram for ios 4 drew it: the middle color alone and no rim */
-    if (NoshiClassicGlossLevel() == 0) {
+/* one image for the keys and plates: a rounded rect in one color, stretched from its middle */
+static UIImage *NoshiClassicFlatImage(UIColor *color, CGFloat radius) {
+    CGFloat r = 0, g = 0, b = 0, a = 0;
+    if (![color getRed:&r green:&g blue:&b alpha:&a]) {
+        CGFloat white = 0;
+        [color getWhite:&white alpha:&a];
+        r = g = b = white;
+    }
+    NSString *key = [NSString stringWithFormat:@"flat|%.1f|%.3f|%.3f|%.3f|%.3f", radius, r, g, b, a];
+    return NoshiClassicRemembered(key, ^UIImage *{
+        CGFloat side = radius * 2 + 4;
         UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-        [[UIColor colorWithRed:fill[4] green:fill[5] blue:fill[6] alpha:fill[7]] setFill];
+        [color setFill];
         [[UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, side, side) cornerRadius:radius] fill];
         UIImage *flat = UIGraphicsGetImageFromCurrentImageContext();
         UIGraphicsEndImageContext();
         return [flat resizableImageWithCapInsets:UIEdgeInsetsMake(radius + 1, radius + 1, radius + 1, radius + 1)];
-    }
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGRect bounds = CGRectMake(0.5, 0.5, side - 1, side - 1);
-    UIBezierPath *shape = [UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:radius];
-    CGFloat locations[] = {0, 0.5, 1};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef gradient = CGGradientCreateWithColorComponents(space, fill, locations, 3);
-    CGContextSaveGState(context);
-    [shape addClip];
-    CGContextDrawLinearGradient(context, gradient, CGPointMake(0, 0), CGPointMake(0, side), 0);
-    if (gloss > 0) {
-        /* the cap fades out by the middle of the picture, where it used to stop at a quarter of its strength: that edge ran across every button and plate as a band */
-        CGFloat shine[] = {1, 1, 1, gloss, 1, 1, 1, 0};
-        CGGradientRef cap = CGGradientCreateWithColorComponents(space, shine, NULL, 2);
-        CGContextClipToRect(context, CGRectMake(0, 0, side, side / 2));
-        CGContextDrawLinearGradient(context, cap, CGPointMake(0, 0), CGPointMake(0, side / 2), 0);
-        CGGradientRelease(cap);
-    }
-    if (gloss > 0) {
-        /* metal: a faint light bouncing up from the lower edge, and a thin specular streak that fades out toward the ends of the upper half */
-        CGFloat bounce[] = {1, 1, 1, 0, 1, 1, 1, gloss * 0.35};
-        CGGradientRef lower = CGGradientCreateWithColorComponents(space, bounce, NULL, 2);
-        CGContextSaveGState(context);
-        CGContextClipToRect(context, CGRectMake(0, side * 0.72, side, side * 0.28));
-        CGContextDrawLinearGradient(context, lower, CGPointMake(0, side * 0.72), CGPointMake(0, side), 0);
-        CGContextRestoreGState(context);
-        CGGradientRelease(lower);
-        CGFloat streak[] = {1, 1, 1, 0, 1, 1, 1, gloss * 0.9, 1, 1, 1, 0};
-        CGFloat streakAt[] = {0, 0.5, 1};
-        CGGradientRef across = CGGradientCreateWithColorComponents(space, streak, streakAt, 3);
-        CGContextSaveGState(context);
-        CGContextClipToRect(context, CGRectMake(radius * 0.6, 2, side - radius * 1.2, 1));
-        CGContextDrawLinearGradient(context, across, CGPointMake(radius * 0.6, 0), CGPointMake(side - radius * 0.6, 0), 0);
-        CGContextRestoreGState(context);
-        CGGradientRelease(across);
-    }
-    CGContextRestoreGState(context);
-    if (lit > 0) {
-        CGContextSaveGState(context);
-        CGContextClipToRect(context, CGRectMake(0, 0, side, radius));
-        [[UIColor colorWithWhite:1 alpha:lit] setStroke];
-        UIBezierPath *rim = [UIBezierPath bezierPathWithRoundedRect:CGRectInset(bounds, 1, 1) cornerRadius:MAX(0, radius - 1)];
-        rim.lineWidth = 1;
-        [rim stroke];
-        CGContextRestoreGState(context);
-    }
-    [[UIColor colorWithRed:outline[0] green:outline[1] blue:outline[2] alpha:1] setStroke];
-    shape.lineWidth = 1;
-    [shape stroke];
-    CGGradientRelease(gradient);
-    CGColorSpaceRelease(space);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    CGFloat cap = side / 2 - 1;
-    return [image resizableImageWithCapInsets:UIEdgeInsetsMake(cap, cap, cap, cap)];
+    });
 }
 
-UIImage *NoshiClassicBarButtonImage(BOOL pressed) {
-    UIColor *base = NoshiClassicBarColor();
-    UIColor *colors[] = {
-        NoshiMixedColor(base, [UIColor whiteColor], pressed ? 0.02 : 0.15),
-        NoshiMixedColor(base, [UIColor blackColor], pressed ? 0.32 : 0.18),
-        NoshiMixedColor(base, [UIColor blackColor], pressed ? 0.48 : 0.35)
-    };
-    CGFloat fill[12];
-    for (int i = 0; i < 3; ++i) {
-        const CGFloat *components = CGColorGetComponents(colors[i].CGColor);
-        for (int j = 0; j < 3; ++j) fill[i * 4 + j] = components[j];
-        fill[i * 4 + 3] = 1;
-    }
-    UIColor *border = NoshiMixedColor(base, [UIColor blackColor], 0.65);
-    const CGFloat *components = CGColorGetComponents(border.CGColor);
-    CGFloat outline[] = {components[0], components[1], components[2]};
-    return NoshiClassicGlossImage(fill, outline, 6, pressed ? 0.08 : 0.20, 0.30);
+static UIColor *NoshiClassicDimmed(UIColor *color, CGFloat dim) {
+    return dim >= 1 ? color : NoshiMixedColor(color, [UIColor blackColor], 1 - dim);
 }
 
-UIImage *NoshiClassicGlossButtonImage(NoshiClassicGloss color, BOOL pressed) {
+UIImage *NoshiClassicKeyImage(NoshiClassicKeyColor color, BOOL pressed) {
     CGFloat dim = pressed ? 0.78 : 1;
-    if (color == NoshiClassicGlossGreen) {
-        CGFloat fill[] = {0.52 * dim, 0.80 * dim, 0.36 * dim, 1,
-                          0.30 * dim, 0.62 * dim, 0.20 * dim, 1,
-                          0.20 * dim, 0.50 * dim, 0.14 * dim, 1};
-        CGFloat outline[] = {0.10, 0.30, 0.06};
-        return NoshiClassicGlossImage(fill, outline, 8, pressed ? 0.12 : 0.34, 0.45);
-    }
-    if (color == NoshiClassicGlossSlate) {
-        /* the key of the app in its accent */
-        return NoshiClassicTintedGlossImage(NoshiColorAccent(), 8, pressed);
-    }
-    if (color == NoshiClassicGlossAmber) {
-        CGFloat fill[] = {1.00 * dim, 0.87 * dim, 0.46 * dim, 1,
-                          0.97 * dim, 0.70 * dim, 0.20 * dim, 1,
-                          0.88 * dim, 0.55 * dim, 0.08 * dim, 1};
-        CGFloat outline[] = {0.48, 0.29, 0.02};
-        return NoshiClassicGlossImage(fill, outline, 8, pressed ? 0.12 : 0.34, 0.50);
-    }
-    CGFloat fill[] = {0.94 * dim, 0.42 * dim, 0.36 * dim, 1,
-                      0.80 * dim, 0.18 * dim, 0.14 * dim, 1,
-                      0.66 * dim, 0.10 * dim, 0.08 * dim, 1};
-    CGFloat outline[] = {0.40, 0.04, 0.03};
-    return NoshiClassicGlossImage(fill, outline, 8, pressed ? 0.12 : 0.34, 0.45);
+    if (color == NoshiClassicKeyAccent) return NoshiClassicTintedKeyImage(NoshiColorAccent(), 8, pressed);
+    UIColor *fill;
+    if (color == NoshiClassicKeyGreen) fill = [UIColor colorWithRed:0.30 green:0.62 blue:0.20 alpha:1];
+    else if (color == NoshiClassicKeyAmber) fill = [UIColor colorWithRed:0.97 green:0.70 blue:0.20 alpha:1];
+    else fill = [UIColor colorWithRed:0.80 green:0.18 blue:0.14 alpha:1];
+    return NoshiClassicFlatImage(NoshiClassicDimmed(fill, dim), 8);
 }
 
 UIImage *NoshiClassicPlateImage(void) {
-    CGFloat r = 0, g = 0, b = 0, a = 0;
-    [NoshiColorCard() getRed:&r green:&g blue:&b alpha:&a];
-    CGFloat fill[] = {MIN(1, r + 0.06), MIN(1, g + 0.06), MIN(1, b + 0.06), 1,
-                      r, g, b, 1,
-                      r * 0.92, g * 0.92, b * 0.92, 1};
-    CGFloat outline[] = {r * 0.65, g * 0.65, b * 0.65};
-    return NoshiClassicGlossImage(fill, outline, 12, 0, NoshiThemeIsDark() ? 0.15 : 0.55);
+    return NoshiClassicFlatImage(NoshiColorCard(), 12);
 }
 
 void NoshiClassicApplyMenuPlate(UIView *view, CGFloat radius) {
@@ -811,21 +676,13 @@ void NoshiClassicApplyMenuPlate(UIView *view, CGFloat radius) {
     view.layer.shadowOpacity = charcoal ? 0.6 : 0.35;
     view.layer.shadowRadius = 10;
     view.layer.shadowOffset = CGSizeMake(0, 4);
-    /* a plate of polished metal: the upper half is lit and fades out by the middle, light bounces up from the lower edge, a streak runs under the top edge, and the rim is a dark line over a
-       lit one. it is one stretchable picture, so a card of any size keeps its corners and its rim */
-    static const CGFloat paleFill[] = {1.00, 1.00, 1.00, 1, 0.95, 0.95, 0.96, 1, 0.88, 0.88, 0.90, 1};
-    static const CGFloat charcoalFill[] = {0.38, 0.38, 0.42, 1, 0.18, 0.18, 0.21, 1, 0.09, 0.09, 0.11, 1};
-    static const CGFloat paleRim[] = {0.60, 0.60, 0.64};
-    static const CGFloat charcoalRim[] = {0.52, 0.52, 0.57};
-    UIImage *picture = NoshiClassicGlossImage(charcoal ? charcoalFill : paleFill, charcoal ? charcoalRim : paleRim, radius, charcoal ? 0.22 : 0.30, charcoal ? 0.38 : 0.70);
-    CALayer *gloss = [CALayer layer];
-    gloss.contents = (id)picture.CGImage;
-    gloss.contentsScale = picture.scale;
-    CGFloat side = radius * 2 + 4, cap = side / 2 - 1;
-    gloss.contentsCenter = CGRectMake(cap / side, cap / side, 2 / side, 2 / side);
-    gloss.name = @"plate";
-    gloss.frame = view.bounds;
-    [view.layer insertSublayer:gloss atIndex:0];
+    /* a flat plate, pale grey or charcoal, in a layer of its own so that a view with a color of its own keeps it */
+    CALayer *plate = [CALayer layer];
+    plate.backgroundColor = (charcoal ? [UIColor colorWithRed:0.18 green:0.18 blue:0.21 alpha:1] : [UIColor colorWithRed:0.97 green:0.97 blue:0.98 alpha:1]).CGColor;
+    plate.cornerRadius = radius;
+    plate.name = @"plate";
+    plate.frame = view.bounds;
+    [view.layer insertSublayer:plate atIndex:0];
     NoshiClassicFitPlate(view, 0);
 }
 
@@ -856,13 +713,7 @@ UIColor *NoshiClassicMenuPressColor(void) {
 
 void NoshiClassicStyleMenuLabel(UILabel *label, CGFloat size) {
     label.font = [UIFont boldSystemFontOfSize:size];
-    if (NoshiThemeIsDark()) {
-        label.shadowColor = [UIColor colorWithWhite:0 alpha:0.7];
-        label.shadowOffset = CGSizeMake(0, -1);
-    } else {
-        label.shadowColor = [UIColor colorWithWhite:1 alpha:0.8];
-        label.shadowOffset = CGSizeMake(0, 1);
-    }
+    label.shadowColor = nil;
 }
 
 /* the text box of telegram for ios 4: white with a grey rim on the light bar, a dark grey box with a darker rim at night; opaque since the emoji of the text are drawn over it */
@@ -874,34 +725,12 @@ UIColor *NoshiClassicInputRim(void) {
     return NoshiThemeIsDark() ? [UIColor colorWithWhite:0.28 alpha:1] : [UIColor colorWithRed:0.78 green:0.78 blue:0.8 alpha:1];
 }
 
-UIImage *NoshiClassicTintedGlossImage(UIColor *base, CGFloat radius, BOOL pressed) {
-    CGFloat r = 0, g = 0, b = 0, a = 0;
-    if (![base getRed:&r green:&g blue:&b alpha:&a]) {
-        CGFloat white = 0;
-        [base getWhite:&white alpha:&a];
-        r = g = b = white;
-    }
-    CGFloat dim = pressed ? 0.8 : 1;
-    CGFloat fill[] = {MIN(1, r + (1 - r) * 0.30) * dim, MIN(1, g + (1 - g) * 0.30) * dim, MIN(1, b + (1 - b) * 0.30) * dim, 1,
-                      r * dim, g * dim, b * dim, 1,
-                      r * 0.74 * dim, g * 0.74 * dim, b * 0.74 * dim, 1};
-    CGFloat outline[] = {r * 0.45, g * 0.45, b * 0.45};
-    return NoshiClassicGlossImage(fill, outline, radius, pressed ? 0.12 : 0.34, 0.45);
+UIImage *NoshiClassicTintedKeyImage(UIColor *base, CGFloat radius, BOOL pressed) {
+    return NoshiClassicFlatImage(NoshiClassicDimmed(base, pressed ? 0.8 : 1), radius);
 }
 
 UIImage *NoshiClassicGroundKeyImage(UIColor *ground, BOOL pressed) {
-    CGFloat r = 0, g = 0, b = 0, a = 0;
-    if (![ground getRed:&r green:&g blue:&b alpha:&a]) {
-        CGFloat white = 0;
-        [ground getWhite:&white alpha:&a];
-        r = g = b = white;
-    }
-    CGFloat dim = pressed ? 0.78 : 1;
-    CGFloat fill[] = {MIN(1, r * 1.12 + 0.04) * dim, MIN(1, g * 1.12 + 0.04) * dim, MIN(1, b * 1.12 + 0.04) * dim, 1,
-                      r * dim, g * dim, b * dim, 1,
-                      r * 0.84 * dim, g * 0.84 * dim, b * 0.84 * dim, 1};
-    CGFloat outline[] = {r * 0.55, g * 0.55, b * 0.55};
-    return NoshiClassicGlossImage(fill, outline, 8, 0, 0);
+    return NoshiClassicFlatImage(NoshiClassicDimmed(ground, pressed ? 0.78 : 1), 8);
 }
 
 UIColor *NoshiClassicStripGround(void) {
@@ -921,70 +750,16 @@ UIImageView *NoshiClassicStripBackdrop(void) {
     return view;
 }
 
-/* the face of the disc in a chrome rim: a brushed metal gradient on the outside, a darker bevel before the face,
-   an inner shadow where the face sits low and a soft gloss over the upper half */
-UIImage *NoshiClassicMetalDisc(UIImage *face, CGFloat side) {
+/* a color disc as the thumbs of ios 7 draw it: the face in a white ring with a hairline round it */
+UIImage *NoshiClassicColorDisc(UIColor *color, CGFloat side) {
     UIGraphicsBeginImageContextWithOptions(CGSizeMake(side, side), NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGFloat rim = side * 0.1;
     CGRect outer = CGRectMake(0.5, 0.5, side - 1, side - 1);
-    CGRect bevel = CGRectInset(outer, rim * 0.8, rim * 0.8);
-    CGRect inner = CGRectInset(outer, rim, rim);
-    CGPoint topLeft = CGPointMake(0, 0), bottomRight = CGPointMake(side, side);
-
-    static const CGFloat chrome[] = {0.96, 0.96, 0.97, 1,  0.72, 0.73, 0.76, 1,  0.43, 0.44, 0.48, 1,  0.82, 0.83, 0.86, 1,
-                                     0.55, 0.56, 0.60, 1,  0.94, 0.95, 0.96, 1};
-    static const CGFloat chromeAt[] = {0, 0.22, 0.45, 0.62, 0.82, 1};
-    CGGradientRef metal = CGGradientCreateWithColorComponents(space, chrome, chromeAt, 6);
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, outer);
-    CGContextClip(context);
-    CGContextDrawLinearGradient(context, metal, topLeft, bottomRight, 0);
-    CGContextRestoreGState(context);
-    CGGradientRelease(metal);
-
-    /* the bevel runs the other way, so the rim looks turned in towards the face */
-    static const CGFloat turned[] = {0.35, 0.36, 0.40, 1,  0.93, 0.94, 0.96, 1};
-    CGGradientRef bevelGradient = CGGradientCreateWithColorComponents(space, turned, NULL, 2);
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, bevel);
-    CGContextClip(context);
-    CGContextDrawLinearGradient(context, bevelGradient, topLeft, bottomRight, 0);
-    CGContextRestoreGState(context);
-    CGGradientRelease(bevelGradient);
-
-    CGContextSetRGBStrokeColor(context, 0.25, 0.26, 0.30, 0.85);
-    CGContextSetLineWidth(context, 1);
-    CGContextStrokeEllipseInRect(context, outer);
-
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, inner);
-    CGContextClip(context);
-    if (face) {
-        CGFloat scale = MAX(inner.size.width / face.size.width, inner.size.height / face.size.height);
-        CGSize drawn = CGSizeMake(face.size.width * scale, face.size.height * scale);
-        [face drawInRect:CGRectMake(CGRectGetMidX(inner) - drawn.width / 2, CGRectGetMidY(inner) - drawn.height / 2, drawn.width, drawn.height)];
-    }
-    /* a soft shadow on the upper edge of the face, where the rim stands over it */
-    static const CGFloat shade[] = {0, 0, 0, 0.35,  0, 0, 0, 0};
-    CGGradientRef shadow = CGGradientCreateWithColorComponents(space, shade, NULL, 2);
-    CGContextDrawLinearGradient(context, shadow, CGPointMake(0, inner.origin.y), CGPointMake(0, inner.origin.y + inner.size.height * 0.28), 0);
-    CGGradientRelease(shadow);
-    CGContextRestoreGState(context);
-    CGContextSetRGBStrokeColor(context, 0.12, 0.12, 0.16, 0.7);
-    CGContextStrokeEllipseInRect(context, inner);
-
-    /* the gloss: white fading out over the upper half of the whole disc */
-    static const CGFloat gloss[] = {1, 1, 1, 0.34,  1, 1, 1, 0};
-    CGGradientRef shine = CGGradientCreateWithColorComponents(space, gloss, NULL, 2);
-    CGContextSaveGState(context);
-    CGContextAddEllipseInRect(context, CGRectMake(side * 0.06, side * 0.02, side * 0.88, side * 0.55));
-    CGContextClip(context);
-    CGContextDrawLinearGradient(context, shine, CGPointMake(0, side * 0.02), CGPointMake(0, side * 0.57), 0);
-    CGContextRestoreGState(context);
-    CGGradientRelease(shine);
-    CGColorSpaceRelease(space);
+    [[UIColor whiteColor] setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:outer] fill];
+    [[UIColor colorWithWhite:0 alpha:0.2] setStroke];
+    [[UIBezierPath bezierPathWithOvalInRect:outer] stroke];
+    [color setFill];
+    [[UIBezierPath bezierPathWithOvalInRect:CGRectInset(outer, side * 0.1, side * 0.1)] fill];
     UIImage *disc = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return disc;

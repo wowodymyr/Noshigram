@@ -22,8 +22,6 @@ static CGFloat NoshiEaseOutBack(CGFloat t) {
 }
 
 @interface NoshiQrView () {
-    BOOL _metallic;
-    CGFloat _discSide;
     NSData *_modules;
     NSInteger _side;
     NSData *_previous;
@@ -44,7 +42,6 @@ static CGFloat NoshiEaseOutBack(CGFloat t) {
 
 @synthesize stillMode = _still;
 @synthesize centerImage = _centerImage;
-@synthesize metallic = _metallic;
 @synthesize paperColor = _paperColor;
 
 - (id)initWithFrame:(CGRect)frame {
@@ -84,13 +81,11 @@ static CGFloat NoshiEaseOutBack(CGFloat t) {
     _logo.center = CGPointMake(self.bounds.size.width / 2, self.bounds.size.height / 2);
     /* the logo and a photo in its place are both round */
     _logo.layer.cornerRadius = side / 2;
-    if (_metallic && side != _discSide) _logoStale = YES;
     if (!_logoStale) return;
     _logoStale = NO;
-    _discSide = side;
     UIImage *face = _centerImage ? _centerImage : [UIImage imageNamed:@"qr_logo"];
     if (!face) NSLog(@"noshigram: qr_logo.png is missing from the bundle");
-    _logo.image = _metallic ? NoshiClassicMetalDisc(face, side) : face;
+    _logo.image = face;
 }
 
 #pragma mark modules
@@ -121,13 +116,6 @@ static CGFloat NoshiEaseOutBack(CGFloat t) {
     _paperColor = [paper retain];
     self.backgroundColor = _paperColor;
     [self setNeedsDisplay];
-}
-
-- (void)setMetallic:(BOOL)metallic {
-    if (metallic == _metallic) return;
-    _metallic = metallic;
-    _logoStale = YES;
-    [self setNeedsLayout];
 }
 
 - (void)setCenterImage:(UIImage *)image {

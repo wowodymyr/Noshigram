@@ -49,19 +49,16 @@ static NoshiEmojiLabel *NoshiChannelEmojiLabel(UIColor *color, UIFont *font) {
     self = [super initWithFrame:frame];
     if (!self) return nil;
     NoshiAttachBounce(self, 0.03);
-    /* the card is a plate of polished metal, as the menus and the info card are */
+    /* the card is the plate of the menus, as the info card is */
     NoshiClassicApplyMenuPlate(self, 10);
     _kind = NoshiChannelLabel(NoshiColorAccent(), NoshiFontSemibold(13), NoshiTextAlignmentLeft);
     _kind.text = NSLocalizedString(@"profile.channel.kind", nil);
     _chip = NoshiChannelLabel(NoshiColorAccent(), NoshiFontMedium(12), NoshiTextAlignmentCenter);
-    /* the follower count is a glossy accent capsule with a white word */
+    /* the follower count is an accent capsule with a white word */
     _chip.textColor = [UIColor whiteColor];
-    _chip.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-    _chip.shadowOffset = CGSizeMake(0, -1);
     _chip.font = [UIFont boldSystemFontOfSize:12];
-    _chipPlate = [[UIImageView alloc] initWithImage:NoshiClassicTintedGlossImage(NoshiColorAccent(), 8, NO)];
+    _chipPlate = [[UIImageView alloc] initWithImage:NoshiClassicTintedKeyImage(NoshiColorAccent(), 8, NO)];
     _picture = [[NoshiAvatarView alloc] init];
-    _picture.circular = YES;
     _title = NoshiChannelEmojiLabel(NoshiColorTitle(), NoshiFontSemibold(17));
     _last = NoshiChannelEmojiLabel(NoshiColorSecondary(), NoshiFontRegular(15));
     _date = NoshiChannelLabel(NoshiColorSecondary(), NoshiFontRegular(13), NoshiTextAlignmentRight);

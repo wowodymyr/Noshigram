@@ -484,7 +484,7 @@ static UIImage *NoshiSizedWallpaper(NoshiWallpaperSetting setting, CGSize size) 
 
 void NoshiApplyChatWallpaper(UIImageView *view, BOOL dark) {
     NoshiApplyWallpaperStyle(view, dark);
-    /* the picked wallpaper takes the place of the standard picture, or of the linen in the classic style */
+    /* the picked wallpaper takes the place of the standard picture */
     UIImage *picked = NoshiShownWallpaper();
     if (picked) view.image = picked;
 }
@@ -546,9 +546,8 @@ static UIImage *NoshiImportedWallpaperGradientImage(const uint32_t values[4], NS
     return image;
 }
 
-/* the hue the bundled pictures are drawn in, the purple of the palette; the linen tile is a little bluer */
+/* the hue the bundled pictures are drawn in, the purple of the palette */
 #define STANDARD_SEED_HUE 286.0
-#define LINEN_SEED_HUE 262.0
 
 /* a bundled picture with its hue turned: the hue blend keeps the lightness and saturation of the drawing and takes only the hue of the fill, so the paper and the black
    stay as they are and a grey accent turns the lines grey. ownHue below zero follows the accent of the app and returns the picture as shipped while the accent is the
@@ -584,37 +583,6 @@ static UIImage *NoshiStandardWallpaperImage(BOOL dark) {
     NSString *name = dark ? @"chat_bg_dark.jpg" : @"chat_bg_light.jpg";
     UIImage *original = [UIImage imageNamed:name];
     return original ? NoshiTurnedImage(original, name, STANDARD_SEED_HUE, -1) : nil;
-}
-
-/* the linen of the classic chat as the customization has it: the tile as it is, or laid over the plain color of the chat at the strength the person chose, or no tile at all */
-UIColor *NoshiClassicLinenColor(BOOL dark) {
-    NSInteger strength = NoshiClassicTextureStyle() == 1 ? 0 : NoshiClassicTextureStrength();
-    NSString *linenName = dark ? @"chat_linen_dark.png" : @"chat_linen_light.png";
-    UIImage *linen = strength > 0 ? [UIImage imageNamed:linenName] : nil;
-    if (!linen) return NoshiColorChatBackground();
-    /* the tile follows the accent of the app, or the hue the person set for it */
-    NSInteger ownHue = NoshiClassicTextureHue();
-    linen = NoshiTurnedImage(linen, linenName, LINEN_SEED_HUE, ownHue);
-    if (strength >= 100) return [UIColor colorWithPatternImage:linen];
-    static NSCache *cache;
-    static dispatch_once_t once;
-    dispatch_once(&once, ^{
-        cache = [[NSCache alloc] init];
-        cache.countLimit = 6;
-    });
-    NSString *key = [NSString stringWithFormat:@"%d|%ld|%ld|%lu", dark ? 1 : 0, (long)strength, (long)ownHue, (unsigned long)NoshiThemeRevision()];
-    UIImage *tile = [[[cache objectForKey:key] retain] autorelease];
-    if (!tile) {
-        UIGraphicsBeginImageContextWithOptions(linen.size, YES, linen.scale);
-        CGRect rect = CGRectMake(0, 0, linen.size.width, linen.size.height);
-        [NoshiColorChatBackground() setFill];
-        UIRectFill(rect);
-        [linen drawInRect:rect blendMode:kCGBlendModeNormal alpha:strength / 100.0f];
-        tile = UIGraphicsGetImageFromCurrentImageContext();
-        UIGraphicsEndImageContext();
-        if (tile) [cache setObject:tile forKey:key];
-    }
-    return tile ? [UIColor colorWithPatternImage:tile] : NoshiColorChatBackground();
 }
 
 void NoshiApplyWallpaperStyle(UIImageView *view, BOOL dark) {

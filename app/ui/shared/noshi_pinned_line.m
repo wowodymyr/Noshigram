@@ -38,8 +38,7 @@
     CGFloat maxOffset = (_total - PINNED_LINE_VISIBLE) * segment;
     if (offset > maxOffset) offset = maxOffset;
     if (offset < 0) offset = 0;
-    /* on the glossy blue plate of the classic bar the accent would sink into it, so the segments are the light blue of its status text */
-    UIColor *accent = [UIColor colorWithRed:0.82 green:0.94 blue:1 alpha:1];
+    UIColor *accent = NoshiColorAccent();
     for (NSInteger i = 0; i < _total; i++) {
         CGFloat y = PINNED_LINE_PADDING + i * segment - offset;
         if (y + segment < 0 || y > height) continue;

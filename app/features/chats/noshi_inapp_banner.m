@@ -120,7 +120,6 @@ static NoshiInAppBanner *NoshiShownBanner;
     _press.opacity = 0;
     [self.layer addSublayer:_press];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     _avatar.hidden = YES;
     [self addSubview:_avatar];
     _title = [[NoshiEmojiLabel alloc] init];

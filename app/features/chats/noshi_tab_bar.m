@@ -6,8 +6,6 @@
 #import "noshi_animation.h"
 #import "noshi_platform.h"
 #import "noshi_pill_label.h"
-#import "noshi_chat_settings.h"
-#import "noshi_shape.h"
 #import "noshi_theme.h"
 
 #define TAB_BAR_HEIGHT 49.0
@@ -77,7 +75,6 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiColorAccent(); }
         [_ring.layer addSublayer:_ringStroke];
         [self addSubview:_ring];
         _avatar = [[NoshiAvatarView alloc] init];
-        _avatar.circular = YES;
         [_ring addSubview:_avatar];
     }
     _caption = [[UILabel alloc] init];
@@ -169,11 +166,10 @@ static UIColor *NoshiTabActiveColor(void) { return NoshiColorAccent(); }
     _ring.frame = CGRectMake((width - ringSide) / 2, 3, ringSide, ringSide);
     _avatar.frame = CGRectInset(_ring.bounds, 3, 3);
     if (_ringStroke) {
-        NoshiShape shape = NoshiShapeCircle;
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         _ringStroke.frame = _ring.bounds;
-        _ringStroke.path = NoshiShapePath(shape, CGRectInset(_ring.bounds, 1, 1), shape == NoshiShapeCircle ? 100 : NoshiAvatarCornerPercent()).CGPath;
+        _ringStroke.path = [UIBezierPath bezierPathWithOvalInRect:CGRectInset(_ring.bounds, 1, 1)].CGPath;
         [CATransaction commit];
     }
     _caption.frame = CGRectMake(0, 5 + TAB_ICON_SIZE + 1, width, 13);

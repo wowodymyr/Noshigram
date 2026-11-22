@@ -89,10 +89,8 @@ typedef enum { NoticeOffer, NoticeWorking, NoticeDone, NoticeFailed } NoticeMode
     _wave.userInteractionEnabled = NO;
     [_card addSubview:_wave];
     _primary = [self buttonWithAction:@selector(primaryTapped) bold:YES];
-    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-    [_primary setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-    _primary.titleLabel.shadowOffset = CGSizeMake(0, -1);
+    [_primary setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
+    [_primary setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
     [_primary setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     _secondary = [self buttonWithAction:@selector(secondaryTapped) bold:NO];
     [_secondary setTitleColor:NoshiClassicMenuTextColor() forState:UIControlStateNormal];

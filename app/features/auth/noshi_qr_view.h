@@ -18,9 +18,6 @@
 /* a picture, such as a profile photo, to show in the middle disc in place of the logo; nil goes back to the logo */
 @property (nonatomic, retain) UIImage *centerImage;
 
-/* the disc in the middle gets a polished metal rim and a gloss, as the classic style draws its buttons and bars */
-@property (nonatomic, assign) BOOL metallic;
-
 /* the modules shade from the top color to the bottom one down the code; nil for both is the dark violet of the
    login code */
 - (void)setModuleTopColor:(UIColor *)top bottomColor:(UIColor *)bottom;

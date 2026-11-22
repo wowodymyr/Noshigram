@@ -85,10 +85,8 @@
     _title.textColor = active ? [UIColor whiteColor] : NoshiColorSecondary();
     if (_plate) {
         self.backgroundColor = [UIColor clearColor];
-        _plate.image = NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, active);
+        _plate.image = NoshiClassicKeyImage(NoshiClassicKeyAccent, active);
         _title.textColor = [UIColor whiteColor];
-        _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.45];
-        _title.shadowOffset = CGSizeMake(0, -1);
     }
     /* on the filled chip the count turns white on a lighter plate so it stays readable */
     _badge.backgroundColor = active ? [UIColor colorWithWhite:1 alpha:0.28] : NoshiColorAccent();

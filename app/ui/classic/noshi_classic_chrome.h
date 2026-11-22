@@ -39,7 +39,7 @@ void NoshiClassicNoteTabBarHeight(CGFloat height);
 
 /* a plain or grouped table in the colors of the theme; the light theme keeps the system's own background */
 void NoshiClassicStyleTable(UITableView *table);
-/* the separator style the lists of the classic style use, by the choice of the customization: a thin line, an etched double line or none; a list with no rows has none */
+/* the separator style the lists of the classic style use, by the choice of the customization: a thin line or none; a list with no rows has none */
 UITableViewCellSeparatorStyle NoshiClassicListSeparatorStyle(BOOL hasRows);
 /* the background and text colors of a cell, for the dark theme; the light theme is left to the system */
 void NoshiClassicStyleCell(UITableViewCell *cell);
@@ -54,7 +54,6 @@ void NoshiClassicStyleTabItem(UITabBarItem *item, NoshiTabIcon icon);
 /* the grey of a tab at rest */
 UIColor *NoshiTabBarRestingColor(void);
 
-/* the round record or send button of the message bar: a glossy purple dome with its glyph, drawn whole so it needs no layers */
 /* the white key with a grey arrow that takes a chat to its newest message */
 UIImage *NoshiFlatDownButtonImage(CGFloat side, BOOL pressed);
 /* the chevron of the back button, black, for the bar to tint */
@@ -62,9 +61,8 @@ UIImage *NoshiBackChevronImage(void);
 UIImage *NoshiClassicRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL pressed);
 UIImage *NoshiClassicRedRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL pressed);
 
-/* the face in a chrome rim, as the logo of the QR code wears it: a brushed metal gradient outside, a darker bevel before the face, an inner shadow and a gloss over the
-   upper half; side is in points, the face is cropped round and may be nil */
-UIImage *NoshiClassicMetalDisc(UIImage *face, CGFloat side);
+/* a color disc in a white ring, as the thumbs of ios 7 are */
+UIImage *NoshiClassicColorDisc(UIColor *color, CGFloat side);
 
 /* the profile photo as a tab bar picture: a 30 point rounded square, drawn in its own colors */
 UIImage *NoshiClassicProfileTabImage(UIImage *photo);
@@ -76,7 +74,7 @@ UIView *NoshiClassicTitleView(NSString *title, NSString *subtitle);
 UIView *NoshiClassicTitleViewWithStatus(NSString *title, NSString *subtitle, int kind);
 /* the same with the width of the view given, for a bar whose buttons take more of a phone's width than the 190 points the default leaves them */
 UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle, int kind, CGFloat width);
-/* a count in the glossy badge of the old home screen: a white ring, the accent lit from above, a gloss on the upper half and a shadow under it */
+/* a count in a capsule of the accent */
 UIView *NoshiClassicCounterBadge(NSString *text);
 
 /* the small round count on a row, in the accent color or gray */
@@ -84,25 +82,23 @@ UILabel *NoshiClassicBadge(NSString *text, BOOL muted);
 /* the same capsule in red, for the counts on the bottom bar */
 UILabel *NoshiClassicAlertBadge(NSString *text);
 
-/* the colors of a glossy button of the classic style */
+/* the colors of a key of the classic style */
 typedef enum {
-    NoshiClassicGlossGreen,
-    NoshiClassicGlossRed,
-    /* the violet grey of a button at rest on the purple bar */
-    NoshiClassicGlossSlate,
-    NoshiClassicGlossAmber
-} NoshiClassicGloss;
+    NoshiClassicKeyGreen,
+    NoshiClassicKeyRed,
+    /* the accent of the app */
+    NoshiClassicKeyAccent,
+    NoshiClassicKeyAmber
+} NoshiClassicKeyColor;
 
-/* a stretchable glossy button, rounded and lit from above with a pale upper half, in a color; pressed is the
-   darker one */
-UIImage *NoshiClassicGlossButtonImage(NoshiClassicGloss color, BOOL pressed);
-UIImage *NoshiClassicBarButtonImage(BOOL pressed);
+/* a stretchable flat key, rounded, in a color; pressed is the darker one */
+UIImage *NoshiClassicKeyImage(NoshiClassicKeyColor color, BOOL pressed);
 
-/* a plate in the card color of the theme, with a lit rim and a thin outline */
+/* a plate in the card color of the theme */
 UIImage *NoshiClassicPlateImage(void);
 
-/* the menu plate of the classic style: a charcoal plate in the dark tone and a pale glossy one in the white tone, each with a lit edge
-   and a soft shadow; the layer is named "plate" and sized to the bounds of the view */
+/* the menu plate of the classic style: a flat charcoal plate in the dark tone and a pale one in the white tone, with a soft shadow; the layer is
+   named "plate" and sized to the bounds of the view */
 void NoshiClassicApplyMenuPlate(UIView *view, CGFloat radius);
 /* sizes the plate of a view that got one from NoshiClassicApplyMenuPlate to the view's bounds, bleed points taller at the bottom, and gives the shadow a path: without one the shadow of a
    card is worked out from its content at every frame of a scroll */
@@ -111,10 +107,10 @@ void NoshiClassicFitPlate(UIView *view, CGFloat bleed);
 UIColor *NoshiClassicMenuTextColor(void);
 UIColor *NoshiClassicMenuRedColor(void);
 UIColor *NoshiClassicMenuPressColor(void);
-/* a bold row title with the stamped shadow of the old menus */
+/* a bold row title */
 void NoshiClassicStyleMenuLabel(UILabel *label, CGFloat size);
 
-/* the glossy purple of the navigation bar, stretched to fill a strip such as the mini player or the selection bar */
+/* the flat ground of the bars, stretched to fill a strip such as the mini player or the selection bar */
 UIImageView *NoshiClassicStripBackdrop(void);
 /* the fill of the text boxes of the bars: white, or dark grey at night, opaque since emoji are drawn over it */
 UIColor *NoshiClassicInputFill(void);
@@ -123,10 +119,9 @@ UIColor *NoshiClassicInputRim(void);
 /* the plain ground of the strips that stand over a chat, the pinned message and the player: dark grey with a little of the accent on the dark theme and white with a trace of it on the light one, so the wallpaper never shows
    through them; the ink is for their text and glyphs and the edge for the line under them */
 UIColor *NoshiClassicStripGround(void);
-/* a key in the color of the ground it stands on, for a profile that has a color of its own: a soft gradient, a thin darker outline, and no gloss, streak or lit line over it */
+/* a flat key in the color of the ground it stands on, for a profile that has a color of its own */
 UIImage *NoshiClassicGroundKeyImage(UIColor *ground, BOOL pressed);
-/* a glossy key or pill in any color, as the blue microphone key of the old messaging apps: the color lit from above and darker below, a hard-edged gloss over the upper half, a streak,
-   a lit line under the top edge and a dark outline; it stretches from its middle, and radius is the corner */
-UIImage *NoshiClassicTintedGlossImage(UIColor *base, CGFloat radius, BOOL pressed);
+/* a flat key or pill in any color; it stretches from its middle, and radius is the corner */
+UIImage *NoshiClassicTintedKeyImage(UIColor *base, CGFloat radius, BOOL pressed);
 UIColor *NoshiClassicStripInk(void);
 UIColor *NoshiClassicStripEdge(void);

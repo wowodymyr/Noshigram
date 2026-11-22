@@ -137,7 +137,6 @@ static UIImageView *NoshiClassicTopicImageView(void) {
     [self.contentView addSubview:_avatar];
     _storyRing = [[NoshiStoryRing alloc] init];
     _storyRing.hidden = YES;
-    _storyRing.followsAvatarShape = YES;
     [self.contentView addSubview:_storyRing];
     _onlineDot = [[NoshiOnlineDotView alloc] init];
     _onlineDot.hidden = YES;

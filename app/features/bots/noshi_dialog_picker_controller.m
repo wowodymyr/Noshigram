@@ -356,7 +356,7 @@
 
 static UIImage *NoshiSavedPickerImage(void) {
     NoshiAvatarView *avatar = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, 48, 48)] autorelease];
-    avatar.circular = YES; avatar.accent = YES; avatar.showsSymbol = YES; avatar.symbol = NoshiSymbolBookmark;
+    avatar.accent = YES; avatar.showsSymbol = YES; avatar.symbol = NoshiSymbolBookmark;
     UIGraphicsBeginImageContextWithOptions(avatar.bounds.size, NO, 0);
     [avatar.layer renderInContext:UIGraphicsGetCurrentContext()];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();

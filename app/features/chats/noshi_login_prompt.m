@@ -81,29 +81,22 @@
     return self;
 }
 
-/* the card follows the theme while its buttons keep the engraved classic labels */
+/* the card follows the theme, and its buttons are flat keys with white words */
 - (void)styleClassic {
     UIColor *ink = NoshiColorTitle();
-    UIColor *pale = [UIColor colorWithWhite:NoshiThemeIsDark() ? 0 : 1 alpha:0.4];
     _title.textColor = ink;
     _title.font = [UIFont boldSystemFontOfSize:16];
     _message.textColor = NoshiColorSecondary();
     _message.font = [UIFont systemFontOfSize:13];
-    for (UILabel *label in [NSArray arrayWithObjects:_title, _message, nil]) {
-        label.shadowColor = pale;
-        label.shadowOffset = CGSizeMake(0, 1);
-    }
     UIButton *buttons[2] = {_yes, _no};
-    NoshiClassicGloss colors[2] = {NoshiClassicGlossSlate, NoshiClassicGlossRed};
+    NoshiClassicKeyColor colors[2] = {NoshiClassicKeyAccent, NoshiClassicKeyRed};
     for (int i = 0; i < 2; ++i) {
         UIButton *button = buttons[i];
-        [button setBackgroundImage:NoshiClassicGlossButtonImage(colors[i], NO) forState:UIControlStateNormal];
-        [button setBackgroundImage:NoshiClassicGlossButtonImage(colors[i], YES) forState:UIControlStateHighlighted];
-        [button setBackgroundImage:NoshiClassicGlossButtonImage(colors[i], YES) forState:UIControlStateDisabled];
+        [button setBackgroundImage:NoshiClassicKeyImage(colors[i], NO) forState:UIControlStateNormal];
+        [button setBackgroundImage:NoshiClassicKeyImage(colors[i], YES) forState:UIControlStateHighlighted];
+        [button setBackgroundImage:NoshiClassicKeyImage(colors[i], YES) forState:UIControlStateDisabled];
         [button setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
         [button setTitleColor:[UIColor colorWithWhite:1 alpha:0.6] forState:UIControlStateDisabled];
-        [button setTitleShadowColor:[UIColor colorWithWhite:0 alpha:0.5] forState:UIControlStateNormal];
-        button.titleLabel.shadowOffset = CGSizeMake(0, -1);
         button.titleLabel.font = [UIFont boldSystemFontOfSize:14];
         button.titleLabel.adjustsFontSizeToFitWidth = YES;
         button.titleLabel.minimumFontSize = 10;
@@ -168,7 +161,7 @@
     _title.frame = CGRectMake(CARD_PAD, 10, inner, title.height);
     _message.frame = CGRectMake(CARD_PAD, 10 + title.height + 4, inner, message.height);
     CGFloat buttonsY = height - BUTTON_HEIGHT - 4;
-    /* glossy buttons are separate pills with a gap, the flat ones are two halves of one row */
+    /* the buttons are separate pills with a gap */
     CGFloat gap = 8;
     CGFloat buttonHeight = BUTTON_HEIGHT - 6;
     CGFloat buttonY = buttonsY + 3;

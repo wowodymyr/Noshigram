@@ -34,7 +34,6 @@
     _person = [person retain];
     _cache = [cache retain];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     _avatar.seed = (NSUInteger)((key < 0 ? -key : key) % 1000003);
     _avatar.initials = person ? person.initials : NoshiInitialsOfName(name);
     [self addSubview:_avatar];

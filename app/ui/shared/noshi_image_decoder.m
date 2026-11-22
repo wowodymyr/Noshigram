@@ -2,7 +2,6 @@
 
 #import <AVFoundation/AVFoundation.h>
 #import <ImageIO/ImageIO.h>
-#import <objc/runtime.h>
 
 #include "src/webp/decode.h"
 #include "noshi_video_sticker_core.h"
@@ -198,35 +197,3 @@ UIImage *NoshiFitEmojiImage(UIImage *image) {
     return result ? result : image;
 }
 
-static const char NoshiRoundKey;
-
-BOOL NoshiImageIsRound(UIImage *image) {
-    if (!image.CGImage) return NO;
-    NSNumber *known = objc_getAssociatedObject(image, &NoshiRoundKey);
-    if (known) return known.boolValue;
-    enum { SIDE = 24, PATCH = 3 };
-    uint8_t pixels[SIDE * SIDE * 4];
-    memset(pixels, 0, sizeof(pixels));
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGContextRef context = space ? CGBitmapContextCreate(pixels, SIDE, SIDE, 8, SIDE * 4, space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big) : NULL;
-    if (space) CGColorSpaceRelease(space);
-    if (!context) return NO;
-    CGContextDrawImage(context, CGRectMake(0, 0, SIDE, SIDE), image.CGImage);
-    CGContextRelease(context);
-    int empty = 0;
-    for (int corner = 0; corner < 4; ++corner) {
-        int x0 = corner & 1 ? SIDE - PATCH : 0, y0 = corner & 2 ? SIDE - PATCH : 0;
-        int clear = 0;
-        for (int y = y0; y < y0 + PATCH; ++y) {
-            for (int x = x0; x < x0 + PATCH; ++x) {
-                const uint8_t *p = pixels + (y * SIDE + x) * 4;
-                /* premultiplied: a see-through pixel has no color left, and a white one has all of it */
-                if (p[3] < 40 || (p[0] > 240 && p[1] > 240 && p[2] > 240)) ++clear;
-            }
-        }
-        if (clear >= PATCH * PATCH - 1) ++empty;
-    }
-    BOOL round = empty >= 3;
-    objc_setAssociatedObject(image, &NoshiRoundKey, [NSNumber numberWithBool:round], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
-    return round;
-}

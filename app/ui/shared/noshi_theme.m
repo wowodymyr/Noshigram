@@ -271,7 +271,7 @@ UIColor *NoshiColorBubbleMeta(BOOL outgoing) {
     return outgoing ? NoshiRGB(89, 168, 55) : NoshiRGB(167, 167, 167);
 }
 
-/* the bubbles of Telegram, flat in one color with a faint rim. top is the lit edge, bottom the fill, outline the rim */
+/* the bubbles of Telegram, flat in one color with a faint rim. top and bottom are the fill, outline the rim */
 void NoshiClassicBubbleColors(BOOL outgoing, UIColor **top, UIColor **bottom, UIColor **outline) {
     UIColor *fill = outgoing ? NoshiColorBubbleOut() : NoshiColorBubbleIn();
     UIColor *black = [UIColor blackColor];

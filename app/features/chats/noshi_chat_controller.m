@@ -184,7 +184,6 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     _person = [person retain];
     _cache = [cache retain];
     _avatar = [[NoshiAvatarView alloc] init];
-    _avatar.circular = YES;
     _avatar.seed = (NSUInteger)(userId % 1000003);
     _avatar.initials = person ? person.initials : NoshiInitialsOfName(name);
     _avatar.deleted = person.deleted;
@@ -952,10 +951,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     /* the pinned message is somebody's text, so its emoji come from the app's pictures */
     _pinnedText = [[NoshiEmojiLabel alloc] init];
     _pinnedText.textColor = NoshiClassicStripInk();
-    if (NoshiThemeIsDark()) {
-        _pinnedText.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _pinnedText.shadowOffset = CGSizeMake(0, -1);
-    }
     _pinnedText.userInteractionEnabled = NO;
     [_pinnedBar addSubview:_pinnedText];
     /* a photo or video shows as a small rounded square at the left, and a chat with several pinned messages gets the list button */
@@ -1006,7 +1001,7 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     [root addSubview:_toast];
     /* the way back to the newest message, which shows once the list is more than a screen above its end */
     _toEnd = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
-    /* the classic style has no flat card: the same glossy dome as the send button of the bar */
+    /* the same round key as the send button of the bar */
     [_toEnd setImage:NoshiFlatDownButtonImage(44, NO) forState:UIControlStateNormal];
     [_toEnd setImage:NoshiFlatDownButtonImage(44, YES) forState:UIControlStateHighlighted];
     [_toEnd addTarget:self action:@selector(toEndTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -1060,7 +1055,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     mini.accent = _dialog.saved || _dialog.replies;
     mini.showsSymbol = _dialog.saved || _dialog.replies;
     mini.symbol = _dialog.replies ? NoshiSymbolReply : NoshiSymbolBookmark;
-    mini.circular = YES;
     [mini setPhoto:_dialog.saved || _dialog.replies ? nil : _dialog.photo cache:_avatars];
     mini.userInteractionEnabled = YES;
     [mini addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(openProfileGifts)] autorelease]];
@@ -1068,7 +1062,6 @@ static UILabel *NoshiChatLabel(UIColor *color, NSInteger alignment) {
     CGFloat outset = 3;
     UIView *avatarBox = [[[UIView alloc] initWithFrame:CGRectMake(0, 0, 32 + 2 * outset, 32 + 2 * outset)] autorelease];
     _storyRing = [[NoshiStoryRing alloc] initWithFrame:avatarBox.bounds];
-    _storyRing.followsAvatarShape = NO;
     _storyRing.hidden = YES;
     [avatarBox addSubview:_storyRing];
     mini.frame = CGRectMake(outset, outset, 32, 32);

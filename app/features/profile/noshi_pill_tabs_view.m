@@ -26,14 +26,14 @@
 - (id)initWithTitles:(NSArray *)titles {
     self = [super initWithFrame:CGRectMake(0, 0, 320, TABS_HEIGHT)];
     if (!self) return nil;
-    /* the classic tabs are a metal plate with a glossy key under the chosen one, not a pill */
+    /* the tabs are the plate of the menus with a key in the accent under the chosen one */
     NoshiClassicApplyMenuPlate(self, 10);
     _scroll = [[UIScrollView alloc] initWithFrame:self.bounds];
     _scroll.showsHorizontalScrollIndicator = NO;
     _scroll.showsVerticalScrollIndicator = NO;
     _scroll.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     [self addSubview:_scroll];
-    _chosen = [[UIImageView alloc] initWithImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO)];
+    _chosen = [[UIImageView alloc] initWithImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO)];
     [_scroll addSubview:_chosen];
     _labels = [[NSMutableArray alloc] init];
     for (NSString *title in titles) {
@@ -66,8 +66,6 @@
     for (NSUInteger i = 0; i < _labels.count; ++i) {
         UILabel *label = [_labels objectAtIndex:i];
         label.textColor = (i == _selectedIndex ? [UIColor whiteColor] : NoshiColorSecondary());
-        label.shadowColor = i == _selectedIndex ? [UIColor colorWithWhite:0 alpha:0.5] : nil;
-        label.shadowOffset = CGSizeMake(0, -1);
     }
     [self setNeedsLayout];
 }

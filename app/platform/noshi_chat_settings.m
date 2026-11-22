@@ -2,7 +2,6 @@
 #import "noshi_person.h"
 
 #import "noshi_platform.h"
-#import "noshi_shape.h"
 #import "noshi_theme.h"
 #include "noshi_reactions.h"
 
@@ -22,18 +21,8 @@ static NSString *const NoshiChatSwipeKey = @"noshigram.chat.swipe";
 static NSString *const NoshiChatLargeEmojiKey = @"noshigram.chat.largeemoji";
 static NSString *const NoshiChatListTitleKey = @"noshigram.chatlist.title";
 static NSString *const NoshiChatListCustomTitleKey = @"noshigram.chatlist.customtitle";
-static NSString *const NoshiAvatarCornerKey = @"noshigram.avatar.corner";
-static NSString *const NoshiAvatarShapeKey = @"noshigram.avatar.shape";
-static NSString *const NoshiSendShapeKey = @"noshigram.send.shape";
 static NSString *const NoshiListDensityKey = @"noshigram.list.density";
 static NSString *const NoshiTabIndicatorKey = @"noshigram.tab.indicator";
-static NSString *const NoshiClassicGlossKey = @"noshigram.classic.gloss";
-static NSString *const NoshiClassicMaterialKey = @"noshigram.classic.material";
-static NSString *const NoshiClassicTextureStyleKey = @"noshigram.classic.texture";
-static NSString *const NoshiClassicTextureStrengthKey = @"noshigram.classic.texturestrength";
-static NSString *const NoshiClassicTextureHueKey = @"noshigram.classic.texturehue";
-static NSString *const NoshiClassicAvatarGlossKey = @"noshigram.classic.avatargloss";
-static NSString *const NoshiClassicAvatarShadowKey = @"noshigram.classic.avatarshadow";
 static NSString *const NoshiClassicSeparatorsKey = @"noshigram.classic.separators";
 static NSString *const NoshiSectionRadiusKey = @"noshigram.section.radius";
 static NSString *const NoshiTabLayoutKey = @"noshigram.tablayout";
@@ -173,39 +162,6 @@ void NoshiChatListSetCustomTitle(NSString *text) {
     if (![[NSUserDefaults standardUserDefaults] synchronize]) NSLog(@"noshigram: the title of the chat list was not saved");
 }
 
-/* the avatar views read this at every draw, so it is kept in memory and changed with the stored value */
-static NSInteger NoshiAvatarCornerCurrent = -1;
-NSInteger NoshiAvatarCornerPercent(void) {
-    if (NoshiAvatarCornerCurrent == -1) {
-        NSNumber *stored = NoshiStoredNumber(NoshiAvatarCornerKey);
-        NoshiAvatarCornerCurrent = stored && stored.integerValue >= 0 && stored.integerValue <= 100 ? stored.integerValue : -2;
-    }
-    return NoshiAvatarCornerCurrent == -2 ? (NOSHI_AVATAR_CORNER_DEFAULT) : NoshiAvatarCornerCurrent;
-}
-void NoshiAvatarCornerStore(NSInteger percent) {
-    NoshiAvatarCornerCurrent = MAX(0, MIN(100, percent));
-    NoshiStoreNumber(NoshiAvatarCornerKey, NoshiAvatarCornerCurrent);
-}
-/* the avatar views read the shape at every draw, so it is kept in memory and changed with the stored value */
-static NSInteger NoshiAvatarShapeCurrent = -1;
-NSInteger NoshiAvatarShapeStored(void) {
-    if (NoshiAvatarShapeCurrent == -1) {
-        NSNumber *stored = NoshiStoredNumber(NoshiAvatarShapeKey);
-        NoshiAvatarShapeCurrent = stored && stored.integerValue >= 0 && stored.integerValue < NoshiShapeCount ? stored.integerValue : NoshiShapeCircle;
-    }
-    return NoshiAvatarShapeCurrent;
-}
-void NoshiAvatarShapeStore(NSInteger shape) {
-    NoshiAvatarShapeCurrent = MAX(0, MIN(NoshiShapeCount - 1, shape));
-    NoshiStoreNumber(NoshiAvatarShapeKey, NoshiAvatarShapeCurrent);
-}
-NSInteger NoshiSendShapeStored(void) {
-    NSNumber *stored = NoshiStoredNumber(NoshiSendShapeKey);
-    return stored ? NoshiClamped(stored.integerValue, 0, NOSHI_SEND_SHAPE_COUNT - 1) : 0;
-}
-void NoshiSendShapeStore(NSInteger shape) {
-    NoshiStoreNumber(NoshiSendShapeKey, NoshiClamped(shape, 0, NOSHI_SEND_SHAPE_COUNT - 1));
-}
 NSInteger NoshiListDensityStored(void) {
     NSNumber *stored = NoshiStoredNumber(NoshiListDensityKey);
     return stored ? NoshiClamped(stored.integerValue, 0, 1) : 0;
@@ -219,43 +175,19 @@ BOOL NoshiTabIndicatorOn(void) {
 void NoshiTabIndicatorStore(BOOL on) {
     NoshiStoreNumber(NoshiTabIndicatorKey, on ? 1 : 0);
 }
-/* the classic pictures read these at every draw and every lookup, so each is kept in memory and changed with the stored value */
-static NSInteger NoshiClassicLook[7] = {-1, -1, -1, -1, -1, -1, -1};
-static NSInteger NoshiClassicRead(int slot, NSString *key, NSInteger low, NSInteger high, NSInteger fallback) {
-    if (NoshiClassicLook[slot] == -1) {
-        NSNumber *stored = NoshiStoredNumber(key);
-        NoshiClassicLook[slot] = stored ? NoshiClamped(stored.integerValue, low, high) : fallback;
+/* the lists read this at every configure, so it is kept in memory and changed with the stored value. the version that also had an etched line stored 0 thin, 1 etched
+   and 2 none; the etched line is read as the thin one */
+static NSInteger NoshiClassicSeparatorsCurrent = -1;
+NSInteger NoshiClassicSeparators(void) {
+    if (NoshiClassicSeparatorsCurrent < 0) {
+        NSNumber *stored = NoshiStoredNumber(NoshiClassicSeparatorsKey);
+        NoshiClassicSeparatorsCurrent = stored && stored.integerValue >= 2 ? 1 : 0;
     }
-    return NoshiClassicLook[slot];
+    return NoshiClassicSeparatorsCurrent;
 }
-static void NoshiClassicWrite(int slot, NSString *key, NSInteger low, NSInteger high, NSInteger value) {
-    NoshiClassicLook[slot] = NoshiClamped(value, low, high);
-    NoshiStoreNumber(key, NoshiClassicLook[slot]);
-}
-/* flat by default, as telegram for ios 4 was; the lights of the old chrome are a choice of the customization */
-NSInteger NoshiClassicGlossLevel(void) { return NoshiClassicRead(0, NoshiClassicGlossKey, 0, 2, 0); }
-void NoshiClassicGlossStore(NSInteger level) { NoshiClassicWrite(0, NoshiClassicGlossKey, 0, 2, level); }
-NSInteger NoshiClassicMaterial(void) { return NoshiClassicRead(1, NoshiClassicMaterialKey, 0, NOSHI_CLASSIC_MATERIAL_COUNT - 1, 0); }
-void NoshiClassicMaterialStore(NSInteger material) { NoshiClassicWrite(1, NoshiClassicMaterialKey, 0, NOSHI_CLASSIC_MATERIAL_COUNT - 1, material); }
-NSInteger NoshiClassicTextureStyle(void) { return NoshiClassicRead(2, NoshiClassicTextureStyleKey, 0, 1, 0); }
-void NoshiClassicTextureStyleStore(NSInteger style) { NoshiClassicWrite(2, NoshiClassicTextureStyleKey, 0, 1, style); }
-NSInteger NoshiClassicTextureStrength(void) { return NoshiClassicRead(3, NoshiClassicTextureStrengthKey, 0, 100, 100); }
-void NoshiClassicTextureStrengthStore(NSInteger percent) { NoshiClassicWrite(3, NoshiClassicTextureStrengthKey, 0, 100, percent); }
-/* stored as the hue plus one so that zero, the unset value, follows the accent */
-NSInteger NoshiClassicTextureHue(void) { return NoshiClassicRead(6, NoshiClassicTextureHueKey, 0, 360, 0) - 1; }
-void NoshiClassicTextureHueStore(NSInteger hue) { NoshiClassicWrite(6, NoshiClassicTextureHueKey, 0, 360, hue < 0 ? 0 : MIN(hue, 359) + 1); }
-/* the flat pictures of telegram for ios 4 by default; the gloss is a choice of the customization */
-BOOL NoshiClassicAvatarGloss(void) { return NoshiClassicRead(4, NoshiClassicAvatarGlossKey, 0, 1, 0) != 0; }
-void NoshiClassicAvatarGlossStore(BOOL on) { NoshiClassicWrite(4, NoshiClassicAvatarGlossKey, 0, 1, on ? 1 : 0); }
-BOOL NoshiClassicAvatarShadow(void) {
-    NSNumber *stored = NoshiStoredNumber(NoshiClassicAvatarShadowKey);
-    return stored && stored.integerValue != 0;
-}
-void NoshiClassicAvatarShadowStore(BOOL on) { NoshiStoreNumber(NoshiClassicAvatarShadowKey, on ? 1 : 0); }
-NSInteger NoshiClassicSeparators(void) { return NoshiClassicRead(5, NoshiClassicSeparatorsKey, 0, 2, 0); }
-void NoshiClassicSeparatorsStore(NSInteger style) { NoshiClassicWrite(5, NoshiClassicSeparatorsKey, 0, 2, style); }
-NSString *NoshiClassicLookSignature(void) {
-    return [NSString stringWithFormat:@"%ld%ld%d", (long)NoshiClassicGlossLevel(), (long)NoshiClassicMaterial(), NoshiClassicAvatarGloss() ? 1 : 0];
+void NoshiClassicSeparatorsStore(NSInteger style) {
+    NoshiClassicSeparatorsCurrent = style ? 1 : 0;
+    NoshiStoreNumber(NoshiClassicSeparatorsKey, NoshiClassicSeparatorsCurrent ? 2 : 0);
 }
 static NSInteger NoshiSectionRadiusCurrent = -1;
 CGFloat NoshiSectionRadius(void) {
@@ -533,6 +465,5 @@ BOOL NoshiChatAppearanceChanged(void) {
 }
 
 void NoshiChatSettingsForgetCached(void) {
-    NoshiAvatarCornerCurrent = -1;
     NoshiSectionRadiusCurrent = -1;
 }

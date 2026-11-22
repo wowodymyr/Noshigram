@@ -24,8 +24,7 @@ static void NoshiBubbleMix(const CGFloat from[3], const CGFloat to[3], CGFloat s
     for (int i = 0; i < 3; ++i) out[i] = from[i] + (to[i] - from[i]) * share;
 }
 
-/* the grey of a pixel picks a point on a ramp from the outline to the body color. the template's gloss is not used: its hard edge sits in the stretched rows, so a tall message
-   showed two bands of different lightness with a line between them; the light is drawn over the picture at the real size instead */
+/* the grey of a pixel picks a point on a ramp from the outline to the body color, so the bubble is the body color with its rim; the template's gloss is not used */
 static UIImage *NoshiMakeBubble(BOOL outgoing, BOOL tail) {
     NSString *name = [NSString stringWithFormat:@"classic_bubble_%@%@.png", outgoing ? @"out" : @"in", tail ? @"" : @"_plain"];
     UIImage *template = [UIImage imageNamed:name];
@@ -36,8 +35,6 @@ static UIImage *NoshiMakeBubble(BOOL outgoing, BOOL tail) {
     }
     UIColor *top, *bottom, *outline;
     NoshiClassicBubbleColors(outgoing, &top, &bottom, &outline);
-    /* the picture is filled with the lower color, as the lit rows and the gloss are drawn over it by NoshiClassicBubbleGloss: the tail, which they do not reach, then
-       matches the bottom of the body */
     (void)top;
     CGFloat edge[3], body[3];
     NoshiBubbleRGB(outline, edge);
@@ -91,52 +88,4 @@ UIImage *NoshiClassicBubbleImage(BOOL outgoing, BOOL tail) {
     if (cache.count >= CACHE_MAX) [cache removeAllObjects];
     [cache setObject:image forKey:id];
     return image;
-}
-
-/* the radius of the body inside the rim, and how far the gloss stays from the rim */
-#define GLOSS_RADIUS 11.0
-#define GLOSS_MARGIN 3.0
-#define GLOSS_MAX_HEIGHT 22.0
-
-void NoshiClassicBubbleGloss(CGContextRef context, CGRect bounds, BOOL outgoing, BOOL tail) {
-    CGRect body = bounds;
-    if (tail) {
-        body.size.width -= NOSHI_CLASSIC_BUBBLE_TAIL;
-        if (!outgoing) body.origin.x += NOSHI_CLASSIC_BUBBLE_TAIL;
-    }
-    CGRect inner = CGRectInset(body, 1, 1);
-    if (inner.size.width < 2 * GLOSS_RADIUS || inner.size.height < 2 * GLOSS_RADIUS) return;
-    UIColor *top, *bottom, *outline;
-    NoshiClassicBubbleColors(outgoing, &top, &bottom, &outline);
-    (void)outline;
-    BOOL dark = NoshiThemeIsDark();
-    CGFloat t[3], b[3], mid[3];
-    NoshiBubbleRGB(top, t);
-    NoshiBubbleRGB(bottom, b);
-    NoshiBubbleMix(t, b, 0.35, mid);
-    /* the lit edge fades into the body over a fixed height and the body stays flat below it. a step at the middle of the bubble split a tall message in two tones, and showed
-       as a line across the text of some bubbles and under the picture of others */
-    CGFloat colors[] = {t[0], t[1], t[2], 1,  mid[0], mid[1], mid[2], 1,  b[0], b[1], b[2], 1};
-    CGFloat at[] = {0, 0.4, 1};
-    CGColorSpaceRef space = CGColorSpaceCreateDeviceRGB();
-    CGGradientRef ramp = CGGradientCreateWithColorComponents(space, colors, at, 3);
-    CGFloat reach = MIN(inner.size.height, 2 * GLOSS_MAX_HEIGHT);
-    CGContextSaveGState(context);
-    [[UIBezierPath bezierPathWithRoundedRect:inner cornerRadius:GLOSS_RADIUS] addClip];
-    CGContextDrawLinearGradient(context, ramp, CGPointMake(0, inner.origin.y), CGPointMake(0, inner.origin.y + reach), kCGGradientDrawsAfterEndLocation);
-    CGContextRestoreGState(context);
-    CGGradientRelease(ramp);
-    /* a capsule of light on the upper part, with the oval of the glossy balloons of the old messaging apps */
-    CGFloat height = MIN(GLOSS_MAX_HEIGHT, floor(inner.size.height * 0.46));
-    CGRect capsule = CGRectMake(inner.origin.x + GLOSS_MARGIN, inner.origin.y + 2, inner.size.width - 2 * GLOSS_MARGIN, height);
-    /* the light dies out at the foot of the capsule: a floor of alpha there drew the rounded lower edge of the shape inside the bubble, which showed on the text bubbles and
-       never on the ones whose picture covers the top */
-    CGFloat shine[] = {1, 1, 1, dark ? 0.16 : 0.58,  1, 1, 1, 0};
-    CGGradientRef light = CGGradientCreateWithColorComponents(space, shine, NULL, 2);
-    CGContextSaveGState(context);
-    [[UIBezierPath bezierPathWithRoundedRect:capsule cornerRadius:MIN(height / 2, GLOSS_RADIUS - 2)] addClip];
-    CGContextDrawLinearGradient(context, light, CGPointMake(0, capsule.origin.y), CGPointMake(0, CGRectGetMaxY(capsule)), 0);
-    CGContextRestoreGState(context);
-    CGGradientRelease(light);
-    CGColorSpaceRelease(space);
 }

@@ -83,7 +83,6 @@ NSArray *NoshiNotifyExceptionsForKind(NSArray *all, NoshiNotifyKind kind) {
 
 UIImage *NoshiNotifyInitialsTile(NSString *title, long long seed, CGFloat side) {
     NoshiAvatarView *avatar = [[[NoshiAvatarView alloc] initWithFrame:CGRectMake(0, 0, side, side)] autorelease];
-    avatar.circular = YES;
     avatar.seed = (NSUInteger)(seed < 0 ? -seed : seed) % 1000003;
     NSArray *words = [title componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSMutableString *initials = [NSMutableString string];

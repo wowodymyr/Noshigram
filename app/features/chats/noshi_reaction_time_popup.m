@@ -64,7 +64,6 @@
         card.backgroundColor = NoshiColorField();
         card.layer.cornerRadius = 18;
         NoshiAvatarView *face = [[[NoshiAvatarView alloc] init] autorelease];
-        face.circular = YES;
         face.tag = 1;
         face.seed = (NSUInteger)(llabs(person.userId) % 1000003);
         face.initials = person.initials;

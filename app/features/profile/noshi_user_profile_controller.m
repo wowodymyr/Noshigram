@@ -198,14 +198,12 @@ static UILabel *NoshiUserLabel(UIColor *color, UIFont *font, NSInteger alignment
     _head = [[UIView alloc] init];
     _head.backgroundColor = [UIColor clearColor];
     _storyRing = [[NoshiStoryRing alloc] init];
-    _storyRing.followsAvatarShape = NO;
     _storyRing.hidden = YES;
     [_head addSubview:_storyRing];
     _avatar = [[NoshiAvatarView alloc] init];
     _avatar.seed = _dialog.avatarSeed;
     _avatar.initials = _dialog.initials;
     _avatar.deleted = _dialog.deleted;
-    _avatar.circular = YES;
     [_avatar setPhoto:_dialog.photo cache:self.avatars];
     _avatar.userInteractionEnabled = YES;
     [_avatar addGestureRecognizer:[[[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(avatarTapped)] autorelease]];

@@ -293,7 +293,7 @@ static CAMediaTimingFunction *NoshiReactionCurve(void) {
         button.tag = (NSInteger)i;
         if ((r.chosen || !_inBubble)) {
             /* a lit button for the chip you picked and a plate for the others, as the old chrome draws them */
-            UIImage *face = r.chosen ? NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) : NoshiClassicPlateImage();
+            UIImage *face = r.chosen ? NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) : NoshiClassicPlateImage();
             UIImageView *plate = [[[UIImageView alloc] initWithImage:face] autorelease];
             plate.tag = PLATE_TAG;
             plate.userInteractionEnabled = NO;
@@ -324,7 +324,6 @@ static CAMediaTimingFunction *NoshiReactionCurve(void) {
         for (NSUInteger f = 0; f < faceCount; ++f) {
             NoshiPerson *person = [r.faces objectAtIndex:f];
             NoshiAvatarView *face = [[[NoshiAvatarView alloc] init] autorelease];
-            face.circular = YES;
             face.seed = (NSUInteger)(llabs(person.userId) % 1000003);
             face.initials = person.initials;
             face.deleted = person.deleted;

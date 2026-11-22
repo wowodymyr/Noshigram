@@ -91,47 +91,15 @@ NSString *NoshiChatListCustomTitle(void);
 NSString *NoshiChatListTitleText(NoshiChatListTitle mode, NoshiPerson *person);
 void NoshiChatListSetCustomTitle(NSString *text);
 
-/* how round the pictures of people and chats are, from 0 (a square) to 100 (a circle); the default is the rounded square the app began with */
-#define NOSHI_AVATAR_CORNER_DEFAULT 64
-NSInteger NoshiAvatarCornerPercent(void);
-void NoshiAvatarCornerStore(NSInteger percent);
-/* the outline of the pictures of people and chats, a NoshiShape; the circle of telegram for ios 4 is the default */
-NSInteger NoshiAvatarShapeStored(void);
-void NoshiAvatarShapeStore(NSInteger shape);
-/* the outline of the round button that sends: 0 a circle, 1 a rounded square, 2 the shape of the avatars */
-#define NOSHI_SEND_SHAPE_COUNT 3
-NSInteger NoshiSendShapeStored(void);
-void NoshiSendShapeStore(NSInteger shape);
 /* how much of the screen a row of the chat list takes: 0 as it was drawn before the setting, 1 compact */
 NSInteger NoshiListDensityStored(void);
 void NoshiListDensityStore(NSInteger density);
 /* the pill behind the icon of the selected tab of the bottom bar, as the Material navigation bar draws it; off by default */
 BOOL NoshiTabIndicatorOn(void);
 void NoshiTabIndicatorStore(BOOL on);
-/* the look of the classic style, chosen on the customization page. gloss: 0 none, 1 as the style was drawn before the setting, 2 strong. material of the bars: 0 the color of the
-   app, 1 steel blue, 2 graphite, 3 black glass. texture of the chat background: 0 linen, 1 a plain color, with its strength in percent (100 is the linen as it was). the
-   separators of the lists: 0 a thin line, 1 an etched double line, 2 none */
-#define NOSHI_CLASSIC_MATERIAL_COUNT 4
-NSInteger NoshiClassicGlossLevel(void);
-void NoshiClassicGlossStore(NSInteger level);
-NSInteger NoshiClassicMaterial(void);
-void NoshiClassicMaterialStore(NSInteger material);
-NSInteger NoshiClassicTextureStyle(void);
-void NoshiClassicTextureStyleStore(NSInteger style);
-NSInteger NoshiClassicTextureStrength(void);
-void NoshiClassicTextureStrengthStore(NSInteger percent);
-/* the hue of the linen in degrees, or -1 while it follows the accent of the app */
-NSInteger NoshiClassicTextureHue(void);
-void NoshiClassicTextureHueStore(NSInteger hue);
-/* the lit rim and the gloss of the pictures of people, on by default, and a soft shadow under them, off by default */
-BOOL NoshiClassicAvatarGloss(void);
-void NoshiClassicAvatarGlossStore(BOOL on);
-BOOL NoshiClassicAvatarShadow(void);
-void NoshiClassicAvatarShadowStore(BOOL on);
+/* the separators of the lists, chosen on the customization page: 0 a thin line, 1 none */
 NSInteger NoshiClassicSeparators(void);
 void NoshiClassicSeparatorsStore(NSInteger style);
-/* the classic pictures are kept for a palette, so the choices above are part of what a kept picture is looked up by */
-NSString *NoshiClassicLookSignature(void);
 /* the corner radius of a card of the settings, from 0 to 36 points */
 #define NOSHI_SECTION_RADIUS_DEFAULT 22
 #define NOSHI_SECTION_RADIUS_MAX 36

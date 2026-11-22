@@ -73,9 +73,9 @@
     [self addSubview:_message];
     _primary = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     _primary.titleLabel.font = NoshiFontBold(15);
-    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, NO) forState:UIControlStateNormal];
-    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateHighlighted];
-    [_primary setBackgroundImage:NoshiClassicGlossButtonImage(NoshiClassicGlossSlate, YES) forState:UIControlStateDisabled];
+    [_primary setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, NO) forState:UIControlStateNormal];
+    [_primary setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateHighlighted];
+    [_primary setBackgroundImage:NoshiClassicKeyImage(NoshiClassicKeyAccent, YES) forState:UIControlStateDisabled];
     [_primary setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
     [_primary setTitleColor:[UIColor colorWithWhite:1 alpha:0.7] forState:UIControlStateDisabled];
     [_primary addTarget:self action:@selector(primaryTapped) forControlEvents:UIControlEventTouchUpInside];

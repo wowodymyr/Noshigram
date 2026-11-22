@@ -63,7 +63,6 @@ static UILabel *InviteLabel(UIFont *font, UIColor *color) {
     sheet->_content.showsVerticalScrollIndicator = NO;
     [sheet->_card addSubview:sheet->_content];
     sheet->_avatar = [[NoshiAvatarView alloc] init];
-    sheet->_avatar.circular = YES;
     sheet->_avatar.initials = NoshiInitialsOfName(title);
     sheet->_avatar.seed = (NSUInteger)[title hash];
     [sheet->_content addSubview:sheet->_avatar];

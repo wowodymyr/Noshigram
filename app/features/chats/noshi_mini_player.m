@@ -119,10 +119,6 @@ static UIButton *NoshiStripButton(NoshiSymbol symbol, id target, SEL action, NSS
     _title = [[NoshiEmojiLabel alloc] init];
     _title.font = [UIFont boldSystemFontOfSize:14];
     _title.textColor = NoshiClassicStripInk();
-    if (NoshiThemeIsDark()) {
-        _title.shadowColor = [UIColor colorWithWhite:0 alpha:0.5];
-        _title.shadowOffset = CGSizeMake(0, -1);
-    }
     _title.dropsUndrawable = YES;
     [self addSubview:_title];
     _title.userInteractionEnabled = YES;

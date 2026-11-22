@@ -51,7 +51,7 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
     {YES, YES, nil, @"10:47", nil, nil, 0},
 };
 
-/* the classic bubble as the chat draws it: the picture with its tail on the side the bubble leans to, and the gloss over it at the real size */
+/* the classic bubble as the chat draws it: the picture with its tail on the side the bubble leans to */
 @interface NoshiPreviewClassicShape : UIView {
     BOOL _outgoing;
 }
@@ -65,7 +65,6 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
     UIImage *bubble = NoshiClassicBubbleImage(_outgoing, YES);
     if (!bubble) return;
     [bubble drawInRect:self.bounds];
-    NoshiClassicBubbleGloss(UIGraphicsGetCurrentContext(), self.bounds, _outgoing, YES);
 }
 @end
 
@@ -185,7 +184,7 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
         } else {
             bubble->box = [[UIView alloc] init];
             [self addSubview:bubble->box];
-            /* the classic bubble is the glossy picture of the chat, in its plain form */
+            /* the classic bubble is the picture of the chat, in its plain form */
             bubble->shape = [[NoshiPreviewClassicShape alloc] init];
             bubble->shape.backgroundColor = [UIColor clearColor];
             bubble->shape.opaque = NO;

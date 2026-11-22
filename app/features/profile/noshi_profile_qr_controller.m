@@ -207,7 +207,6 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     _card.layer.mask = _cardMask;
     [_scroll addSubview:_card];
     _code = [[NoshiQrView alloc] init];
-    _code.metallic = YES;
     [_card addSubview:_code];
     _link = NoshiCodeLabel([UIColor blackColor], NoshiFontBold(18), NoshiTextAlignmentCenter);
     _link.adjustsFontSizeToFitWidth = YES;
@@ -215,7 +214,6 @@ static UILabel *NoshiCodeLabel(UIColor *color, UIFont *font, NSInteger alignment
     _link.text = _caption;
     [_card addSubview:_link];
     _photo = [[NoshiAvatarView alloc] init];
-    _photo.circular = YES;
     _photo.seed = _seed;
     _photo.initials = _initials;
     [_photo setPhoto:_photoRef cache:self.avatars];

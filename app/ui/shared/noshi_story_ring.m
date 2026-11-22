@@ -2,8 +2,6 @@
 
 #import <QuartzCore/QuartzCore.h>
 
-#import "noshi_chat_settings.h"
-#import "noshi_shape.h"
 #import "noshi_theme.h"
 
 #define RING_WIDTH 2.5
@@ -38,8 +36,6 @@ void NoshiStoryRingColors(BOOL unseen, BOOL closeFriends, UIColor **from, UIColo
 
 @implementation NoshiStoryRing
 
-@synthesize followsAvatarShape = _followsAvatarShape;
-
 + (CGFloat)outset {
     return RING_OUTSET;
 }
@@ -67,11 +63,6 @@ static CAShapeLayer *NoshiRingStroke(UIColor *color, CGFloat width) {
     [self.layer addSublayer:_seenStroke];
     [self.layer addSublayer:_gradient];
     return self;
-}
-
-- (void)setFollowsAvatarShape:(BOOL)follows {
-    _followsAvatarShape = follows;
-    [self setNeedsLayout];
 }
 
 - (void)dealloc {
@@ -131,16 +122,12 @@ static CGFloat NoshiRingLength(CGRect box, CGFloat radius) {
     _gradient.frame = frame;
     _unseenStroke.frame = frame;
     _seenStroke.frame = frame;
-    /* the avatar of a list row takes the shape the person chose, a rounded square cut to the percent of its corner (100 is a circle) or an outline */
-    NoshiShape shape = _followsAvatarShape ? (NoshiShape)NoshiAvatarShapeStored() : NoshiShapeCircle;
-    BOOL outline = NoshiShapeIsOutline(shape);
-    CGFloat radius = _followsAvatarShape ? box.size.width * (shape == NoshiShapeCircle ? 100 : MIN(100, NoshiAvatarCornerPercent())) / 200.0f : box.size.width / 2;
-    /* an outline shape of the avatar is followed by the ring along the same outline */
-    CGPathRef path = outline ? NoshiShapePath(shape, box, 0).CGPath : NoshiRingPath(box, radius);
+    CGFloat radius = box.size.width / 2;
+    CGPathRef path = NoshiRingPath(box, radius);
     _seenStroke.path = path;
     _unseenStroke.path = path;
     /* the gap the arcs leave on each side of a joint, in degrees as the Telegram avatar does, turned into a length along the outline at the radius of a circle of this size */
-    CGFloat length = outline ? NoshiShapePathLength(shape, box) : NoshiRingLength(box, radius);
+    CGFloat length = NoshiRingLength(box, radius);
     CGFloat step = length / (CGFloat)_count;
     CGFloat gap = (CGFloat)((_count > 20 ? 6 : 10) * M_PI / 180) * box.size.width / 2;
     if (_count == 1 || gap >= step) gap = 0;
