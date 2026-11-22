@@ -64,9 +64,6 @@ UIImage *NoshiClassicRedRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL 
 /* a color disc in a white ring, as the thumbs of ios 7 are */
 UIImage *NoshiClassicColorDisc(UIColor *color, CGFloat side);
 
-/* the profile photo as a tab bar picture: a 30 point rounded square, drawn in its own colors */
-UIImage *NoshiClassicProfileTabImage(UIImage *photo);
-
 /* a title of two lines for the navigation bar, such as a chat name over its status */
 UIView *NoshiClassicTitleView(NSString *title, NSString *subtitle);
 /* the same with a status that colors itself: kind is an NoshiStatusKind (0 quiet, 1 on line, 2 typing, which
@@ -74,8 +71,6 @@ UIView *NoshiClassicTitleView(NSString *title, NSString *subtitle);
 UIView *NoshiClassicTitleViewWithStatus(NSString *title, NSString *subtitle, int kind);
 /* the same with the width of the view given, for a bar whose buttons take more of a phone's width than the 190 points the default leaves them */
 UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle, int kind, CGFloat width);
-/* a count in a capsule of the accent */
-UIView *NoshiClassicCounterBadge(NSString *text);
 
 /* the small round count on a row, in the accent color or gray */
 UILabel *NoshiClassicBadge(NSString *text, BOOL muted);
@@ -119,8 +114,6 @@ UIColor *NoshiClassicInputRim(void);
 /* the plain ground of the strips that stand over a chat, the pinned message and the player: dark grey with a little of the accent on the dark theme and white with a trace of it on the light one, so the wallpaper never shows
    through them; the ink is for their text and glyphs and the edge for the line under them */
 UIColor *NoshiClassicStripGround(void);
-/* a flat key in the color of the ground it stands on, for a profile that has a color of its own */
-UIImage *NoshiClassicGroundKeyImage(UIColor *ground, BOOL pressed);
 /* a flat key or pill in any color; it stretches from its middle, and radius is the corner */
 UIImage *NoshiClassicTintedKeyImage(UIColor *base, CGFloat radius, BOOL pressed);
 UIColor *NoshiClassicStripInk(void);

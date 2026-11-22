@@ -22,7 +22,6 @@ static NSString *const NoshiChatLargeEmojiKey = @"noshigram.chat.largeemoji";
 static NSString *const NoshiChatListTitleKey = @"noshigram.chatlist.title";
 static NSString *const NoshiChatListCustomTitleKey = @"noshigram.chatlist.customtitle";
 static NSString *const NoshiListDensityKey = @"noshigram.list.density";
-static NSString *const NoshiTabIndicatorKey = @"noshigram.tab.indicator";
 static NSString *const NoshiClassicSeparatorsKey = @"noshigram.classic.separators";
 static NSString *const NoshiTabContactsHiddenKey = @"noshigram.tab.contacts.hidden";
 static NSString *const NoshiTabCallsHiddenKey = @"noshigram.tab.calls.hidden";
@@ -166,12 +165,6 @@ NSInteger NoshiListDensityStored(void) {
 }
 void NoshiListDensityStore(NSInteger density) {
     NoshiStoreNumber(NoshiListDensityKey, NoshiClamped(density, 0, 1));
-}
-BOOL NoshiTabIndicatorOn(void) {
-    return [NoshiStoredNumber(NoshiTabIndicatorKey) boolValue];
-}
-void NoshiTabIndicatorStore(BOOL on) {
-    NoshiStoreNumber(NoshiTabIndicatorKey, on ? 1 : 0);
 }
 /* the lists read this at every configure, so it is kept in memory and changed with the stored value. the version that also had an etched line stored 0 thin, 1 etched
    and 2 none; the etched line is read as the thin one */

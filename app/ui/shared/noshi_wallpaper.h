@@ -3,8 +3,6 @@
 /* sets view up as the wallpaper of a chat for the day or the night */
 void NoshiApplyChatWallpaper(UIImageView *view, BOOL dark);
 
-/* the same for a view of a known size, such as a preview: the picked wallpaper is drawn at that size and not at the size of the screen */
-void NoshiApplyChatWallpaperSized(UIImageView *view, BOOL dark, CGSize size);
 /* makes the picture of the chat wallpaper in the background, so the first chat that opens finds it ready */
 void NoshiWallpaperWarm(void);
 
@@ -49,8 +47,6 @@ BOOL NoshiWallpaperUsePhotoAtPathForChat(NSString *path, int32_t peerKind, long 
 void NoshiApplyChatWallpaperForChat(UIImageView *view, BOOL dark, int32_t peerKind, long long peerId);
 void NoshiApplyChatWallpaperSizedForChat(UIImageView *view, BOOL dark, CGSize size, int32_t peerKind, long long peerId);
 
-/* the photo is copied into the app's own folder and becomes the wallpaper, with no blur and no dimming; NO when the file cannot be read or kept */
-BOOL NoshiWallpaperUsePhotoAtPath(NSString *path);
 /* the gradients the picker offers, as pairs of colors with their direction: the light ones in the day theme, the dark ones in the night theme */
 NSUInteger NoshiWallpaperPresetCount(void);
 NoshiWallpaperSetting NoshiWallpaperPreset(NSUInteger index);

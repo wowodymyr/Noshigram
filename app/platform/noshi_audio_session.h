@@ -40,5 +40,3 @@ BOOL NoshiAudioSessionWiredAvailable(NSString **name);
 NoshiAudioRoute NoshiAudioSessionCurrentRoute(void);
 /* moves a call to the earpiece, the loudspeaker or the headset: the microphone follows the output. NO when the system refuses, with the reason logged */
 BOOL NoshiAudioSessionSelectRoute(NoshiAudioRoute route);
-/* the name of the notification that says the route changed (ios 6 and later), nil before */
-NSString *NoshiAudioRouteChangeNotificationName(void);

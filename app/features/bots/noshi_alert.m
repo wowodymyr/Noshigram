@@ -98,10 +98,6 @@ void NoshiShowAlert(NSString *title, NSString *message, NSArray *buttons, NSInte
     NoshiPresentAlert(title, message, buttons, cancelIndex, secure ? 1 : 0, nil, nil, handler);
 }
 
-void NoshiShowAlertWithField(NSString *title, NSString *message, NSArray *buttons, NSInteger cancelIndex, NSString *initial, NSString *placeholder, NoshiAlertHandler handler) {
-    NoshiPresentAlert(title, message, buttons, cancelIndex, 2, initial, placeholder, handler);
-}
-
 void NoshiPromptText(NSString *title, NSString *message, NSString *initial, NSString *placeholder, void (^handler)(NSString *text)) {
     void (^done)(NSString *) = [handler copy];
     NoshiPresentAlert(title, message, [NSArray arrayWithObjects:NSLocalizedString(@"picker.cancel", nil), NSLocalizedString(@"tr.ok", nil), nil], 0, 2, initial, placeholder,

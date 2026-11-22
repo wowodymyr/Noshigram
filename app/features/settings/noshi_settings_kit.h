@@ -34,10 +34,6 @@ UIImage *NoshiSettingsMarkTile(CGFloat side);
 
 /* the circle that stands for a session: the colors and the glyph SessionCell, white on a gradient */
 UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side);
-/* the flat color of the same circle session sheet paints it behind its animation */
-UIColor *NoshiDeviceColor(noshi_session_kind kind);
-/* the name of the bundled animation of the kind, nil for a kind that has none (it is drawn as the picture) */
-NSString *NoshiDeviceAnimationName(noshi_session_kind kind);
 
 @interface NoshiSettingsRow : NSObject {
     NoshiSymbol _symbol;

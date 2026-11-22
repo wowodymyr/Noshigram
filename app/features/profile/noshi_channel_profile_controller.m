@@ -26,7 +26,6 @@
 #import "noshi_user_profile_controller.h"
 #import "noshi_info_card_view.h"
 #import "noshi_popup_menu.h"
-#import "noshi_profile_action.h"
 #import "noshi_profile_chat.h"
 #import "noshi_profile_qr_controller.h"
 #import "noshi_profile_feed.h"

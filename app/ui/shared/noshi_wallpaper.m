@@ -171,10 +171,6 @@ static BOOL NoshiWallpaperUsePhoto(NSString *path, int32_t chatKind, long long c
     return YES;
 }
 
-BOOL NoshiWallpaperUsePhotoAtPath(NSString *path) {
-    return NoshiWallpaperUsePhoto(path, 0, 0);
-}
-
 BOOL NoshiWallpaperUsePhotoAtPathForChat(NSString *path, int32_t peerKind, long long peerId) {
     return peerId ? NoshiWallpaperUsePhoto(path, peerKind, peerId) : NoshiWallpaperUsePhoto(path, 0, 0);
 }
@@ -487,10 +483,6 @@ void NoshiApplyChatWallpaper(UIImageView *view, BOOL dark) {
     /* the picked wallpaper takes the place of the standard picture */
     UIImage *picked = NoshiShownWallpaper();
     if (picked) view.image = picked;
-}
-
-void NoshiApplyChatWallpaperSized(UIImageView *view, BOOL dark, CGSize size) {
-    NoshiApplyChatWallpaperSizedForChat(view, dark, size, 0, 0);
 }
 
 void NoshiApplyChatWallpaperForChat(UIImageView *view, BOOL dark, int32_t peerKind, long long peerId) {

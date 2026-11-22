@@ -6,9 +6,6 @@ typedef void (^NoshiAlertHandler)(NSInteger index, NSString *text);
 /* an alert with any number of buttons that reports the choice to a block */
 void NoshiShowAlert(NSString *title, NSString *message, NSArray *buttons, NSInteger cancelIndex, BOOL secure, NoshiAlertHandler handler);
 
-/* the same with one plain text field filled with initial; the handler gets the text of the field with the index of the button (any button, the caller decides which ones keep it) */
-void NoshiShowAlertWithField(NSString *title, NSString *message, NSArray *buttons, NSInteger cancelIndex, NSString *initial, NSString *placeholder, NoshiAlertHandler handler);
-
 /* a message with one button */
 void NoshiShowNotice(NSString *title, NSString *message);
 

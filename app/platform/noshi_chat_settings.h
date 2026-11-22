@@ -93,9 +93,6 @@ void NoshiChatListSetCustomTitle(NSString *text);
 /* how much of the screen a row of the chat list takes: 0 as it was drawn before the setting, 1 compact */
 NSInteger NoshiListDensityStored(void);
 void NoshiListDensityStore(NSInteger density);
-/* the pill behind the icon of the selected tab of the bottom bar, as the Material navigation bar draws it; off by default */
-BOOL NoshiTabIndicatorOn(void);
-void NoshiTabIndicatorStore(BOOL on);
 /* the separators of the lists, chosen on the customization page: 0 a thin line, 1 none */
 NSInteger NoshiClassicSeparators(void);
 void NoshiClassicSeparatorsStore(NSInteger style);

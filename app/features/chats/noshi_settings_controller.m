@@ -490,14 +490,15 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NSString *architecture = @"armv7";
 #endif
     NSString *version = [NSString stringWithFormat:NSLocalizedString(@"settings.version.line", nil), [info objectForKey:@"CFBundleShortVersionString"], architecture];
-    /* the groups of telegram for ios 4: what belongs to the account, then how the app behaves, then the app itself, each row a title alone */
-    NoshiSettingsSection *app = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:look, update, nil]];
+    /* the groups of telegram for ios 4: the most opened pages, what belongs to the account, how the app behaves, then the updates, each row a title alone */
+    NoshiSettingsSection *app = [NoshiSettingsSection sectionWithHeader:nil footer:version rows:[NSArray arrayWithObjects:update, nil]];
     app.centerFooter = YES;
     NSMutableArray *sections = [NSMutableArray array];
     NoshiSettingsSection *accounts = [self otherAccountsSection];
     if (accounts) [sections addObject:accounts];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, stickers, folders, devices, nil]]];
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:saved, bookmarks, nil]]];
+    /* the saved messages and the settings of the app itself stand first, the two pages opened most */
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:saved, look, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:profile, account, bookmarks, stickers, folders, devices, nil]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:notifications, privacy, passcode, data, chats, power, language, nil]]];
     [sections addObject:app];
     self.sections = sections;

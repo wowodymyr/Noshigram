@@ -943,8 +943,6 @@ static void NoshiKeepTopic(NSMutableArray *messages, int32_t topic, BOOL discuss
         peer.access_hash = dialog.discussionChannelHash;
         peer.topic_id = dialog.discussionPost;
     }
-    int32_t topic = dialog.topicId;
-    BOOL discussion = dialog.discussion;
     NoshiDialog *source = dialog.savedSource;
     noshi_peer_ref sourcePeer = source ? NoshiPeerRefOfDialog(source) : peer;
     [self invokeBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {

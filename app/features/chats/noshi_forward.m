@@ -28,11 +28,6 @@ static long long NoshiCopyRandomId(void) {
     return random;
 }
 
-static void NoshiCopyMessagesWithLines(NoshiSession *session, NoshiMediaCache *cache, NSArray *messages, NSUInteger index, NoshiDialog *target, NSDictionary *lines, void (^completion)(NSUInteger, NSString *));
-static void NoshiCopyMessages(NoshiSession *session, NoshiMediaCache *cache, NSArray *messages, NSUInteger index, NoshiDialog *target, void (^completion)(NSUInteger, NSString *)) {
-    NoshiCopyMessagesWithLines(session, cache, messages, index, target, nil, completion);
-}
-
 static void NoshiCopyMessagesWithLines(NoshiSession *session, NoshiMediaCache *cache, NSArray *messages, NSUInteger index, NoshiDialog *target, NSDictionary *lines, void (^completion)(NSUInteger, NSString *)) {
     if (index >= messages.count) { completion(index, nil); return; }
     NoshiMessage *message = [messages objectAtIndex:index];

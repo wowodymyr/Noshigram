@@ -402,12 +402,6 @@ void NoshiFetchLatestRelease(void (^completion)(NSDictionary *, NSString *)) {
     });
 }
 
-void NoshiShowReleasePreview(UIView *host) {
-    if (!host) return;
-    NoshiReleaseNotice *notice = [[[NoshiReleaseNotice alloc] initWithTag:@"v9.9.9-preview" notes:@"- the notice as the person sees it\n- no file behind it, so nothing is installed" ipaURL:nil digestURL:nil size:0] autorelease];
-    [notice presentInView:host];
-}
-
 void NoshiReleaseCheckStart(UIWindow *window) {
     static NoshiReleaseCheck *check;
     if (check || !window) return;

@@ -11,12 +11,9 @@ void NoshiAnimateViewAfter(UIView *view, CGAffineTransform transform, CGFloat al
    into a bitmap it moves and fades as a picture; the bitmap is dropped when the move ends, because a card that changes inside a cache is drawn twice */
 void NoshiCacheForMotion(UIView *view);
 void NoshiUncacheAfterMotion(UIView *view);
-/* gives the shadow of a card its shape, so it is not worked out from the alpha of the card and its rows on every frame */
-void NoshiSetShadowPath(UIView *card, CGFloat radius);
 /* puts a view where frame says without disturbing its transform: the frame of a view that is being scaled or moved by an animation is not the place it stands in, and a layout pass
    that wrote it moved the card by the size of the move for one frame. bounds and center do not depend on the transform */
 void NoshiPlaceView(UIView *view, CGRect frame);
-void NoshiAnimatePosition(UIView *view, CGPoint position, noshi_motion_curve curve);
 /* the view is already in its final state; this plays the way in from the given transform and alpha without
    touching it, the way ChatListItemAnimator brings in a new row */
 void NoshiAnimateEnter(UIView *view, CGAffineTransform from, CGFloat fromAlpha, noshi_motion_curve curve);

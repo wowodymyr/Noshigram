@@ -271,10 +271,6 @@ BOOL NoshiAudioSessionSelectRoute(NoshiAudioRoute route) {
     return YES;
 }
 
-NSString *NoshiAudioRouteChangeNotificationName(void) {
-    return NoshiAudioConstant("AVAudioSessionRouteChangeNotification");
-}
-
 void NoshiAudioSessionEndCall(void) {
     NoshiAudioSessionSetSpeaker(NO);
     NSError *error = nil;

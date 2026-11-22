@@ -527,21 +527,6 @@ UIImage *NoshiClassicRedRoundButtonImage(NoshiSymbol symbol, CGFloat side, BOOL 
     return NoshiClassicRoundImage(symbol, side, pressed, YES);
 }
 
-UIImage *NoshiClassicProfileTabImage(UIImage *photo) {
-    CGSize size = CGSizeMake(30, 30);
-    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    /* a profile photo comes as a jpeg, so a round picture arrives with white corners; a circle clip, as the modern tab has, takes them off */
-    UIBezierPath *shape = [UIBezierPath bezierPathWithOvalInRect:CGRectMake(0, 0, size.width, size.height)];
-    CGContextSaveGState(context);
-    [shape addClip];
-    [photo drawInRect:CGRectMake(0, 0, size.width, size.height)];
-    CGContextRestoreGState(context);
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
-
 UIView *NoshiClassicTitleView(NSString *title, NSString *subtitle) {
     return NoshiClassicTitleViewWithStatus(title, subtitle, 0);
 }
@@ -577,11 +562,6 @@ UIView *NoshiClassicTitleViewWithStatusWidth(NSString *title, NSString *subtitle
         [view addSubview:bottom];
     }
     return view;
-}
-
-/* the count of the other unread chats beside the back arrow: the flat capsule of the list in the accent */
-UIView *NoshiClassicCounterBadge(NSString *text) {
-    return NoshiClassicBadge(text, NO);
 }
 
 /* the count of a row: a capsule in the accent, drawn as a stretched picture under the text. a layer with a corner radius and a mask is drawn off screen at every frame of a scroll, and a
@@ -731,10 +711,6 @@ UIColor *NoshiClassicInputRim(void) {
 
 UIImage *NoshiClassicTintedKeyImage(UIColor *base, CGFloat radius, BOOL pressed) {
     return NoshiClassicFlatImage(NoshiClassicDimmed(base, pressed ? 0.8 : 1), radius);
-}
-
-UIImage *NoshiClassicGroundKeyImage(UIColor *ground, BOOL pressed) {
-    return NoshiClassicFlatImage(NoshiClassicDimmed(ground, pressed ? 0.78 : 1), 8);
 }
 
 UIColor *NoshiClassicStripGround(void) {

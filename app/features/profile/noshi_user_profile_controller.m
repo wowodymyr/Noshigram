@@ -23,7 +23,6 @@
 #import "noshi_music_pill.h"
 #import "noshi_profile_gifts_view.h"
 #import "noshi_popup_menu.h"
-#import "noshi_profile_action.h"
 #import "noshi_profile_backdrop_view.h"
 #import "noshi_profile_colors.h"
 #import "noshi_custom_emoji.h"
@@ -87,7 +86,6 @@
     /* the list runs under the bar while the wide photo is open, so the photo can reach the top of the screen */
     BOOL _heroUnderBar;
     /* the ink the cards wear on the colored ground of a collectible profile, to put back when the wide photo closes */
-    UIColor *_cardInk;
     BOOL _heroMoving;
     BOOL _viewerWanted;
     NoshiStoryRing *_storyRing;
@@ -107,11 +105,6 @@
     /* the line that says the person's photo was set by the account, above the status */
     UILabel *_photoNote;
     NoshiRatingBadge *_ratingBadge;
-    NoshiUserAction *_messageAction;
-    NoshiUserAction *_soundAction;
-    NoshiUserAction *_callAction;
-    NoshiUserAction *_videoAction;
-    NoshiUserAction *_storiesAction;
     /* the white ground of the head, the round key of a call in it, and the groups of rows under the information */
     UIView *_headPanel;
     UIButton *_callButton;
@@ -168,7 +161,6 @@
     [_grid release];
     [_head release];
     [_hero release];
-    [_cardInk release];
     [_avatar release];
     [_storyRing release];
     [_name release];
@@ -178,11 +170,6 @@
     [_status release];
     [_photoNote release];
     [_ratingBadge release];
-    [_messageAction release];
-    [_soundAction release];
-    [_callAction release];
-    [_videoAction release];
-    [_storiesAction release];
     [_headPanel release];
     [_callButton release];
     [_actionsGroup release];
@@ -274,28 +261,6 @@ static NSMutableDictionary *NoshiUserProfileMemory(void) {
     [_ratingBadge addTarget:self action:@selector(openRating) forControlEvents:UIControlEventTouchUpInside];
     [_head addSubview:_ratingBadge];
 
-    _messageAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolProfileMessage title:NSLocalizedString(@"profile.action.chat", nil)];
-    [_messageAction addTarget:self action:@selector(openMessages) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_messageAction];
-    _soundAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolProfileMute title:NSLocalizedString(@"profile.action.sound", nil)];
-    [_soundAction addTarget:self action:@selector(toggleMute) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_soundAction];
-    [self refreshSound];
-    /* a call goes to a person: not to a bot or to the saved messages */
-    _callAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolPhone title:NSLocalizedString(@"profile.action.call", nil)];
-    _callAction.hidden = ![self canCallPerson];
-    [_callAction addTarget:self action:@selector(startCall) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_callAction];
-    _videoAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolVideoCamera title:NSLocalizedString(@"profile.action.video", nil)];
-    _videoAction.hidden = ![self canCallPerson];
-    [_videoAction addTarget:self action:@selector(startVideoCall) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_videoAction];
-    _storiesAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolPlay title:NSLocalizedString(@"profile.tab.stories", nil)];
-    _storiesAction.hidden = YES;
-    [_storiesAction addTarget:self action:@selector(openStories) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_storiesAction];
-    /* the cards of the modern head stay made for the code that dresses them, and are never shown: their actions are the key and the rows of telegram for ios 4 */
-    for (NoshiUserAction *card in [NSArray arrayWithObjects:_messageAction, _soundAction, _callAction, _videoAction, _storiesAction, nil]) card.hidden = YES;
     _callButton = [[UIButton buttonWithType:UIButtonTypeCustom] retain];
     [_callButton setImage:NoshiSymbolImage(NoshiSymbolPhone, 26, NoshiColorAccent()) forState:UIControlStateNormal];
     _callButton.accessibilityLabel = NSLocalizedString(@"profile.action.call", nil);
@@ -642,16 +607,10 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     /* the bar over the ground is clear, which makes it the ground's continuation, and darkens with the scroll */
     self.barTint = NoshiDarkenedBackdrop(edge);
     UIColor *ink = NoshiColorOfRGB(text);
-    [_cardInk release];
-    _cardInk = [ink retain];
     _name.textColor = ink;
     _status.plainColor = [ink colorWithAlphaComponent:0.78f];
     _status.activeColor = ink;
     _photoNote.textColor = [ink colorWithAlphaComponent:0.78f];
-    for (NoshiUserAction *action in [NSArray arrayWithObjects:_messageAction, _soundAction, _callAction, _videoAction, nil]) {
-        [action setInk:ink];
-        [action setGround:NoshiColorOfRGB(edge)];
-    }
     if (document > 0) {
         NoshiWeakReference *weak = _weak;
         NoshiLoadBadgePictures([NSArray arrayWithObject:[NSNumber numberWithLongLong:document]], self.session, self.media, ^{
@@ -848,16 +807,18 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
         _info.frame = CGRectMake(0, y, width, height);
         y += height + SECTION_GAP;
     }
+    /* the personal channel stands right under what the person says about themselves, as a section with its caption; the caption takes the place of the gap */
+    if (!_channelCard.hidden) {
+        CGFloat card = [NoshiChannelCard height];
+        _channelCard.frame = CGRectMake(0, y - SECTION_GAP + 6, width, card);
+        y += card - SECTION_GAP + 6 + SECTION_GAP;
+    }
     /* send a message, a video call while a call can be made, and the stories while the person has some */
     NSMutableArray *actions = [NSMutableArray arrayWithObject:_messageRow];
     if (call) [actions addObject:_videoRow];
     if (_storyPeer) [actions addObject:_storiesRow];
     y += NoshiLayoutInfoGroup(_actionsGroup, actions, y, width) + SECTION_GAP;
     y += NoshiLayoutInfoGroup(_soundGroup, [NSArray arrayWithObject:_soundRow], y, width) + SECTION_GAP;
-    if (!_channelCard.hidden) {
-        _channelCard.frame = CGRectMake(x, y, contentWidth, [NoshiChannelCard height]);
-        y += [NoshiChannelCard height] + SECTION_GAP;
-    }
     CGFloat tabsHeight = [_tabs heightForWidth:width];
     _tabs.frame = CGRectMake(0, y, width, tabsHeight);
     y += tabsHeight + GAP;
@@ -1065,8 +1026,6 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
 }
 
 - (void)refreshSound {
-    [_soundAction setSymbol:_muted ? NoshiSymbolProfileUnmute : NoshiSymbolProfileMute
-                      title:NSLocalizedString(@"profile.action.sound", nil)];
     _soundRow.value = NSLocalizedString(_muted ? @"profile.row.notifications.off" : @"profile.row.notifications.on", nil);
 }
 
@@ -1143,15 +1102,9 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
     _hero = [hero retain];
     _heroOpen = YES;
     _heroMoving = YES;
-    NSArray *cards = [NSArray arrayWithObjects:_messageAction, _soundAction, _callAction, _videoAction, nil];
-    for (NoshiUserAction *card in cards) [_head bringSubviewToFront:card];
     BOOL motion = !NoshiReduceMotionEnabled();
     [hero animateCornerTo:0 duration:motion ? 0.38 : 0];
     [UIView animateWithDuration:motion ? 0.38 : 0 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        for (NoshiUserAction *card in cards) {
-            [card setInk:[UIColor whiteColor]];
-            [card setBlurred:YES];
-        }
         _name.alpha = 0;
         _statusAnimation.alpha = 0;
         _status.alpha = 0;
@@ -1207,14 +1160,9 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
     _avatar.hidden = NO;
     [_hero beginClose];
     [_statusAnimation setPlaying:self.view.window != nil];
-    NSArray *cards = [NSArray arrayWithObjects:_messageAction, _soundAction, _callAction, _videoAction, nil];
     BOOL motion = !NoshiReduceMotionEnabled();
     [_hero animateCornerTo:_heroCircle.size.width / 2 duration:motion ? 0.38 : 0];
     [UIView animateWithDuration:motion ? 0.38 : 0 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        for (NoshiUserAction *card in cards) {
-            [card setBlurred:NO];
-            [card setInk:_cardInk];
-        }
         _name.alpha = 1;
         _statusAnimation.alpha = 1;
         _status.alpha = 1;

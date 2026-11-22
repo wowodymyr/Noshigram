@@ -437,27 +437,11 @@ UIImage *NoshiSymbolImage(NoshiSymbol symbol, CGFloat pointSize, UIColor *color)
 #define CHECK_CANVAS 16.0
 #define CHECK_DOUBLE_CANVAS 25.0
 
-/* a Material glyph cut to the box its ink fills in the 24 unit canvas of the SVG, drawn so that the ink is width points wide: the masks keep their padding, which pushed
-   a mark off the slot it is aligned in */
-static UIImage *NoshiInkImage(NoshiSymbol symbol, CGRect ink, CGFloat width, UIColor *color) {
-    CGFloat unit = width / ink.size.width;
-    UIImage *full = NoshiSymbolImage(symbol, 24 * unit, color);
-    UIGraphicsBeginImageContextWithOptions(CGSizeMake(width, ink.size.height * unit), NO, 0);
-    [full drawAtPoint:CGPointMake(-ink.origin.x * unit, -ink.origin.y * unit)];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-    return image;
-}
-
 NoshiSymbol NoshiSymbolCheckMark(void) { return NoshiSymbolCheck; }
 NoshiSymbol NoshiSymbolCloseMark(void) { return NoshiSymbolClose; }
 
 UIImage *NoshiSendingImage(CGFloat pointSize, UIColor *color) {
     return NoshiSymbolImage(NoshiSymbolClock, pointSize, color);
-}
-
-UIImage *NoshiFailedImage(CGFloat pointSize, UIColor *color) {
-    return NoshiInkImage(NoshiSymbolMaterialError, CGRectMake(2, 2, 20, 20), pointSize, color);
 }
 
 UIImage *NoshiCheckImage(BOOL read, CGFloat pointSize, UIColor *color) {

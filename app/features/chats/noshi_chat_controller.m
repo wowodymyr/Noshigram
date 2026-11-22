@@ -7,7 +7,6 @@
 #import "noshi_chat_controller.h"
 #import "noshi_message_effect_player.h"
 #import "noshi_saved_media_controller.h"
-#import "noshi_send_as_menu.h"
 #import "noshi_send_menu.h"
 #import "noshi_group_call_engine.h"
 #import "noshi_location_controller.h"

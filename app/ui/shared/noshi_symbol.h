@@ -193,7 +193,6 @@ NoshiSymbol NoshiSymbolCloseMark(void);
 /* the clock of a message that is on its way, and the sign of one that failed (a round outline with a mark, in the modern look); both are cut to their ink, so they stand where
    the old glyphs did. the classic look keeps the clock, and draws its own badge for a failure */
 UIImage *NoshiSendingImage(CGFloat pointSize, UIColor *color);
-UIImage *NoshiFailedImage(CGFloat pointSize, UIColor *color);
 
 /* the read mark: the double check is cut from a canvas 25 units wide and the single one from 16, so at one point
    size the double glyph came out two thirds the size of the single */

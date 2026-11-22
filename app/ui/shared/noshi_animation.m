@@ -110,33 +110,6 @@ void NoshiPlaceView(UIView *view, CGRect frame) {
     view.center = CGPointMake(frame.origin.x + frame.size.width * anchor.x, frame.origin.y + frame.size.height * anchor.y);
 }
 
-void NoshiSetShadowPath(UIView *card, CGFloat radius) {
-    card.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:card.bounds cornerRadius:radius].CGPath;
-}
-
-void NoshiAnimatePosition(UIView *view, CGPoint position, noshi_motion_curve curve) {
-    CALayer *layer = view.layer;
-    CALayer *visible = [layer animationForKey:@"noshigram.position"] ? [layer presentationLayer] : nil;
-    CGPoint from = visible ? visible.position : layer.position;
-    [layer removeAnimationForKey:@"noshigram.position"];
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    layer.position = position;
-    [CATransaction commit];
-    if (NoshiReduceMotionEnabled() || !view.window || ![UIView areAnimationsEnabled]) return;
-    NSMutableArray *values = [NSMutableArray arrayWithCapacity:MOTION_SAMPLES];
-    for (NSUInteger i = 0; i < MOTION_SAMPLES; ++i) {
-        CGFloat progress = (CGFloat)noshi_motion_progress(curve, (double)i / (MOTION_SAMPLES - 1));
-        [values addObject:[NSValue valueWithCGPoint:CGPointMake(from.x + (position.x - from.x) * progress,
-                                                               from.y + (position.y - from.y) * progress)]];
-    }
-    CAKeyframeAnimation *movement = [CAKeyframeAnimation animationWithKeyPath:@"position"];
-    movement.values = values;
-    movement.duration = noshi_motion_duration(curve);
-    movement.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
-    [layer addAnimation:movement forKey:@"noshigram.position"];
-}
-
 void NoshiAnimateEnter(UIView *view, CGAffineTransform from, CGFloat fromAlpha, noshi_motion_curve curve) {
     CALayer *layer = view.layer;
     CGAffineTransform to = view.transform;

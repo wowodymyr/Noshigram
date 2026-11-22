@@ -181,42 +181,6 @@ UIImage *NoshiDeviceIconImage(noshi_session_kind kind, CGFloat side) {
     return image;
 }
 
-UIColor *NoshiDeviceColor(noshi_session_kind kind) {
-    switch (kind) {
-    case NOSHI_SESSION_FIREFOX: return NoshiToneRGB(0xFF845E);
-    case NOSHI_SESSION_IPHONE:
-    case NOSHI_SESSION_IPAD:
-    case NOSHI_SESSION_LINUX:
-    case NOSHI_SESSION_UBUNTU: return NoshiToneRGB(0x5CAFFA);
-    case NOSHI_SESSION_MAC:
-    case NOSHI_SESSION_WINDOWS:
-    case NOSHI_SESSION_DESKTOP: return NoshiToneRGB(0x5BCBE3);
-    case NOSHI_SESSION_ANDROID:
-    case NOSHI_SESSION_ANDROID_TABLET: return NoshiToneRGB(0x9AD164);
-    default: return NoshiToneRGB(0xFF8AAC);
-    }
-}
-
-NSString *NoshiDeviceAnimationName(noshi_session_kind kind) {
-    switch (kind) {
-    case NOSHI_SESSION_IPHONE: return @"device_iphone";
-    case NOSHI_SESSION_IPAD: return @"device_ipad";
-    case NOSHI_SESSION_MAC: return @"device_mac";
-    case NOSHI_SESSION_WINDOWS:
-    case NOSHI_SESSION_DESKTOP: return @"device_windows";
-    case NOSHI_SESSION_LINUX: return @"device_linux";
-    case NOSHI_SESSION_UBUNTU: return @"device_ubuntu";
-    case NOSHI_SESSION_ANDROID:
-    case NOSHI_SESSION_ANDROID_TABLET: return @"device_android";
-    case NOSHI_SESSION_CHROME:
-    case NOSHI_SESSION_OTHER: return @"device_chrome";
-    case NOSHI_SESSION_SAFARI: return @"device_safari";
-    case NOSHI_SESSION_EDGE: return @"device_edge";
-    case NOSHI_SESSION_FIREFOX: return @"device_firefox";
-    default: return nil;
-    }
-}
-
 #pragma mark models
 
 @implementation NoshiSettingsRow

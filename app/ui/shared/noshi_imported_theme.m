@@ -11,12 +11,6 @@ static noshi_tgios_theme *NoshiImportedActive;
 static pthread_mutex_t NoshiImportedLock = PTHREAD_MUTEX_INITIALIZER;
 static NSString *const NoshiImportedSuspendKey = @"noshigram.imported-theme.suspended";
 
-void NoshiImportedThemeSuspend(BOOL suspended) {
-    NSMutableDictionary *values = [[NSThread currentThread] threadDictionary];
-    if (suspended) [values setObject:[NSNumber numberWithBool:YES] forKey:NoshiImportedSuspendKey];
-    else [values removeObjectForKey:NoshiImportedSuspendKey];
-}
-
 static BOOL NoshiImportedThemeIsSuspended(void) {
     return [[[[NSThread currentThread] threadDictionary] objectForKey:NoshiImportedSuspendKey] boolValue];
 }
@@ -157,14 +151,6 @@ NSString *NoshiImportedThemeWallpaper(void) {
     NSString *value = wallpaper ? [NSString stringWithUTF8String:wallpaper] : nil;
     pthread_mutex_unlock(&NoshiImportedLock);
     return value;
-}
-
-NSString *NoshiImportedThemeStatusBar(void) {
-    pthread_mutex_lock(&NoshiImportedLock);
-    const char *value = noshi_tgios_get(NoshiImportedActive, "root.statusBar");
-    NSString *style = value ? [NSString stringWithUTF8String:value] : nil;
-    pthread_mutex_unlock(&NoshiImportedLock);
-    return style;
 }
 
 NSUInteger NoshiImportedThemeWallpaperGradient(uint32_t colors[4], int *angle) {
