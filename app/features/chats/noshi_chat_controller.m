@@ -110,13 +110,11 @@
 #import "noshi_welcome_toast.h"
 #import "noshi_reaction_artwork.h"
 #import "noshi_reaction_effect.h"
+#import "noshi_string_drawing.h"
 
 #define BAR_HEIGHT 44.0
 /* what the buttons on the wider side of the classic bar of a chat take of a phone's width: the picture and the dots, or the arrow and a count of three digits */
 #define CLASSIC_BAR_SIDE_WIDTH 96.0
-/* the back plate and the gap before the count beside it; with the count itself they are what the bar gives the left side */
-#define CLASSIC_BACK_PLATE 52.0
-#define CLASSIC_COUNTER_GAP 8.0
 /* what a reaction that is new on a message plays once its chip stands: nothing, the 80 point burst or the large one of the picker */
 #define NOSHI_BURST_NONE 0
 #define NOSHI_BURST_SHORT 1
@@ -259,7 +257,8 @@ static NSString *NoshiMessageSummary(NoshiMessage *message);
     /* the classic style: the way back is made here, as an arrow with the count (or the name of the list when nothing is unread), and the system one hidden */
     BOOL _classicBack;
     /* the width of the count that stands beside the back arrow of the classic bar, zero without one */
-    CGFloat _classicCounterWidth;
+    /* the width of the back key with its count, which the centered name has to leave room for */
+    CGFloat _classicBackWidth;
     NoshiAvatarView *_avatar;
     /* the bar of a forum topic shows the icon of the topic where a chat shows the picture of the person or the group */
     UIImageView *_topicIcon;
@@ -2876,34 +2875,70 @@ static NSString *NoshiBareEmoji(NSString *emoji) {
 - (CGFloat)classicTitleWidth {
     if (NoshiIsPad()) return 420;
     CGSize screen = [UIScreen mainScreen].bounds.size;
-    /* a long count (999+) makes the left side wider than the default, and the centered name gives up as much on the right, or it would run under the count */
-    CGFloat side = CLASSIC_BAR_SIDE_WIDTH;
-    if (_classicCounterWidth > 0) side = MAX(side, CLASSIC_BACK_PLATE + CLASSIC_COUNTER_GAP + _classicCounterWidth + 12);
+    /* a back key with a long count makes the left side wider than the default, and the centered name gives up as much on the right, or it would run under the count */
+    CGFloat side = MAX(CLASSIC_BAR_SIDE_WIDTH, _classicBackWidth + 16);
     return MAX(60, MIN(190, MIN(screen.width, screen.height) - 2 * side));
 }
 
-/* the back button is the chevron of ios 7, and the count of the other unread chats stands in a flat capsule of its own right beside it, since a system item cannot hold a badge */
+/* the back key is one piece, as the system draws it: the chevron of ios 7 and the word, with the count of the other unread chats in a small red badge on the chevron's upper
+   right, as the apps of that time put it */
 - (void)refreshClassicBackWithCount:(NSInteger)count {
-    UIBarButtonItem *item = [[[UIBarButtonItem alloc] initWithImage:NoshiBackChevronImage() style:UIBarButtonItemStylePlain target:self action:@selector(goBack)] autorelease];
-    item.accessibilityLabel = NSLocalizedString(@"phone.back", nil);
-    CGFloat counterWidth = 0;
-    if (count <= 0) {
-        self.navigationItem.leftBarButtonItems = [NSArray arrayWithObject:item];
-    } else {
-        UIView *badge = NoshiClassicCounterBadge(count > 999 ? @"999+" : [NSString stringWithFormat:@"%ld", (long)count]);
-        UIBarButtonItem *counter = [[[UIBarButtonItem alloc] initWithCustomView:badge] autorelease];
-        /* the two items are placed edge to edge by the bar, so the plate of the arrow and the count ran together; a gap of its own keeps them apart */
-        UIBarButtonItem *gap = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:NULL] autorelease];
-        gap.width = CLASSIC_COUNTER_GAP;
-        counterWidth = badge.frame.size.width;
-        self.navigationItem.leftBarButtonItems = [NSArray arrayWithObjects:item, gap, counter, nil];
+    UIColor *accent = NoshiColorAccent();
+    UIFont *font = [UIFont systemFontOfSize:17];
+    NSString *word = NSLocalizedString(@"phone.back", nil);
+    CGFloat chevronX = 0, wordX = 19;
+    CGFloat wordWidth = ceil(NoshiStringSize(word, font).width);
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = CGRectMake(0, 0, wordX + wordWidth + 4, BAR_HEIGHT);
+    button.accessibilityLabel = word;
+    [button addTarget:self action:@selector(goBack) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(classicBackDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [button addTarget:self action:@selector(classicBackUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+    UIImage *chevron = NoshiBackChevronImage();
+    if ([chevron respondsToSelector:@selector(imageWithRenderingMode:)]) chevron = [chevron imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImageView *arrow = [[[UIImageView alloc] initWithImage:chevron] autorelease];
+    arrow.tintColor = accent;
+    arrow.frame = CGRectMake(chevronX, floor((BAR_HEIGHT - chevron.size.height) / 2), chevron.size.width, chevron.size.height);
+    arrow.userInteractionEnabled = NO;
+    [button addSubview:arrow];
+    UILabel *label = [[[UILabel alloc] initWithFrame:CGRectMake(wordX, 0, wordWidth, BAR_HEIGHT)] autorelease];
+    label.backgroundColor = [UIColor clearColor];
+    label.font = font;
+    label.textColor = accent;
+    label.text = word;
+    label.userInteractionEnabled = NO;
+    [button addSubview:label];
+    if (count > 0) {
+        UILabel *badge = [[[UILabel alloc] init] autorelease];
+        UIFont *badgeFont = [UIFont boldSystemFontOfSize:11];
+        badge.text = count > 999 ? @"999+" : [NSString stringWithFormat:@"%ld", (long)count];
+        badge.font = badgeFont;
+        badge.textColor = [UIColor whiteColor];
+        badge.textAlignment = NoshiTextAlignmentCenter;
+        badge.backgroundColor = NoshiColorBadgeRed();
+        CGFloat side = 17, badgeWidth = MAX(side, ceil(NoshiStringSize(badge.text, badgeFont).width) + 9);
+        badge.frame = CGRectMake(CGRectGetMinX(arrow.frame) + 3, CGRectGetMinY(arrow.frame) - 9, badgeWidth, side);
+        badge.layer.cornerRadius = side / 2;
+        badge.clipsToBounds = YES;
+        badge.userInteractionEnabled = NO;
+        [button addSubview:badge];
+        button.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", word, badge.text];
     }
-    if (fabs(counterWidth - _classicCounterWidth) > 0.5) {
-        _classicCounterWidth = counterWidth;
-        /* the name was made for the old count; while the view is still being made it is made once, after this */
+    UIBarButtonItem *item = [[[UIBarButtonItem alloc] initWithCustomView:button] autorelease];
+    /* a custom view stands further from the edge than the system back key; the bar is pulled in by the difference so the chevron is where the system one would be */
+    UIBarButtonItem *pull = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFixedSpace target:nil action:NULL] autorelease];
+    pull.width = -8;
+    self.navigationItem.leftBarButtonItems = [NSArray arrayWithObjects:pull, item, nil];
+    CGFloat width = button.frame.size.width;
+    if (fabs(width - _classicBackWidth) > 0.5) {
+        _classicBackWidth = width;
+        /* the name was made for the old width; while the view is still being made it is made once, after this */
         if ([self isViewLoaded]) [self installClassicTitleView];
     }
 }
+
+- (void)classicBackDown:(UIButton *)button { button.alpha = 0.3; }
+- (void)classicBackUp:(UIButton *)button { [UIView animateWithDuration:0.15 animations:^{ button.alpha = 1; }]; }
 
 - (void)refreshBackBadge {
     NSInteger count = NoshiUnreadTotal();
