@@ -204,7 +204,7 @@ static UIImageView *NoshiAttachClassicBackdrop(UIView *strip) {
     field.backgroundColor = NoshiClassicInputFill();
     field.layer.cornerRadius = SEND_SIDE / 2;
     field.layer.borderWidth = 1;
-    field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
+    field.layer.borderColor = [NoshiClassicInputRim() CGColor];
     field.tag = 1;
     [_captionBar addSubview:field];
     _caption = [[NoshiCaptionView alloc] init];

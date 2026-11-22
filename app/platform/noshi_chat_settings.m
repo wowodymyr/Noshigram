@@ -232,7 +232,8 @@ static void NoshiClassicWrite(int slot, NSString *key, NSInteger low, NSInteger 
     NoshiClassicLook[slot] = NoshiClamped(value, low, high);
     NoshiStoreNumber(key, NoshiClassicLook[slot]);
 }
-NSInteger NoshiClassicGlossLevel(void) { return NoshiClassicRead(0, NoshiClassicGlossKey, 0, 2, 1); }
+/* flat by default, as telegram for ios 4 was; the lights of the old chrome are a choice of the customization */
+NSInteger NoshiClassicGlossLevel(void) { return NoshiClassicRead(0, NoshiClassicGlossKey, 0, 2, 0); }
 void NoshiClassicGlossStore(NSInteger level) { NoshiClassicWrite(0, NoshiClassicGlossKey, 0, 2, level); }
 NSInteger NoshiClassicMaterial(void) { return NoshiClassicRead(1, NoshiClassicMaterialKey, 0, NOSHI_CLASSIC_MATERIAL_COUNT - 1, 0); }
 void NoshiClassicMaterialStore(NSInteger material) { NoshiClassicWrite(1, NoshiClassicMaterialKey, 0, NOSHI_CLASSIC_MATERIAL_COUNT - 1, material); }

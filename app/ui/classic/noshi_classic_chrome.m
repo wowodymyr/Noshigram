@@ -960,19 +960,13 @@ void NoshiClassicStyleMenuLabel(UILabel *label, CGFloat size) {
     }
 }
 
-/* the white (or dark gray) box of the classic bar with a good share of the accent mixed in (a third on the dark theme, a quarter on the light one), so it reads as the color of the
-   theme and not as grey; opaque since the emoji of the text are drawn over it. more than this takes the placeholder, which is the muted ink, down to the fill */
+/* the text box of telegram for ios 4: white with a grey rim on the light bar, a dark grey box with a darker rim at night; opaque since the emoji of the text are drawn over it */
 UIColor *NoshiClassicInputFill(void) {
-    UIColor *base = NoshiThemeIsDark() ? [UIColor colorWithWhite:0.23 alpha:1] : [UIColor whiteColor];
-    CGFloat br, bg, bb, ba, ar, ag, ab, aa;
-    if (![base getRed:&br green:&bg blue:&bb alpha:&ba]) {
-        CGFloat white = 0;
-        if (![base getWhite:&white alpha:&ba]) return base;
-        br = bg = bb = white;
-    }
-    if (![NoshiColorAccent() getRed:&ar green:&ag blue:&ab alpha:&aa]) return base;
-    CGFloat share = NoshiThemeIsDark() ? 0.34 : 0.26;
-    return [UIColor colorWithRed:br * (1 - share) + ar * share green:bg * (1 - share) + ag * share blue:bb * (1 - share) + ab * share alpha:1];
+    return NoshiThemeIsDark() ? [UIColor colorWithWhite:0.16 alpha:1] : [UIColor whiteColor];
+}
+
+UIColor *NoshiClassicInputRim(void) {
+    return NoshiThemeIsDark() ? [UIColor colorWithWhite:0.28 alpha:1] : [UIColor colorWithRed:0.78 green:0.78 blue:0.8 alpha:1];
 }
 
 UIImage *NoshiClassicTintedGlossImage(UIColor *base, CGFloat radius, BOOL pressed) {

@@ -164,7 +164,7 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _field.layer.cornerRadius = FIELD_MIN / 2;
     /* the thin edge of the text box of the old messaging bars: the fill a little darker, not the accent */
     _field.layer.borderWidth = 1;
-    _field.layer.borderColor = [NoshiMixedColor(NoshiClassicInputFill(), [UIColor blackColor], 0.28) CGColor];
+    _field.layer.borderColor = [NoshiClassicInputRim() CGColor];
     [self addSubview:_field];
 
     _text = [[NoshiEmojiTextView alloc] initWithFrame:CGRectZero];
@@ -475,8 +475,14 @@ static NSString *const NoshiRecordModeKey = @"NoshiRecordMode";
     _hold.enabled = empty && !_lockedRecording;
     BOOL plane = !empty || _lockedRecording;
     NoshiSymbol symbol = plane ? NoshiSymbolSendArrow : (_mode == NoshiRecordRound ? NoshiSymbolVideoCamera : NoshiSymbolMicrophone);
-    NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, NO)), UIControlStateNormal);
-    NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, YES)), UIControlStateHighlighted);
+    /* the words go with the blue round key; the microphone and the camera of a message to record are grey glyphs with nothing under them, as on the bar of telegram for ios 4 */
+    if (plane) {
+        NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, NO)), UIControlStateNormal);
+        NoshiInputSetImage(_send, NoshiInputPaddedCircle(NoshiClassicRoundButtonImage(symbol, BUTTON, YES)), UIControlStateHighlighted);
+    } else {
+        NoshiInputSetImage(_send, NoshiSymbolImage(symbol, 26, glyph), UIControlStateNormal);
+        NoshiInputSetImage(_send, NoshiSymbolImage(symbol, 26, NoshiColorAccent()), UIControlStateHighlighted);
+    }
     _send.clipsToBounds = NO;
     _send.imageView.clipsToBounds = NO;
     /* the glyph pops in when the field gains its first character or loses its last, never during a recording whose gesture owns the button */

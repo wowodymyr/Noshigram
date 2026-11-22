@@ -117,8 +117,10 @@ void NoshiClassicStyleMenuLabel(UILabel *label, CGFloat size);
 
 /* the glossy purple of the navigation bar, stretched to fill a strip such as the mini player or the selection bar */
 UIImageView *NoshiClassicStripBackdrop(void);
-/* the fill of the text boxes of the classic bars: the white or dark grey of the screen with a fifth of the accent mixed in, opaque since emoji are drawn over it */
+/* the fill of the text boxes of the bars: white, or dark grey at night, opaque since emoji are drawn over it */
 UIColor *NoshiClassicInputFill(void);
+/* the rim of that box */
+UIColor *NoshiClassicInputRim(void);
 /* the plain ground of the strips that stand over a chat, the pinned message and the player: dark grey with a little of the accent on the dark theme and white with a trace of it on the light one, so the wallpaper never shows
    through them; the ink is for their text and glyphs and the edge for the line under them */
 UIColor *NoshiClassicStripGround(void);
