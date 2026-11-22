@@ -2,6 +2,18 @@
 
 Telegram client for jailbroken iPhones and iPads on iOS 7 and newer (armv7 and arm64 in one binary), in the spirit of Telegram for iOS of the 2014 to 2018 years.
 
+The look follows Telegram 4.x on iOS 7: flat light bars, the Contacts / Calls / Chats / Settings tab bar, grouped white lists on grey, the user and group info
+screens with the photo at the left and actions as blue rows, the system action sheets, and a flat story viewer. No gloss, no Material Design.
+
+## Install
+
+Download the latest `.deb` or `.ipa` from [Releases](https://github.com/wowodymyr/Noshigram/releases):
+
+- `.deb`: `dpkg -i Noshigram-*.deb` on a jailbroken device (or open it with Filza)
+- `.ipa`: install with AppSync Unified, TrollStore or any other IPA installer
+
+The app checks Releases itself and offers new versions in Settings → Update.
+
 Noshigram is a fork of [exteria](https://github.com/sqmrak/exteria) by sqmrak. Removed from it:
 
 - the Material Design interface (the classic one stays; features that only existed in the modern one were moved over)
