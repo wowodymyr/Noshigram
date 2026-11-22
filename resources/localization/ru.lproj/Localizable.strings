@@ -705,6 +705,12 @@
 "profile.action.sound" = "Звук";
 "profile.action.call" = "Звонок";
 "profile.action.video" = "Видео";
+"profile.row.info" = "Информация";
+"profile.row.message" = "Отправить сообщение";
+"profile.row.video" = "Видеозвонок";
+"profile.row.notifications" = "Уведомления";
+"profile.row.notifications.on" = "Включены";
+"profile.row.notifications.off" = "Выключены";
 "report.title" = "Пожаловаться";
 "report.reason.spam" = "Спам";
 "report.reason.violence" = "Насилие";

@@ -704,6 +704,12 @@
 "profile.action.sound" = "Sound";
 "profile.action.call" = "Call";
 "profile.action.video" = "Video";
+"profile.row.info" = "Info";
+"profile.row.message" = "Send Message";
+"profile.row.video" = "Video Call";
+"profile.row.notifications" = "Notifications";
+"profile.row.notifications.on" = "Enabled";
+"profile.row.notifications.off" = "Disabled";
 "report.title" = "Report";
 "report.reason.spam" = "Spam";
 "report.reason.violence" = "Violence";

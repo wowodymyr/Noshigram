@@ -2,8 +2,8 @@
 
 NSArray *NoshiInfoMentions(NSString *text);
 
-/* a card of rows, each a value over a smaller caption, such as a phone number, a bio or a username; a tap on a row
-   copies its value */
+/* a white group of rows as the user info of telegram for ios 4 had them, each a small caption over its value, such as a phone number, a bio or a username;
+   a tap on a row copies its value */
 @interface NoshiInfoCardView : UIView
 
 /* each row is an NSArray of the caption and the value; rows with an empty value are left out */

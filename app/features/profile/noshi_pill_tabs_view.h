@@ -1,6 +1,6 @@
 #import <UIKit/UIKit.h>
 
-/* a capsule of text tabs, the chosen one on a raised capsule of its own; the tabs share the width equally */
+/* the segments of the system on a white strip, as the shared media of telegram for ios 4 had them; they share the width while the titles fit, and scroll otherwise */
 @interface NoshiPillTabsView : UIView
 
 - (id)initWithTitles:(NSArray *)titles;

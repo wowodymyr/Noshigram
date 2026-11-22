@@ -685,8 +685,8 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
         y += countsHeight + GAP;
     }
     if (_groupTabs) {
-        CGFloat tabsHeight = [_groupTabs heightForWidth:contentWidth];
-        _groupTabs.frame = CGRectMake(x, y, contentWidth, tabsHeight);
+        CGFloat tabsHeight = [_groupTabs heightForWidth:width];
+        _groupTabs.frame = CGRectMake(0, y, width, tabsHeight);
         y += tabsHeight + GAP;
     }
     if (!_giftsTitle.hidden) {

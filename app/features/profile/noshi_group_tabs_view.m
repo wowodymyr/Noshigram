@@ -40,7 +40,6 @@ typedef enum { NoshiGroupTabMembers, NoshiGroupTabMedia, NoshiGroupTabFiles, Nos
     UIView *_body;
     UIView *_bar;
     UIView *_barLine;
-    CAShapeLayer *_barMask;
     UILabel *_empty;
     NSMutableArray *_items[NoshiGroupTabCount];
     BOOL _loaded[NoshiGroupTabCount];
@@ -102,7 +101,6 @@ typedef enum { NoshiGroupTabMembers, NoshiGroupTabMedia, NoshiGroupTabFiles, Nos
     [self installTabsWithTitles:titles];
     _body = [[UIView alloc] init];
     _body.backgroundColor = NoshiColorCard();
-    _body.layer.cornerRadius = 14;
     _body.clipsToBounds = YES;
     [self addSubview:_body];
     _empty = [[UILabel alloc] init];
@@ -145,7 +143,6 @@ typedef enum { NoshiGroupTabMembers, NoshiGroupTabMedia, NoshiGroupTabFiles, Nos
     [_dialog release];
     [_avatars release];
     [_media release];
-    [_barMask release];
     [_bar release];
     [_tabs release];
     [_body release];
@@ -515,10 +512,6 @@ static NoshiSymbol NoshiVoiceRowSymbol(NoshiMessage *message) {
     _barLine.backgroundColor = NoshiColorHairline();
     _barLine.hidden = YES;
     [_bar addSubview:_barLine];
-    [_barMask release];
-    _barMask = [[CAShapeLayer alloc] init];
-    _barMask.path = [UIBezierPath bezierPathWithRoundedRect:_bar.bounds byRoundingCorners:UIRectCornerTopLeft | UIRectCornerTopRight cornerRadii:CGSizeMake(14, 14)].CGPath;
-    _bar.layer.mask = _barMask;
     [self addSubview:_bar];
     [self selectionButton:NoshiSymbolClose label:NSLocalizedString(@"chat.msg.cancel", nil) action:@selector(cancelSelection) frame:CGRectMake(4, 0, 44, 48)];
     UILabel *count = [[[UILabel alloc] initWithFrame:CGRectMake(54, 0, 80, 48)] autorelease];
@@ -554,9 +547,8 @@ static NoshiSymbol NoshiVoiceRowSymbol(NoshiMessage *message) {
     frame.origin.y = y;
     _bar.frame = frame;
     BOOL pinned = y > home + 0.5;
-    /* the corners follow the card while the bar sits on it, and a line closes the bar over the rows once it floats */
+    /* a line closes the bar over the rows once it floats */
     _barLine.hidden = !pinned;
-    _bar.layer.mask = pinned ? nil : _barMask;
 }
 
 - (void)cancelSelection {
