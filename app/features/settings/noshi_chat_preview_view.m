@@ -130,7 +130,7 @@ static const NoshiPreviewLine NoshiPreviewQuickReaction[PREVIEW_ITEMS] = {
     self = [super initWithFrame:CGRectZero];
     if (!self) return nil;
     _lines = talk == NoshiChatPreviewTalkNoshigram ? NoshiPreviewNoshigram : (talk == NoshiChatPreviewTalkQuickReaction ? NoshiPreviewQuickReaction : NoshiPreviewSettings);
-    _stickerName = talk == NoshiChatPreviewTalkNoshigram ? @"preview_fox" : (talk == NoshiChatPreviewTalkQuickReaction ? @"preview_quick_fox" : @"preview_sticker");
+    _stickerName = @"preview_sticker";
     self.layer.cornerRadius = 0;
     self.layer.masksToBounds = YES;
     /* the rounded clip is drawn once and kept while the preview scrolls with its table; a change of a slider draws it again */

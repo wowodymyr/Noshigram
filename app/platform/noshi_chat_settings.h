@@ -101,9 +101,7 @@ NSInteger NoshiClassicSeparators(void);
 void NoshiClassicSeparatorsStore(NSInteger style);
 /* the corner radius of a card of the settings, from 0 to 36 points */
 #define NOSHI_SECTION_RADIUS_DEFAULT 22
-#define NOSHI_SECTION_RADIUS_MAX 36
 CGFloat NoshiSectionRadius(void);
-void NoshiSectionRadiusStore(NSInteger points);
 
 /* how many days the files of messages stay on the phone before the cache removes them; zero keeps them until the cache is full, which is the default */
 NSInteger NoshiCacheKeepDays(void);
@@ -191,13 +189,11 @@ typedef enum {
     NoshiChatFlagDeleteForMe,
     NoshiChatFlagReplyColors,                 /* the quote of a reply takes the color of the name of its author; default on */
     NoshiChatFlagReplyBackground,             /* the quote of a reply has a plate under it; default on */                 /* deleting a message in a private chat or a group leaves it with the others */
-    NoshiChatFlagLocalPremium,                /* the client shows the Premium features that need no server (custom emoji and reactions, the full animations) */
     NoshiChatFlagSenderAvatars,               /* a small picture of who wrote the last message stands before the preview of a group */
     NoshiChatFlagHideSearchBar,               /* the chat list has no field of search over it */
     NoshiChatFlagHideStories,                 /* the chat list has no strip of stories */
     NoshiChatFlagHideAllChatsTab,             /* the folders of the chat list do not offer the tab of all chats */
     NoshiChatFlagNoUnarchiveSwipe,            /* the swipe of a chat in the archive does nothing, so a chat does not leave it by a slip of the finger */
-    NoshiChatFlagHideWaves,                   /* the modern look draws no waves in the corners of the screens */
     NoshiChatFlagShowMessageEmojiStatus,
     NoshiChatFlagShowReplyCustomEmoji,
     NoshiChatFlagBlurWallpaper,               /* a photo set as the wallpaper of the chats is blurred until the person turns the blur off for that wallpaper; on by default, as in Telegram */
@@ -209,8 +205,6 @@ BOOL NoshiArchiveHidden(void);
 void NoshiArchiveSetHidden(BOOL hidden);
 /* the avatar corner and the card radius are kept in memory; a reset of the stored settings makes them read again */
 void NoshiChatSettingsForgetCached(void);
-/* whether the account has Premium as far as the client is concerned: the server says so, or the person turned on the local Premium */
-BOOL NoshiPremiumEffective(BOOL serverPremium);
 BOOL NoshiChatFlagGet(NoshiChatFlag flag);
 void NoshiChatFlagSet(NoshiChatFlag flag, BOOL on);
 

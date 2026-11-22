@@ -104,10 +104,6 @@
         NoshiChatFlagSet(NoshiChatFlagSenderAvatars, on);
         [(NoshiAppearanceSettingsController *)weak.target apply];
     }]];
-    [rows addObject:[NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"look.hidewaves", nil) subtitle:NSLocalizedString(@"look.hidewaves.info", nil) on:NoshiChatFlagGet(NoshiChatFlagHideWaves) toggle:^(BOOL on) {
-        NoshiChatFlagSet(NoshiChatFlagHideWaves, on);
-        [(NoshiAppearanceSettingsController *)weak.target apply];
-    }]];
     return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.chatlist.header", nil) footer:nil rows:rows];
 }
 
@@ -139,18 +135,8 @@
     });
 }
 
-- (NoshiSettingsSection *)cardsSection {
-    NoshiWeakReference *weak = _weak;
-    NoshiSettingsRow *radius = [NoshiSettingsRow sliderRowWithTitle:NSLocalizedString(@"look.cards.radius", nil) format:@"%.0f" value:(float)NoshiSectionRadius()
-                                                                minimum:0 maximum:NOSHI_SECTION_RADIUS_MAX change:^(float value) {
-        NoshiSectionRadiusStore((NSInteger)(value + 0.5f));
-        [(NoshiAppearanceSettingsController *)weak.target applySoon];
-    }];
-    return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"look.cards.header", nil) footer:nil rows:[NSArray arrayWithObject:radius]];
-}
-
 - (void)rebuild {
-    self.sections = [NSArray arrayWithObjects:[self chatListSection], [self foldersSection], [self cardsSection], nil];
+    self.sections = [NSArray arrayWithObjects:[self chatListSection], [self foldersSection], nil];
     [self reloadSettings];
 }
 

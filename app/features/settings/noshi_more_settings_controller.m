@@ -157,8 +157,6 @@ static NSString *NoshiDeleteErrorText(NSString *errorName) {
     [proxyRows addObject:proxyAdd];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"proxy.title", nil) footer:NSLocalizedString(@"proxy.info", nil) rows:proxyRows]];
 
-    [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"more.experimental", nil) footer:NSLocalizedString(@"more.localpremium.info", nil)
-                                                             rows:[NSArray arrayWithObject:[self flagRow:@"more.localpremium" info:nil flag:NoshiChatFlagLocalPremium rebuild:YES]]]];
 
     NoshiSettingsRow *reset = [NoshiSettingsRow actionRowWithSymbol:NoshiSymbolRotate title:NSLocalizedString(@"more.reset", nil) destructive:YES tap:^{
         NoshiMoreSettingsController *me = weak.target;

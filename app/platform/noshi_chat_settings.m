@@ -24,7 +24,6 @@ static NSString *const NoshiChatListCustomTitleKey = @"noshigram.chatlist.custom
 static NSString *const NoshiListDensityKey = @"noshigram.list.density";
 static NSString *const NoshiTabIndicatorKey = @"noshigram.tab.indicator";
 static NSString *const NoshiClassicSeparatorsKey = @"noshigram.classic.separators";
-static NSString *const NoshiSectionRadiusKey = @"noshigram.section.radius";
 static NSString *const NoshiTabContactsHiddenKey = @"noshigram.tab.contacts.hidden";
 static NSString *const NoshiTabCallsHiddenKey = @"noshigram.tab.calls.hidden";
 NSString *const NoshiTabsDidChangeNotification = @"NoshiTabsDidChange";
@@ -124,7 +123,6 @@ BOOL NoshiChatPauseMusicOnMedia(void) { return NoshiStoredFlag(NoshiChatPauseOnM
 void NoshiChatSetPauseMusicOnMedia(BOOL on) { NoshiStoreFlag(NoshiChatPauseOnMediaKey, on); }
 /* the key is the one the list wrote before the setting had a page of its own */
 static NSString *const NoshiArchiveHiddenKey = @"NoshiArchiveHidden";
-BOOL NoshiPremiumEffective(BOOL serverPremium) { return serverPremium || NoshiChatFlagGet(NoshiChatFlagLocalPremium); }
 BOOL NoshiArchiveHidden(void) { return NoshiStoredFlag(NoshiArchiveHiddenKey, NO); }
 void NoshiArchiveSetHidden(BOOL hidden) { NoshiStoreFlag(NoshiArchiveHiddenKey, hidden); }
 BOOL NoshiChatLargeEmoji(void) { return NoshiStoredFlag(NoshiChatLargeEmojiKey, YES); }
@@ -189,17 +187,9 @@ void NoshiClassicSeparatorsStore(NSInteger style) {
     NoshiClassicSeparatorsCurrent = style ? 1 : 0;
     NoshiStoreNumber(NoshiClassicSeparatorsKey, NoshiClassicSeparatorsCurrent ? 2 : 0);
 }
-static NSInteger NoshiSectionRadiusCurrent = -1;
+/* the corners of the cards of the settings, fixed since the slider for them left */
 CGFloat NoshiSectionRadius(void) {
-    if (NoshiSectionRadiusCurrent < 0) {
-        NSNumber *stored = NoshiStoredNumber(NoshiSectionRadiusKey);
-        NoshiSectionRadiusCurrent = stored && stored.integerValue >= 0 && stored.integerValue <= NOSHI_SECTION_RADIUS_MAX ? stored.integerValue : NOSHI_SECTION_RADIUS_DEFAULT;
-    }
-    return (CGFloat)NoshiSectionRadiusCurrent;
-}
-void NoshiSectionRadiusStore(NSInteger points) {
-    NoshiSectionRadiusCurrent = MAX(0, MIN(NOSHI_SECTION_RADIUS_MAX, points));
-    NoshiStoreNumber(NoshiSectionRadiusKey, NoshiSectionRadiusCurrent);
+    return NOSHI_SECTION_RADIUS_DEFAULT;
 }
 BOOL NoshiTabShown(NoshiTabKind kind) {
     if (kind == NoshiTabContacts) return !NoshiStoredFlag(NoshiTabContactsHiddenKey, NO);
@@ -265,8 +255,6 @@ static const struct { NSString *key; BOOL fallback; } NoshiChatFlagTable[NoshiCh
     [NoshiChatFlagDeleteForMe] = {@"noshigram.chat.deleteforme", NO},
     [NoshiChatFlagReplyColors] = {@"noshigram.chat.replycolors", YES},
     [NoshiChatFlagReplyBackground] = {@"noshigram.chat.replybackground", YES},
-    [NoshiChatFlagLocalPremium] = {@"noshigram.chat.localpremium", NO},
-    [NoshiChatFlagHideWaves] = {@"noshigram.chat.hidewaves", NO},
     [NoshiChatFlagShowMessageEmojiStatus] = {@"noshigram.chat.messageemojistatus", YES},
     [NoshiChatFlagShowReplyCustomEmoji] = {@"noshigram.chat.replycustomemoji", YES},
     [NoshiChatFlagSenderAvatars] = {@"noshigram.chat.senderavatars", NO},
@@ -431,5 +419,4 @@ BOOL NoshiChatAppearanceChanged(void) {
 }
 
 void NoshiChatSettingsForgetCached(void) {
-    NoshiSectionRadiusCurrent = -1;
 }

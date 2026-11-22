@@ -1239,7 +1239,6 @@
 "chatset.hidestickertime" = "Hide time on stickers";
 "chatset.editedicon" = "Pencil instead of the word \"edited\"";
 "chatset.notail" = "No bubble tail";
-"chatset.notail.info" = "Skeuomorphic theme only";
 "chatset.hideshare" = "Hide the share button on posts";
 "chatset.noreactions.private" = "Hide reactions in private chats";
 "chatset.noreactions.groups" = "Hide reactions in groups";
@@ -1360,7 +1359,7 @@
 "chatset.largeemoji" = "Large emoji";
 "chatset.largeemoji.info" = "A message of one emoji is shown large";
 "theme.applying" = "Painting the new theme…";
-"namecolor.preview" = "download senko, by sqmrak :3";
+"namecolor.preview" = "see you tomorrow!";
 "contacts.search" = "Search contacts";
 "contacts.count" = "%lu contacts";
 "contacts.sort.name" = "By name";
@@ -1615,8 +1614,7 @@
 "folders.unknown" = "Chat outside the loaded list";
 "folders.empty" = "Enter a name and include chats or categories.";
 "folders.limit" = "The folder chat limit has been reached.";
-"chat.preview.line1" = "vless-core is better than senko";
-"chat.preview.line2" = "ok, downloading senko";
+"chat.preview.line2" = "nice sticker, where is it from?";
 "chatset.stickershape" = "Sticker shape";
 "chatset.shape.none" = "As it is";
 "chatset.shape.rounded" = "Rounded";
@@ -1625,7 +1623,6 @@
 "chatset.replycolors.info" = "A reply takes the color of the name of the author of the message";
 "chatset.replybackground" = "Plate under a reply";
 "chat.preview.question" = "when brighton?";
-"chat.preview.quote.name" = "sqmrak";
 "chat.preview.quote" = "still working :3";
 "privacy.title" = "Privacy";
 "privacy.title.info" = "Who sees your data, blocked people";
@@ -1825,14 +1822,7 @@
 "look.folders.header" = "Folders";
 "look.hidealltab" = "Hide the \"%@\" tab";
 "look.folders.info" = "The tab hides when at least two folders are left.";
-"look.cards.header" = "Sections";
-"look.cards.radius" = "Section radius";
 "look.senderavatars" = "Sender mini avatars";
-"look.hidewaves" = "Hide background waves";
-"look.hidewaves.info" = "The purple waves in the corners of the modern look are not drawn.";
-"more.experimental" = "Experimental";
-"more.localpremium" = "Local Premium";
-"more.localpremium.info" = "The client shows the Premium features that need no server: the panel and reactions with premium emoji, the full animations. The account stays as it is, and Telegram decides what can be sent.";
 "more.other" = "Other";
 "more.reset" = "Reset settings";
 "more.reset.info" = "All the settings of Noshigram go back to their defaults. Accounts and chats are not touched.";

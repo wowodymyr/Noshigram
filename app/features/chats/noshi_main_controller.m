@@ -319,7 +319,7 @@ static void NoshiPlaceClassicBadge(UITabBar *bar, CGFloat width, NSInteger index
         NoshiPerson *person = [items objectAtIndex:0];
         [_avatars pinPhoto:person.photo];
         NoshiAccountKeepPhotoOfPerson(person, _avatars);
-        NoshiLiteSetPremium(NoshiPremiumEffective(person.premium));
+        NoshiLiteSetPremium(person.premium);
     }];
 }
 

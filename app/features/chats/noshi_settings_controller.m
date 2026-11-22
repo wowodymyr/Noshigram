@@ -225,7 +225,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
         me->_person = [[items objectAtIndex:0] retain];
         [me->_avatars pinPhoto:me->_person.photo];
         NoshiAccountKeepPhotoOfPerson(me->_person, me->_avatars);
-        NoshiLiteSetPremium(NoshiPremiumEffective(me->_person.premium));
+        NoshiLiteSetPremium(me->_person.premium);
         [me showPerson];
     }];
 }
@@ -511,7 +511,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     NoshiSettingsTone blue = NoshiSettingsToneBlue;
 #define ENTRY(t_, p_, s_, k_, a_) [entries addObject:[self resultWithTitle:t_ path:p_ symbol:s_ tone:k_ tap:a_]]
     ENTRY(look, nil, NoshiSymbolGear, blue, openLook);
-    NSString *lookKeys[] = {@"look.layout.header", @"look.avatar.corners", @"look.stories", @"look.hidesearch", @"look.title", @"look.senderavatars", @"look.folders.header", @"look.cards.radius"};
+    NSString *lookKeys[] = {@"look.stories", @"look.hidesearch", @"look.title", @"look.senderavatars", @"look.folders.header"};
     for (size_t i = 0; i < sizeof(lookKeys) / sizeof(lookKeys[0]); ++i) ENTRY(NSLocalizedString(lookKeys[i], nil), [NSArray arrayWithObject:look], NoshiSymbolGear, blue, openLook);
     NSString *chats = NSLocalizedString(@"settings.chats", nil);
     ENTRY(chats, nil, NoshiSymbolSettingsChat, NoshiSettingsToneOrange, openChats);

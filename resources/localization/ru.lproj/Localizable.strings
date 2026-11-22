@@ -1244,7 +1244,6 @@
 "chatset.hidestickertime" = "Скрыть время на стикерах";
 "chatset.editedicon" = "Карандаш вместо слова «изм.»";
 "chatset.notail" = "Без хвостика у пузырей";
-"chatset.notail.info" = "Только в скевоморфической теме";
 "chatset.hideshare" = "Скрыть кнопку «поделиться» у постов";
 "chatset.noreactions.private" = "Скрыть реакции в личных чатах";
 "chatset.noreactions.groups" = "Скрыть реакции в группах";
@@ -1365,7 +1364,7 @@
 "chatset.largeemoji" = "Большие эмодзи";
 "chatset.largeemoji.info" = "Сообщение из одного эмодзи показывается крупно";
 "theme.applying" = "Рисуем новую тему…";
-"namecolor.preview" = "скачивайте senko, by sqmrak :3";
+"namecolor.preview" = "до завтра!";
 "contacts.search" = "Поиск контактов";
 "contacts.count" = "Контактов: %lu";
 "contacts.sort.name" = "По имени";
@@ -1620,8 +1619,7 @@
 "folders.unknown" = "Чат вне загруженного списка";
 "folders.empty" = "Укажите название и добавьте чаты или категории.";
 "folders.limit" = "Достигнут предел чатов в папке.";
-"chat.preview.line1" = "vless-core лучше senko";
-"chat.preview.line2" = "ладно, качаю senko";
+"chat.preview.line2" = "классный стикер, откуда он?";
 "chatset.stickershape" = "Форма стикеров";
 "chatset.shape.none" = "Как есть";
 "chatset.shape.rounded" = "Скруглённая";
@@ -1630,7 +1628,6 @@
 "chatset.replycolors.info" = "Ответ окрашивается в цвет имени автора сообщения";
 "chatset.replybackground" = "Подложка под ответом";
 "chat.preview.question" = "когда brighton?";
-"chat.preview.quote.name" = "sqmrak";
 "chat.preview.quote" = "пока работаю :3";
 "privacy.title" = "Конфиденциальность";
 "privacy.title.info" = "Кто видит ваши данные, блокировки";
@@ -1830,14 +1827,7 @@
 "look.folders.header" = "Папки";
 "look.hidealltab" = "Скрыть вкладку «%@»";
 "look.folders.info" = "Вкладка прячется, если остаются хотя бы две папки.";
-"look.cards.header" = "Секции";
-"look.cards.radius" = "Радиус секций";
 "look.senderavatars" = "Мини-аватарки отправителей";
-"look.hidewaves" = "Убрать Material эффект";
-"look.hidewaves.info" = "Фиолетовые волны в углах современной темы не рисуются.";
-"more.experimental" = "Экспериментальное";
-"more.localpremium" = "Локальный Premium";
-"more.localpremium.info" = "Клиент показывает возможности Premium, которым не нужен сервер: панель и реакции с премиум-эмодзи, полные анимации. Аккаунт остаётся обычным, и что можно отправить, решает Telegram.";
 "more.other" = "Прочее";
 "more.reset" = "Сброс настроек";
 "more.reset.info" = "Все настройки Noshigram вернутся к значениям по умолчанию. Аккаунты и чаты не тронутся.";
@@ -1856,7 +1846,7 @@
 "chatset.quickreaction.info" = "Дважды нажмите на сообщение, чтобы отправить выбранную реакцию.";
 "chatset.quickreaction.enable" = "Реакция по двойному тапу";
 "chatset.quickreaction.off" = "Выкл.";
-"chatset.quickreaction.preview.in" = "слушай, я в экстерии ещё баг нашёл";
+"chatset.quickreaction.preview.in" = "слушай, я в Noshigram ещё баг нашёл";
 "chatset.quickreaction.preview.quote" = "дарова, что-то случилось?";
 "chatset.quickreaction.preview.out" = "Всё хорошо!";
 "chatset.premium.header" = "Элементы Premium";

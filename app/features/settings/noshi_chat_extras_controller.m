@@ -235,7 +235,7 @@ static NoshiSettingsRow *NoshiFlagRow(NSString *titleKey, NSString *infoKey, Nos
     NSMutableArray *rows = [NSMutableArray array];
     [rows addObject:NoshiFlagRow(@"chatset.mentioncomma", @"chatset.mentioncomma.info", NoshiChatFlagCommaAfterMention)];
     [rows addObject:NoshiFlagRow(@"chatset.editedicon", nil, NoshiChatFlagEditedIcon)];
-    [rows addObject:NoshiFlagRow(@"chatset.notail", @"chatset.notail.info", NoshiChatFlagRemoveTail)];
+    [rows addObject:NoshiFlagRow(@"chatset.notail", nil, NoshiChatFlagRemoveTail)];
     [rows addObject:NoshiFlagRow(@"chatset.pollresults", @"chatset.pollresults.info", NoshiChatFlagPollResultsFirst)];
     [rows addObject:NoshiFlagRow(@"chatset.forwarddate", nil, NoshiChatFlagForwardDate)];
     [rows addObject:NoshiFlagRow(@"chatset.forwardauthor", @"chatset.forwardauthor.info", NoshiChatFlagForwardAuthor)];

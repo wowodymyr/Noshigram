@@ -5416,13 +5416,13 @@ static void NoshiRedrawTree(UIView *view) {
         NoshiChatController *chat = weak.target;
         NoshiPerson *me = items.count ? [items objectAtIndex:0] : nil;
         if (chat && me) {
-            chat->_premium = NoshiPremiumEffective(me.premium);
+            chat->_premium = me.premium;
             chat->_serverPremium = me.premium;
             chat->_premiumKnown = YES;
         } else if (!me) {
             NSLog(@"noshigram: premium state unknown: %@", errorName);
         }
-        if (chat) then(NoshiPremiumEffective(me.premium));
+        if (chat) then(me.premium);
         [then release];
     }];
 }

@@ -74,7 +74,7 @@ void NoshiLoadQuickReactionPicture(NoshiSession *session, NoshiMediaCache *media
             return;
         }
         screen->_premiumKnown = YES;
-        screen->_premium = NoshiPremiumEffective(person.premium);
+        screen->_premium = person.premium;
         long long account = [NoshiSession accountIdInDirectory:screen->_session.directory];
         NoshiDialog *saved = account > 0 ? [NoshiDialog savedMessagesOfUserId:account] : nil;
         if (!saved) { screen->_loaded = YES; screen->_error = [@"INTERNAL" copy]; [screen rebuild]; return; }
