@@ -704,6 +704,9 @@
 "profile.action.sound" = "Sound";
 "profile.action.call" = "Call";
 "profile.action.video" = "Video";
+"channel.row.join" = "Join Channel";
+"group.row.join" = "Join Group";
+"group.row.add" = "Add Members";
 "profile.row.info" = "Info";
 "profile.row.message" = "Send Message";
 "profile.row.video" = "Video Call";

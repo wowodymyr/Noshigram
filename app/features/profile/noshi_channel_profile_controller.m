@@ -40,10 +40,13 @@
 #import "noshi_custom_emoji_loader.h"
 #import "noshi_plural.h"
 #import "noshi_topic_icon.h"
+#import "noshi_info_rows.h"
 
-#define AVATAR 96.0
-#define ACTION_HEIGHT 66.0
-#define GAP 14.0
+/* the group info of telegram for ios 4: a white head of 97 points with the photo of 66 at the left and the name and the count of members beside it, then white groups of rows */
+#define AVATAR 66.0
+#define HEAD_HEIGHT 97.0
+#define NAME_X 92.0
+#define GAP NOSHI_INFO_SECTION_GAP
 #define LINKED_HEIGHT 64.0
 
 /* a linked group as a card: its picture, its name and a line that says what it is, with a chevron */
@@ -64,7 +67,6 @@
     self = [super initWithFrame:frame];
     if (!self) return nil;
     self.backgroundColor = NoshiColorCard();
-    self.layer.cornerRadius = 14;
     _picture = [[NoshiAvatarView alloc] init];
     [self addSubview:_picture];
     _title = [[NoshiEmojiLabel alloc] init];
@@ -77,7 +79,7 @@
     _caption.textColor = NoshiColorSecondary();
     _caption.font = NoshiFontRegular(14);
     [self addSubview:_caption];
-    _chevron = [[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolChevronRight, 16, NoshiColorMuted())];
+    _chevron = [[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolChevronRight, 13, [UIColor colorWithRed:0.78 green:0.78 blue:0.8 alpha:1])];
     _chevron.contentMode = UIViewContentModeCenter;
     [self addSubview:_chevron];
     for (UIView *view in self.subviews) view.userInteractionEnabled = NO;
@@ -106,15 +108,15 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
     CGSize size = self.bounds.size;
-    _picture.frame = CGRectMake(14, (size.height - 44) / 2, 44, 44);
-    _title.frame = CGRectMake(70, 10, size.width - 70 - 40, 22);
-    _caption.frame = CGRectMake(70, 34, size.width - 70 - 40, 20);
-    _chevron.frame = CGRectMake(size.width - 36, 0, 24, size.height);
+    _picture.frame = CGRectMake(15, (size.height - 44) / 2, 44, 44);
+    _title.frame = CGRectMake(71, 10, size.width - 71 - 40, 22);
+    _caption.frame = CGRectMake(71, 34, size.width - 71 - 40, 20);
+    _chevron.frame = CGRectMake(size.width - 34, 0, 24, size.height);
 }
 
 - (void)setHighlighted:(BOOL)highlighted {
     [super setHighlighted:highlighted];
-    self.alpha = highlighted ? 0.7 : 1;
+    self.backgroundColor = highlighted ? (NoshiThemeIsDark() ? [UIColor colorWithWhite:0.25 alpha:1] : [UIColor colorWithWhite:0.85 alpha:1]) : NoshiColorCard();
 }
 
 @end
@@ -146,16 +148,25 @@
     BOOL _storiesShown;
     NoshiEmojiLabel *_name;
     UILabel *_status;
-    NoshiUserAction *_joinAction;
-    NoshiUserAction *_messageAction;
-    NoshiUserAction *_addAction;
-    NoshiUserAction *_soundAction;
-    NoshiUserAction *_linkAction;
+    /* the white ground of the head and the groups of rows under the information */
+    UIView *_headPanel;
+    UIView *_actionsGroup;
+    NoshiInfoRow *_joinRow;
+    NoshiInfoRow *_messageRow;
+    NoshiInfoRow *_addRow;
+    NoshiInfoRow *_linkRow;
+    UIView *_soundGroup;
+    NoshiInfoRow *_soundRow;
+    UIView *_countsGroup;
+    NoshiInfoRow *_membersRow;
+    NoshiInfoRow *_adminsRow;
+    NoshiInfoRow *_bannedRow;
     NoshiInfoCardView *_info;
     /* the community the channel was added to */
     NoshiLinkedGroupCard *_communityCard;
     NoshiDialog *_community;
-    NoshiGiftFactsView *_counts;
+    /* the bottom hairline of the community row, which stands alone as a group */
+    UIView *_communityLine;
     NoshiGroupTabsView *_groupTabs;
     UILabel *_giftsTitle;
     UILabel *_empty;
@@ -180,7 +191,8 @@
     _stickers = [stickers retain];
     _weak = [[NoshiWeakReference referenceTo:self] retain];
     _feed = [[NoshiProfileFeed alloc] initWithSession:session kind:NoshiFeedGifts owner:dialog];
-    self.screenTitle = dialog.title;
+    /* the bar says Info, as it did in telegram for ios 4; the name is in the head under it */
+    self.screenTitle = NSLocalizedString(@"profile.row.info", nil);
     return self;
 }
 
@@ -240,15 +252,9 @@
     _hero = [hero retain];
     _heroOpen = YES;
     _heroMoving = YES;
-    NSArray *cards = [NSArray arrayWithObjects:_joinAction, _messageAction, _addAction, _soundAction, _linkAction, nil];
-    for (NoshiUserAction *card in cards) [_head bringSubviewToFront:card];
     BOOL motion = !NoshiReduceMotionEnabled();
     [hero animateCornerTo:0 duration:motion ? 0.38 : 0];
     [UIView animateWithDuration:motion ? 0.38 : 0 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        for (NoshiUserAction *card in cards) {
-            [card setInk:[UIColor whiteColor]];
-            [card setBlurred:YES];
-        }
         _name.alpha = 0;
         _status.alpha = 0;
         [self setBarOverPhoto:YES];
@@ -297,14 +303,9 @@
     _heroOpen = NO;
     _avatar.hidden = NO;
     [_hero beginClose];
-    NSArray *cards = [NSArray arrayWithObjects:_joinAction, _messageAction, _addAction, _soundAction, _linkAction, nil];
     BOOL motion = !NoshiReduceMotionEnabled();
     [_hero animateCornerTo:_heroCircle.size.width / 2 duration:motion ? 0.38 : 0];
     [UIView animateWithDuration:motion ? 0.38 : 0 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        for (NoshiUserAction *card in cards) {
-            [card setBlurred:NO];
-            [card setInk:nil];
-        }
         _name.alpha = 1;
         _status.alpha = 1;
         [self setBarOverPhoto:NO];
@@ -335,15 +336,22 @@
     [_storyPeer release];
     [_name release];
     [_status release];
-    [_joinAction release];
-    [_messageAction release];
-    [_addAction release];
-    [_soundAction release];
-    [_linkAction release];
+    [_headPanel release];
+    [_actionsGroup release];
+    [_joinRow release];
+    [_messageRow release];
+    [_addRow release];
+    [_linkRow release];
+    [_soundGroup release];
+    [_soundRow release];
+    [_countsGroup release];
+    [_membersRow release];
+    [_adminsRow release];
+    [_bannedRow release];
     [_info release];
     [_communityCard release];
     [_community release];
-    [_counts release];
+    [_communityLine release];
     _groupTabs.delegate = nil;
     [_groupTabs release];
     [_giftsTitle release];
@@ -371,6 +379,8 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
 
     _head = [[UIView alloc] init];
     _head.backgroundColor = [UIColor clearColor];
+    _headPanel = NoshiNewInfoGroup();
+    [_head addSubview:_headPanel];
     _storyRing = [[NoshiStoryRing alloc] init];
     _storyRing.hidden = YES;
     [_head addSubview:_storyRing];
@@ -391,35 +401,34 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
     _name = [[NoshiEmojiLabel alloc] init];
     _name.dropsUndrawable = YES;
     _name.textColor = NoshiColorTitle();
-    _name.textAlignment = NoshiTextAlignmentCenter;
+    _name.textAlignment = NoshiTextAlignmentLeft;
+    _name.numberOfLines = 2;
     _name.text = _dialog.title;
     [_head addSubview:_name];
-    _status = NoshiChannelProfileLabel(NoshiColorSecondary(), NoshiFontRegular(15), NoshiTextAlignmentCenter);
+    _status = NoshiChannelProfileLabel(NoshiColorSecondary(), [UIFont systemFontOfSize:15], NoshiTextAlignmentLeft);
     _status.text = [self kindText];
     [_head addSubview:_status];
 
-    _joinAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolMember title:NSLocalizedString(@"channel.action.join", nil)];
-    _joinAction.hidden = YES;
-    [_joinAction addTarget:self action:@selector(join) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_joinAction];
-    _messageAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolProfileMessage title:NSLocalizedString(@"channel.action.message", nil)];
-    _messageAction.hidden = YES;
-    [_messageAction addTarget:self action:@selector(openMessages) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_messageAction];
-    _addAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolPlusCircle title:NSLocalizedString(@"group.action.add", nil)];
-    _addAction.hidden = YES;
-    [_addAction addTarget:self action:@selector(addMembers) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_addAction];
-    _soundAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolProfileMute title:NSLocalizedString(@"channel.action.sound", nil)];
-    _soundAction.enabled = NO;
-    _soundAction.hidden = YES;
-    [_soundAction addTarget:self action:@selector(toggleMute) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_soundAction];
-    /* the share glyph profile row; the link is copied, because the share sheet starts at ios 6 */
-    _linkAction = [[NoshiUserAction alloc] initWithSymbol:NoshiSymbolShare title:NSLocalizedString(@"channel.action.link", nil)];
-    _linkAction.hidden = YES;
-    [_linkAction addTarget:self action:@selector(copyLink) forControlEvents:UIControlEventTouchUpInside];
-    [_head addSubview:_linkAction];
+    /* the actions of the group info of telegram for ios 4 are rows of words in the accent */
+    _actionsGroup = NoshiNewInfoGroup();
+    _joinRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(_dialog.kind == NOSHI_DIALOG_GROUP ? @"group.row.join" : @"channel.row.join", nil) accent:YES chevron:NO target:self action:@selector(join)];
+    _messageRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.row.message", nil) accent:YES chevron:NO target:self action:@selector(openMessages)];
+    _addRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"group.row.add", nil) accent:YES chevron:NO target:self action:@selector(addMembers)];
+    /* the link is copied, because the share sheet starts at ios 6 */
+    _linkRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.qr.copy", nil) accent:YES chevron:NO target:self action:@selector(copyLink)];
+    for (NoshiInfoRow *row in [NSArray arrayWithObjects:_joinRow, _messageRow, _addRow, _linkRow, nil]) [_actionsGroup addSubview:row];
+    [_head addSubview:_actionsGroup];
+    _soundGroup = NoshiNewInfoGroup();
+    _soundRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.row.notifications", nil) accent:NO chevron:NO target:self action:@selector(toggleMute)];
+    [_soundGroup addSubview:_soundRow];
+    [_head addSubview:_soundGroup];
+    /* the counts are rows with the number in grey at the right */
+    _countsGroup = NoshiNewInfoGroup();
+    _membersRow = [[NoshiInfoRow alloc] initWithTitle:@"" accent:NO chevron:NO target:nil action:NULL];
+    _adminsRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"channel.admins", nil) accent:NO chevron:NO target:nil action:NULL];
+    _bannedRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"channel.banned", nil) accent:NO chevron:NO target:nil action:NULL];
+    for (NoshiInfoRow *row in [NSArray arrayWithObjects:_membersRow, _adminsRow, _bannedRow, nil]) [_countsGroup addSubview:row];
+    [_head addSubview:_countsGroup];
 
     _info = [[NoshiInfoCardView alloc] init];
     NoshiWeakReference *me = _weak;
@@ -433,9 +442,9 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
     _communityCard.hidden = YES;
     [_communityCard addTarget:self action:@selector(openCommunity) forControlEvents:UIControlEventTouchUpInside];
     [_head addSubview:_communityCard];
-    _counts = [[NoshiGiftFactsView alloc] init];
-    _counts.hidden = YES;
-    [_head addSubview:_counts];
+    _communityLine = [[UIView alloc] init];
+    _communityLine.backgroundColor = NoshiInfoLineColor();
+    [_communityCard addSubview:_communityLine];
     _giftsTitle = NoshiChannelProfileLabel(NoshiColorAccent(), NoshiFontSemibold(15), NoshiTextAlignmentLeft);
     _giftsTitle.text = NSLocalizedString(@"gifts.title", nil);
     _giftsTitle.hidden = YES;
@@ -494,7 +503,13 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
         if (!_topicMessagesKnown) return @"";
         return [NSString stringWithFormat:NSLocalizedString([@"topic.messages." stringByAppendingString:NoshiPluralForm(_topicMessages)], nil), (long)_topicMessages];
     }
-    if (_full.megagroup || _dialog.kind == NOSHI_DIALOG_GROUP) return NSLocalizedString(@"channel.kind.group", nil);
+    BOOL group = _full.megagroup || _dialog.kind == NOSHI_DIALOG_GROUP;
+    /* the count of members under the name, as telegram for ios 4 had it, once it is known */
+    if (_full.participants > 0) {
+        NSString *key = [(group ? @"chat.members." : @"chat.subscribers.") stringByAppendingString:NoshiPluralForm(_full.participants)];
+        return [NSString stringWithFormat:NSLocalizedString(key, nil), (long)_full.participants];
+    }
+    if (group) return NSLocalizedString(@"channel.kind.group", nil);
     return NSLocalizedString(_full.username.length ? @"channel.kind.public" : @"channel.kind.private", nil);
 }
 
@@ -537,18 +552,10 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
 }
 
 - (void)refreshActions {
-    BOOL member = [self isMember];
-    BOOL loaded = _full != nil;
-    BOOL group = _full.megagroup || _dialog.kind == NOSHI_DIALOG_GROUP;
-    _joinAction.hidden = !loaded || member;
-    _messageAction.hidden = !(member && group);
-    _addAction.hidden = !(member && _full.megagroup);
-    _soundAction.hidden = !member;
-    _soundAction.enabled = member;
+    /* a supergroup is a channel to the list, and only the full channel tells it apart */
+    _joinRow.title = NSLocalizedString(_full.megagroup || _dialog.kind == NOSHI_DIALOG_GROUP ? @"group.row.join" : @"channel.row.join", nil);
     BOOL muted = _full.muted;
-    [_soundAction setSymbol:muted ? NoshiSymbolProfileUnmute : NoshiSymbolProfileMute
-                      title:NSLocalizedString(muted ? @"channel.action.muted" : @"channel.action.sound", nil)];
-    _linkAction.hidden = !_full.webLink.length;
+    _soundRow.value = NSLocalizedString(muted ? @"profile.row.notifications.off" : @"profile.row.notifications.on", nil);
 }
 
 - (void)showFull {
@@ -579,25 +586,10 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
 
 - (void)fillCounts {
     NoshiFullChannel *full = _full;
-    /* a fresh table replaces the old one, which cannot drop rows */
-    [_counts removeFromSuperview];
-    [_counts release];
-    _counts = [[NoshiGiftFactsView alloc] init];
-    [_head addSubview:_counts];
-    BOOL any = NO;
-    if (full.participants > 0) {
-        [_counts addRow:NSLocalizedString(full.megagroup ? @"channel.members" : @"channel.subscribers", nil) text:[NSString stringWithFormat:@"%ld", (long)full.participants] pill:nil];
-        any = YES;
-    }
-    if (full.admins > 0) {
-        [_counts addRow:NSLocalizedString(@"channel.admins", nil) text:[NSString stringWithFormat:@"%ld", (long)full.admins] pill:nil];
-        any = YES;
-    }
-    if (full.banned > 0) {
-        [_counts addRow:NSLocalizedString(@"channel.banned", nil) text:[NSString stringWithFormat:@"%ld", (long)full.banned] pill:nil];
-        any = YES;
-    }
-    _counts.hidden = !any;
+    _membersRow.title = NSLocalizedString(full.megagroup ? @"channel.members" : @"channel.subscribers", nil);
+    _membersRow.value = [NSString stringWithFormat:@"%ld", (long)full.participants];
+    _adminsRow.value = [NSString stringWithFormat:@"%ld", (long)full.admins];
+    _bannedRow.value = [NSString stringWithFormat:@"%ld", (long)full.banned];
 }
 
 - (void)feedChanged {
@@ -640,57 +632,60 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
     if (width <= 0) return;
     CGFloat contentWidth = MIN(width - 32, 460);
     CGFloat x = (width - contentWidth) / 2;
-    CGFloat y = 16;
     CGFloat wideHeight = _heroOpen ? _heroHeight : 0;
     /* the photo reaches up under the bar and the status bar: its frame begins above the head by the inset of the list */
     if (_hero) _hero.frame = _heroOpen ? CGRectMake(0, -_grid.topInset, width, _grid.topInset + wideHeight) : _heroCircle;
-    _avatar.frame = CGRectMake((width - AVATAR) / 2, y, AVATAR, AVATAR);
+    _avatar.frame = CGRectMake(15, 16, AVATAR, AVATAR);
     _topicIcon.frame = _avatar.frame;
     _storyRing.frame = CGRectInset(_avatar.frame, -[NoshiStoryRing outset], -[NoshiStoryRing outset]);
-    y += AVATAR + 12;
-    _name.font = NoshiFontBold(22);
-    _name.frame = CGRectMake(x, y, contentWidth, 28);
-    _status.frame = CGRectMake(x, y + 30, contentWidth, 20);
-    y += 50 + GAP + 4;
-    NSMutableArray *actions = [NSMutableArray array];
-    NoshiUserAction *order[5] = {_joinAction, _messageAction, _addAction, _soundAction, _linkAction};
-    for (int i = 0; i < 5; ++i) {
-        if (!order[i].hidden) [actions addObject:order[i]];
-    }
-    CGFloat actionsHeight = actions.count ? NoshiLayoutActions(actions, x, y, contentWidth, ACTION_HEIGHT, 10) : 0;
-    if (_heroOpen) {
-        /* over the lower edge of the photo, and the rest of the head under it */
-        if (actions.count) {
-            NoshiLayoutActions(actions, x, wideHeight - actionsHeight - 12, contentWidth, ACTION_HEIGHT, 10);
-            /* the cards wrap into a second row when there are many of them, and the name and the status stand above whatever height they take, not above one row */
-            _hero.bottomRoom = actionsHeight + 18;
-        }
-        y = wideHeight + GAP;
-    } else if (actions.count) {
-        y += actionsHeight + GAP;
-    }
-    CGFloat height = [_info heightForWidth:contentWidth];
+    /* the name and the status stand beside the photo, as a block in the middle of the head */
+    CGFloat textWidth = width - NAME_X - 14;
+    _name.font = NoshiFontMedium(20);
+    CGFloat nameHeight = MAX(24, ceil([_name sizeThatFits:CGSizeMake(textWidth, 200)].height));
+    CGFloat block = nameHeight + 4 + 20;
+    CGFloat headHeight = MAX(HEAD_HEIGHT, block + 32);
+    CGFloat nameY = floor((headHeight - block) / 2);
+    _name.frame = CGRectMake(NAME_X, nameY, textWidth, nameHeight);
+    _status.frame = CGRectMake(NAME_X, nameY + nameHeight + 4, textWidth, 20);
+    _headPanel.frame = CGRectMake(0, 0, width, headHeight);
+    NoshiFitInfoGroupLines(_headPanel, NO);
+    CGFloat y = (_heroOpen ? MAX(wideHeight, headHeight) : headHeight) + GAP;
+    CGFloat height = [_info heightForWidth:width];
     _info.hidden = height <= 0;
     if (!_info.hidden) {
-        _info.frame = CGRectMake(x, y, contentWidth, height);
+        _info.frame = CGRectMake(0, y, width, height);
         y += height + GAP;
     }
+    /* join while outside; inside, the chat of a group, inviting to a supergroup, and the link of a public one */
+    BOOL member = [self isMember];
+    BOOL group = _full.megagroup || _dialog.kind == NOSHI_DIALOG_GROUP;
+    NSMutableArray *actions = [NSMutableArray array];
+    if (_full && !member) [actions addObject:_joinRow];
+    if (member && group) [actions addObject:_messageRow];
+    if (member && _full.megagroup) [actions addObject:_addRow];
+    if (_full.webLink.length) [actions addObject:_linkRow];
+    CGFloat actionsHeight = NoshiLayoutInfoGroup(_actionsGroup, actions, y, width);
+    if (actionsHeight > 0) y += actionsHeight + GAP;
+    CGFloat soundHeight = NoshiLayoutInfoGroup(_soundGroup, member ? [NSArray arrayWithObject:_soundRow] : [NSArray array], y, width);
+    if (soundHeight > 0) y += soundHeight + GAP;
     if (!_communityCard.hidden) {
-        _communityCard.frame = CGRectMake(x, y, contentWidth, LINKED_HEIGHT);
+        _communityCard.frame = CGRectMake(0, y, width, LINKED_HEIGHT);
+        _communityLine.frame = CGRectMake(0, LINKED_HEIGHT - 1.0f / NoshiScreenScale(), width, 1.0f / NoshiScreenScale());
         y += LINKED_HEIGHT + GAP;
     }
-    if (!_counts.hidden) {
-        CGFloat countsHeight = [_counts heightForWidth:contentWidth];
-        _counts.frame = CGRectMake(x, y, contentWidth, countsHeight);
-        y += countsHeight + GAP;
-    }
+    NSMutableArray *counts = [NSMutableArray array];
+    if (_full.participants > 0) [counts addObject:_membersRow];
+    if (_full.admins > 0) [counts addObject:_adminsRow];
+    if (_full.banned > 0) [counts addObject:_bannedRow];
+    CGFloat countsHeight = NoshiLayoutInfoGroup(_countsGroup, counts, y, width);
+    if (countsHeight > 0) y += countsHeight + GAP;
     if (_groupTabs) {
         CGFloat tabsHeight = [_groupTabs heightForWidth:width];
         _groupTabs.frame = CGRectMake(0, y, width, tabsHeight);
         y += tabsHeight + GAP;
     }
     if (!_giftsTitle.hidden) {
-        _giftsTitle.frame = CGRectMake(x + 8, y, contentWidth - 16, 20);
+        _giftsTitle.frame = CGRectMake(15, y, width - 30, 20);
         y += 28;
     }
     CGSize empty = _empty.text.length ? [_empty sizeThatFits:CGSizeMake(contentWidth - 16, 200)] : CGSizeZero;
@@ -813,7 +808,7 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
 - (void)join {
     if (!_full || _joinBusy) return;
     _joinBusy = YES;
-    _joinAction.enabled = NO;
+    _joinRow.enabled = NO;
     NoshiWeakReference *me = _weak;
     [self retain];
     [self.session joinChannelOfDialog:_dialog completion:^(NSString *errorName) {
@@ -821,7 +816,7 @@ static UILabel *NoshiChannelProfileLabel(UIColor *color, UIFont *font, NSInteger
         NoshiChannelProfileController *profile = me.target;
         if (!profile) return;
         profile->_joinBusy = NO;
-        profile->_joinAction.enabled = YES;
+        profile->_joinRow.enabled = YES;
         if (errorName) {
             NSLog(@"noshigram: joining channel %lld failed: %@", profile->_dialog.peerId, errorName);
             NoshiGiftAlert(nil, NoshiGiftErrorText(errorName));

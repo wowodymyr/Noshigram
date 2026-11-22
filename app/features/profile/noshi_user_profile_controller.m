@@ -18,6 +18,7 @@
 #import "noshi_gift_detail_controller.h"
 #import "noshi_gift_grid_view.h"
 #import "noshi_info_card_view.h"
+#import "noshi_info_rows.h"
 #import "noshi_music_list_controller.h"
 #import "noshi_music_pill.h"
 #import "noshi_profile_gifts_view.h"
@@ -59,8 +60,7 @@
 #define AVATAR 66.0
 #define HEAD_HEIGHT 97.0
 #define NAME_X 92.0
-#define ROW_HEIGHT 44.0
-#define SECTION_GAP 24.0
+#define SECTION_GAP NOSHI_INFO_SECTION_GAP
 #define GAP 14.0
 
 /* how far the list is pulled down past its top before the wide photo goes back to the circle, in points */
@@ -114,11 +114,11 @@
     UIView *_headPanel;
     UIButton *_callButton;
     UIView *_actionsGroup;
-    UIControl *_messageRow;
-    UIControl *_videoRow;
-    UIControl *_storiesRow;
+    NoshiInfoRow *_messageRow;
+    NoshiInfoRow *_videoRow;
+    NoshiInfoRow *_storiesRow;
     UIView *_soundGroup;
-    UIControl *_soundRow;
+    NoshiInfoRow *_soundRow;
     UIView *_musicGroup;
     NoshiMusicPill *_music;
     NoshiProfileGiftsView *_pinnedGifts;
@@ -221,79 +221,6 @@ static NSMutableDictionary *NoshiUserProfileMemory(void) {
     return memory;
 }
 
-#pragma mark rows
-
-static UIColor *NoshiUserLineColor(void) { return [UIColor colorWithWhite:NoshiThemeIsDark() ? 1 : 0 alpha:NoshiThemeIsDark() ? 0.12 : 0.2]; }
-
-/* a white group of the grouped list of ios 7, with a hairline along its top and bottom edges */
-static UIView *NoshiUserGroup(void) {
-    UIView *group = [[UIView alloc] init];
-    group.backgroundColor = NoshiColorCard();
-    for (int i = 0; i < 2; ++i) {
-        UIView *line = [[[UIView alloc] init] autorelease];
-        line.tag = 100 + i;
-        line.backgroundColor = NoshiUserLineColor();
-        line.userInteractionEnabled = NO;
-        [group addSubview:line];
-    }
-    return group;
-}
-
-/* the rows of a group stand one under another, with a line between them that starts at their words */
-static CGFloat NoshiUserLayoutGroup(UIView *group, NSArray *rows, CGFloat y, CGFloat width) {
-    CGFloat pixel = 1.0f / NoshiScreenScale(), rowY = 0;
-    for (UIControl *row in rows) {
-        row.frame = CGRectMake(0, rowY, width, ROW_HEIGHT);
-        [row viewWithTag:1].frame = CGRectMake(15, 0, width - 15 - 120, ROW_HEIGHT);
-        UIView *value = [row viewWithTag:2];
-        value.frame = CGRectMake(width - 34 - 110, 0, 110, ROW_HEIGHT);
-        [row viewWithTag:3].frame = CGRectMake(width - 15 - 8, (ROW_HEIGHT - 13) / 2, 8, 13);
-        UIView *line = [row viewWithTag:11];
-        line.hidden = row == [rows objectAtIndex:0];
-        line.frame = CGRectMake(15, 0, width - 15, pixel);
-        rowY += ROW_HEIGHT;
-    }
-    group.frame = CGRectMake(0, y, width, rowY);
-    [group viewWithTag:100].frame = CGRectMake(0, 0, width, pixel);
-    [group viewWithTag:101].frame = CGRectMake(0, rowY - pixel, width, pixel);
-    [group bringSubviewToFront:[group viewWithTag:100]];
-    [group bringSubviewToFront:[group viewWithTag:101]];
-    return rowY;
-}
-
-- (void)rowDown:(UIControl *)row { row.backgroundColor = NoshiThemeIsDark() ? [UIColor colorWithWhite:1 alpha:0.08] : [UIColor colorWithWhite:0.85 alpha:1]; }
-- (void)rowUp:(UIControl *)row { [UIView animateWithDuration:0.2 animations:^{ row.backgroundColor = [UIColor clearColor]; }]; }
-
-/* a row of the user info: words in the accent for an action, or plain words with a grey value and a chevron for a setting */
-- (UIControl *)rowWithTitle:(NSString *)title accent:(BOOL)accent chevron:(BOOL)chevron action:(SEL)action {
-    UIControl *row = [[UIControl alloc] init];
-    UILabel *label = NoshiUserLabel(accent ? NoshiColorAccent() : NoshiColorTitle(), [UIFont systemFontOfSize:17], NoshiTextAlignmentLeft);
-    label.text = title;
-    label.tag = 1;
-    label.userInteractionEnabled = NO;
-    [row addSubview:[label autorelease]];
-    UILabel *value = NoshiUserLabel(NoshiColorSecondary(), [UIFont systemFontOfSize:17], NoshiTextAlignmentRight);
-    value.tag = 2;
-    value.userInteractionEnabled = NO;
-    [row addSubview:[value autorelease]];
-    if (chevron) {
-        UIImageView *arrow = [[[UIImageView alloc] initWithImage:NoshiSymbolImage(NoshiSymbolChevronRight, 13, [UIColor colorWithRed:0.78 green:0.78 blue:0.8 alpha:1])] autorelease];
-        arrow.contentMode = UIViewContentModeCenter;
-        arrow.tag = 3;
-        [row addSubview:arrow];
-    }
-    UIView *line = [[[UIView alloc] init] autorelease];
-    line.tag = 11;
-    line.backgroundColor = NoshiUserLineColor();
-    line.userInteractionEnabled = NO;
-    [row addSubview:line];
-    [row addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    [row addTarget:self action:@selector(rowDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
-    [row addTarget:self action:@selector(rowUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
-    row.accessibilityLabel = title;
-    return row;
-}
-
 - (void)buildBodyInView:(UIView *)root {
     _grid = [[NoshiGiftGridView alloc] initWithMedia:self.media];
     _grid.avatars = self.avatars;
@@ -302,7 +229,7 @@ static CGFloat NoshiUserLayoutGroup(UIView *group, NSArray *rows, CGFloat y, CGF
 
     _head = [[UIView alloc] init];
     _head.backgroundColor = [UIColor clearColor];
-    _headPanel = NoshiUserGroup();
+    _headPanel = NoshiNewInfoGroup();
     [_head addSubview:_headPanel];
     _storyRing = [[NoshiStoryRing alloc] init];
     _storyRing.hidden = YES;
@@ -368,18 +295,18 @@ static CGFloat NoshiUserLayoutGroup(UIView *group, NSArray *rows, CGFloat y, CGF
     _callButton.hidden = ![self canCallPerson];
     [_callButton addTarget:self action:@selector(startCall) forControlEvents:UIControlEventTouchUpInside];
     [_head addSubview:_callButton];
-    _actionsGroup = NoshiUserGroup();
-    _messageRow = [self rowWithTitle:NSLocalizedString(@"profile.row.message", nil) accent:YES chevron:NO action:@selector(openMessages)];
-    _videoRow = [self rowWithTitle:NSLocalizedString(@"profile.row.video", nil) accent:YES chevron:NO action:@selector(startVideoCall)];
-    _storiesRow = [self rowWithTitle:NSLocalizedString(@"profile.tab.stories", nil) accent:YES chevron:NO action:@selector(openStories)];
-    for (UIControl *row in [NSArray arrayWithObjects:_messageRow, _videoRow, _storiesRow, nil]) [_actionsGroup addSubview:row];
+    _actionsGroup = NoshiNewInfoGroup();
+    _messageRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.row.message", nil) accent:YES chevron:NO target:self action:@selector(openMessages)];
+    _videoRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.row.video", nil) accent:YES chevron:NO target:self action:@selector(startVideoCall)];
+    _storiesRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.tab.stories", nil) accent:YES chevron:NO target:self action:@selector(openStories)];
+    for (NoshiInfoRow *row in [NSArray arrayWithObjects:_messageRow, _videoRow, _storiesRow, nil]) [_actionsGroup addSubview:row];
     [_head addSubview:_actionsGroup];
-    _soundGroup = NoshiUserGroup();
-    _soundRow = [self rowWithTitle:NSLocalizedString(@"profile.row.notifications", nil) accent:NO chevron:NO action:@selector(toggleMute)];
+    _soundGroup = NoshiNewInfoGroup();
+    _soundRow = [[NoshiInfoRow alloc] initWithTitle:NSLocalizedString(@"profile.row.notifications", nil) accent:NO chevron:NO target:self action:@selector(toggleMute)];
     [_soundGroup addSubview:_soundRow];
     [_head addSubview:_soundGroup];
     [self refreshSound];
-    _musicGroup = NoshiUserGroup();
+    _musicGroup = NoshiNewInfoGroup();
     [_head addSubview:_musicGroup];
 
     _music = [[NoshiMusicPill alloc] init];
@@ -884,9 +811,7 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     _status.frame = CGRectMake(NAME_X + badge, nameY + nameHeight + 4, textWidth - badge, 20);
     _callButton.frame = CGRectMake(width - 57, floor((headHeight - 44) / 2), 44, 44);
     _headPanel.frame = CGRectMake(0, 0, width, headHeight);
-    CGFloat pixel = 1.0f / NoshiScreenScale();
-    [_headPanel viewWithTag:100].hidden = YES;
-    [_headPanel viewWithTag:101].frame = CGRectMake(0, headHeight - pixel, width, pixel);
+    NoshiFitInfoGroupLines(_headPanel, NO);
     /* a collectible ground shows through the head, which is white otherwise */
     _headPanel.backgroundColor = _backdrop ? [UIColor clearColor] : NoshiColorCard();
     _pinnedGifts.frame = CGRectMake(0, 0, width, headHeight);
@@ -904,10 +829,7 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
         CGFloat pillHeight = [NoshiMusicPill height];
         _music.frame = CGRectMake(0, 0, width, pillHeight);
         _musicGroup.frame = CGRectMake(0, y, width, pillHeight);
-        [_musicGroup viewWithTag:100].frame = CGRectMake(0, 0, width, pixel);
-        [_musicGroup viewWithTag:101].frame = CGRectMake(0, pillHeight - pixel, width, pixel);
-        [_musicGroup bringSubviewToFront:[_musicGroup viewWithTag:100]];
-        [_musicGroup bringSubviewToFront:[_musicGroup viewWithTag:101]];
+        NoshiFitInfoGroupLines(_musicGroup, YES);
         y += pillHeight + SECTION_GAP;
     }
     if (!_info.hidden) {
@@ -917,12 +839,10 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     }
     /* send a message, a video call while a call can be made, and the stories while the person has some */
     NSMutableArray *actions = [NSMutableArray arrayWithObject:_messageRow];
-    _videoRow.hidden = !call;
     if (call) [actions addObject:_videoRow];
-    _storiesRow.hidden = !_storyPeer;
     if (_storyPeer) [actions addObject:_storiesRow];
-    y += NoshiUserLayoutGroup(_actionsGroup, actions, y, width) + SECTION_GAP;
-    y += NoshiUserLayoutGroup(_soundGroup, [NSArray arrayWithObject:_soundRow], y, width) + SECTION_GAP;
+    y += NoshiLayoutInfoGroup(_actionsGroup, actions, y, width) + SECTION_GAP;
+    y += NoshiLayoutInfoGroup(_soundGroup, [NSArray arrayWithObject:_soundRow], y, width) + SECTION_GAP;
     if (!_channelCard.hidden) {
         _channelCard.frame = CGRectMake(x, y, contentWidth, [NoshiChannelCard height]);
         y += [NoshiChannelCard height] + SECTION_GAP;
@@ -1136,7 +1056,7 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
 - (void)refreshSound {
     [_soundAction setSymbol:_muted ? NoshiSymbolProfileUnmute : NoshiSymbolProfileMute
                       title:NSLocalizedString(@"profile.action.sound", nil)];
-    ((UILabel *)[_soundRow viewWithTag:2]).text = NSLocalizedString(_muted ? @"profile.row.notifications.off" : @"profile.row.notifications.on", nil);
+    _soundRow.value = NSLocalizedString(_muted ? @"profile.row.notifications.off" : @"profile.row.notifications.on", nil);
 }
 
 - (void)toggleMute {
