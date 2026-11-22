@@ -104,6 +104,8 @@
     long long _statusAnimationDocument;
     NSUInteger _statusAnimationToken;
     NoshiStatusLabel *_status;
+    /* the line that says the person's photo was set by the account, above the status */
+    UILabel *_photoNote;
     NoshiRatingBadge *_ratingBadge;
     NoshiUserAction *_messageAction;
     NoshiUserAction *_soundAction;
@@ -174,6 +176,7 @@
     [_backdrop release];
     [_backdropTitle release];
     [_status release];
+    [_photoNote release];
     [_ratingBadge release];
     [_messageAction release];
     [_soundAction release];
@@ -262,6 +265,10 @@ static NSMutableDictionary *NoshiUserProfileMemory(void) {
     _status.textAlignment = NoshiTextAlignmentLeft;
     [self refreshStatus];
     [_head addSubview:_status];
+    _photoNote = NoshiUserLabel(NoshiColorSecondary(), [UIFont systemFontOfSize:15], NoshiTextAlignmentLeft);
+    _photoNote.text = NSLocalizedString(@"profile.status.photo.set", nil);
+    _photoNote.hidden = YES;
+    [_head addSubview:_photoNote];
     _ratingBadge = [[NoshiRatingBadge alloc] initWithFrame:CGRectZero];
     _ratingBadge.hidden = YES;
     [_ratingBadge addTarget:self action:@selector(openRating) forControlEvents:UIControlEventTouchUpInside];
@@ -365,8 +372,8 @@ static NSMutableDictionary *NoshiUserProfileMemory(void) {
     }
     BOOL service = _dialog.peerKind == 1 && _dialog.peerId == NOSHI_TELEGRAM_SERVICE_USER_ID;
     NSString *seen = service ? NSLocalizedString(@"chat.status.telegram", nil) : NoshiLastSeenText(_dialog.presence, _dialog.seen);
-    /* a photo the person set for this contact is a thing only they see, so the line says it after the time of the visit */
-    if (!service && _fullUser.hasPersonalPhoto) seen = [NSString stringWithFormat:@"%@ \u2022 %@", seen, NSLocalizedString(@"profile.status.photo.set", nil)];
+    /* a photo the account set for this contact is a thing only it sees; it is said on a line of its own above the time of the visit, as the two did not fit one line */
+    _photoNote.hidden = service || !_fullUser.hasPersonalPhoto;
     [_status setStatus:seen kind:!service && _dialog.presence == NOSHI_PRESENCE_ONLINE ? NoshiStatusOnline : NoshiStatusPlain];
 }
 
@@ -640,6 +647,7 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     _name.textColor = ink;
     _status.plainColor = [ink colorWithAlphaComponent:0.78f];
     _status.activeColor = ink;
+    _photoNote.textColor = [ink colorWithAlphaComponent:0.78f];
     for (NoshiUserAction *action in [NSArray arrayWithObjects:_messageAction, _soundAction, _callAction, _videoAction, nil]) {
         [action setInk:ink];
         [action setGround:NoshiColorOfRGB(edge)];
@@ -801,12 +809,15 @@ static UIColor *NoshiDarkenedBackdrop(uint32_t rgb) {
     CGFloat textWidth = width - NAME_X - 14 - (call ? 50 : 0);
     _name.font = NoshiFontMedium(20);
     CGFloat nameHeight = MAX(24, ceil([_name sizeThatFits:CGSizeMake(textWidth, 200)].height));
-    CGFloat block = nameHeight + 4 + 20;
+    CGFloat note = _photoNote.hidden ? 0 : 19;
+    CGFloat block = nameHeight + 4 + note + 20;
     CGFloat headHeight = MAX(HEAD_HEIGHT, block + 32);
     CGFloat nameY = floor((headHeight - block) / 2);
     _name.frame = CGRectMake(NAME_X, nameY, textWidth, nameHeight);
     [self placeStatusAnimation];
     CGFloat badge = _ratingBadge.hidden ? 0 : 26;
+    _photoNote.frame = CGRectMake(NAME_X, nameY + nameHeight + 4, textWidth, 19);
+    nameY += note;
     _ratingBadge.frame = CGRectMake(NAME_X, nameY + nameHeight + 4, 22, 20);
     _status.frame = CGRectMake(NAME_X + badge, nameY + nameHeight + 4, textWidth - badge, 20);
     _callButton.frame = CGRectMake(width - 57, floor((headHeight - 44) / 2), 44, 44);
@@ -1144,6 +1155,7 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
         _name.alpha = 0;
         _statusAnimation.alpha = 0;
         _status.alpha = 0;
+        _photoNote.alpha = 0;
         _ratingBadge.alpha = 0;
         [self setBarOverPhoto:YES];
         [self layoutHead];
@@ -1206,6 +1218,7 @@ typedef enum { NoshiUserMenuCopyLink, NoshiUserMenuGift, NoshiUserMenuNotificati
         _name.alpha = 1;
         _statusAnimation.alpha = 1;
         _status.alpha = 1;
+        _photoNote.alpha = 1;
         _ratingBadge.alpha = 1;
         [self setBarOverPhoto:NO];
         [self layoutHead];
