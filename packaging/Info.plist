@@ -125,6 +125,8 @@
 	<true/>
 	<key>MinimumOSVersion</key>
 	<string>7.0</string>
+	<key>SBAppUsesLocalNotifications</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
