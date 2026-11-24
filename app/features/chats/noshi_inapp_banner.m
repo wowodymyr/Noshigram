@@ -38,6 +38,73 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
     return MAX(NoshiSafeInsets(host).top, NoshiStatusBarHeight());
 }
 
+/* the banner has a window of its own over the app: in the view of the screen on top it was put inside a popup that opened at the same moment and moved and
+   stayed with it. the window lets every touch outside the banner through to the app, is never key, so a keyboard keeps its field, and stays under the
+   status bar and the alerts of the system */
+@interface NoshiBannerPassView : UIView
+@end
+
+@implementation NoshiBannerPassView
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    return hit == self ? nil : hit;
+}
+@end
+
+@interface NoshiBannerWindow : UIWindow
+@end
+
+@implementation NoshiBannerWindow
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    return hit == self ? nil : hit;
+}
+@end
+
+/* turns with the app, so the banner keeps the top edge of the screen the person sees */
+@interface NoshiBannerHostController : UIViewController
+@end
+
+@implementation NoshiBannerHostController
+
+- (void)loadView {
+    NoshiBannerPassView *view = [[[NoshiBannerPassView alloc] initWithFrame:[[UIScreen mainScreen] bounds]] autorelease];
+    view.backgroundColor = [UIColor clearColor];
+    view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.view = view;
+}
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)orientation {
+    return NoshiAllowsOrientation(orientation);
+}
+
+- (BOOL)shouldAutorotate {
+    return YES;
+}
+
+/* the armv7 sdk declares this as NSUInteger and the arm64 sdk as the mask enum */
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmismatched-return-types"
+- (NSUInteger)supportedInterfaceOrientations {
+    return NoshiOrientationMask();
+}
+#pragma clang diagnostic pop
+
+@end
+
+static UIWindow *NoshiBannerWindowShared;
+
+static UIView *NoshiBannerHost(void) {
+    if (!NoshiBannerWindowShared) {
+        NoshiBannerWindowShared = [[NoshiBannerWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+        NoshiBannerWindowShared.windowLevel = UIWindowLevelNormal + 1;
+        NoshiBannerWindowShared.backgroundColor = [UIColor clearColor];
+        NoshiBannerWindowShared.rootViewController = [[[NoshiBannerHostController alloc] init] autorelease];
+    }
+    NoshiBannerWindowShared.hidden = NO;
+    return NoshiBannerWindowShared.rootViewController.view;
+}
+
 @implementation NoshiInAppBanner
 
 /* the notice of a low battery is a plain band with its two lines, as a notice of the system would be */
@@ -46,9 +113,10 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
 }
 
 + (void)showTitle:(NSString *)title body:(NSString *)body dialog:(NoshiDialog *)dialog avatars:(NoshiAvatarCache *)avatars tap:(void (^)(void))tap {
-    UIView *window = NoshiOverlayHost();
-    if (!window) return;
+    /* the app has no screen yet */
+    if (![UIApplication sharedApplication].keyWindow) return;
     [NoshiShownBanner leaveNow];
+    UIView *window = NoshiBannerHost();
     NoshiInAppBanner *banner = [[[NoshiInAppBanner alloc] initWithFrame:CGRectZero] autorelease];
     banner->_tap = [tap copy];
     /* a person's name wears the marks of the app and the Premium star as it does in the chat list; the card has no media cache, so a status picture that is not
@@ -197,6 +265,8 @@ static CGFloat NoshiBannerContentTop(UIView *host) {
     [self removeFromSuperview];
     if (NoshiShownBanner == self) {
         NoshiShownBanner = nil;
+        /* an empty window over the app would only be in the way */
+        NoshiBannerWindowShared.hidden = YES;
         [self autorelease];
     }
 }
