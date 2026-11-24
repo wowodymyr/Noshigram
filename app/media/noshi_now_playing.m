@@ -106,7 +106,12 @@ static void NoshiCommand(id center, NSString *name, id target, SEL action) {
     ((void (*)(id, SEL, id, SEL))objc_msgSend)(command, NSSelectorFromString(@"addTarget:action:"), target, action);
 }
 
+BOOL NoshiRemoteControlsActive(void) { return NoshiRemoteActive; }
+
 void NoshiRemoteControlsStart(id target, SEL play, SEL pause, SEL toggle, SEL next, SEL previous) {
+    /* ios 8 lists the app in the control center only while it asks for the remote events, the commands alone are not enough */
+    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
+    NoshiRemoteActive = YES;
     Class commandClass = NSClassFromString(@"MPRemoteCommandCenter");
     if (commandClass) {
         id center = [commandClass performSelector:NSSelectorFromString(@"sharedCommandCenter")];
@@ -120,13 +125,13 @@ void NoshiRemoteControlsStart(id target, SEL play, SEL pause, SEL toggle, SEL ne
         return;
     }
     /* before ios 7.1 the buttons come as events to the first responder, and the application delegate at the end of its chain */
-    [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
-    NoshiRemoteActive = YES;
     NoshiWatchKeyboard();
     NoshiRemoteControlsClaim();
 }
 
 void NoshiRemoteControlsStop(id target) {
+    [[UIApplication sharedApplication] endReceivingRemoteControlEvents];
+    NoshiRemoteActive = NO;
     Class commandClass = NSClassFromString(@"MPRemoteCommandCenter");
     if (commandClass) {
         id center = [commandClass performSelector:NSSelectorFromString(@"sharedCommandCenter")];
@@ -136,8 +141,6 @@ void NoshiRemoteControlsStop(id target) {
         }
         return;
     }
-    [[UIApplication sharedApplication] endReceivingRemoteControlEvents];
-    NoshiRemoteActive = NO;
     [NoshiRemoteResponderView resignFirstResponder];
     [NoshiRemoteResponderView removeFromSuperview];
 }

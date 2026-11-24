@@ -3,6 +3,7 @@
 #import <objc/message.h>
 
 #import "noshi_audio_session.h"
+#import "noshi_now_playing.h"
 #import "noshi_voip_socket.h"
 
 #define SAMPLE_RATE 8000
@@ -47,6 +48,12 @@ static NSData *NoshiSilence(void) {
 }
 @end
 
+/* the silence mixes with the sound of other apps, but a mixed session is never the one that plays for the control center: while a song of
+   this app holds the remote buttons the silence plays in the song's own session and leaves its category alone */
+static BOOL NoshiKeeperTakeSession(void) {
+    return NoshiRemoteControlsActive() ? NoshiAudioSessionBeginPlayback() : NoshiAudioSessionBeginMixedPlayback();
+}
+
 @implementation NoshiBackgroundKeeper
 
 + (BOOL)needed {
@@ -76,7 +83,7 @@ static NSData *NoshiSilence(void) {
 - (void)interrupted:(NSNotification *)note {
     NSNumber *type = [note.userInfo objectForKey:@"AVAudioSessionInterruptionTypeKey"];
     if (!_player || type.integerValue != 0) return;
-    if (!NoshiAudioSessionBeginMixedPlayback()) return;
+    if (!NoshiKeeperTakeSession()) return;
     if (!NoshiPlayerPlay(_player)) NSLog(@"noshigram: the background sound would not resume after an interruption");
 }
 
@@ -93,7 +100,7 @@ static NSData *NoshiSilence(void) {
         NSLog(@"noshigram: this system has no audio player for the background sound");
         return NO;
     }
-    if (!NoshiAudioSessionBeginMixedPlayback()) return NO;
+    if (!NoshiKeeperTakeSession()) return NO;
     NSError *error = nil;
     if (!_player) {
         _player = [[playerClass alloc] initWithData:NoshiSilence() error:&error];
