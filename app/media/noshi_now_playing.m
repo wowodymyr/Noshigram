@@ -108,6 +108,14 @@ static void NoshiCommand(id center, NSString *name, id target, SEL action) {
 
 BOOL NoshiRemoteControlsActive(void) { return NoshiRemoteActive; }
 
+static NSArray *NoshiCommandNames(void) {
+    return [NSArray arrayWithObjects:@"playCommand", @"pauseCommand", @"togglePlayPauseCommand", @"nextTrackCommand", @"previousTrackCommand", nil];
+}
+
+static void NoshiRemoveCommandTargets(id center, id target) {
+    for (NSString *name in NoshiCommandNames()) [[center valueForKey:name] performSelector:NSSelectorFromString(@"removeTarget:") withObject:target];
+}
+
 void NoshiRemoteControlsStart(id target, SEL play, SEL pause, SEL toggle, SEL next, SEL previous) {
     /* ios 8 lists the app in the control center only while it asks for the remote events, the commands alone are not enough */
     [[UIApplication sharedApplication] beginReceivingRemoteControlEvents];
@@ -116,7 +124,7 @@ void NoshiRemoteControlsStart(id target, SEL play, SEL pause, SEL toggle, SEL ne
     if (commandClass) {
         id center = [commandClass performSelector:NSSelectorFromString(@"sharedCommandCenter")];
         /* targets are added once; adding the same one twice would run a command twice */
-        NoshiRemoteControlsStop(target);
+        NoshiRemoveCommandTargets(center, target);
         NoshiCommand(center, @"playCommand", target, play);
         NoshiCommand(center, @"pauseCommand", target, pause);
         NoshiCommand(center, @"togglePlayPauseCommand", target, toggle);
@@ -134,11 +142,7 @@ void NoshiRemoteControlsStop(id target) {
     NoshiRemoteActive = NO;
     Class commandClass = NSClassFromString(@"MPRemoteCommandCenter");
     if (commandClass) {
-        id center = [commandClass performSelector:NSSelectorFromString(@"sharedCommandCenter")];
-        for (NSString *name in [NSArray arrayWithObjects:@"playCommand", @"pauseCommand", @"togglePlayPauseCommand", @"nextTrackCommand", @"previousTrackCommand", nil]) {
-            id command = [center valueForKey:name];
-            [command performSelector:NSSelectorFromString(@"removeTarget:") withObject:target];
-        }
+        NoshiRemoveCommandTargets([commandClass performSelector:NSSelectorFromString(@"sharedCommandCenter")], target);
         return;
     }
     [NoshiRemoteResponderView resignFirstResponder];
