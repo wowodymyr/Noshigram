@@ -143,6 +143,56 @@ noshi_status noshi_notify_diff(noshi_notify_state *state, const noshi_notify_set
     return NOSHI_OK;
 }
 
+static void merge_message(noshi_dialog_row *out, const noshi_dialog_row *chat, const noshi_dialog_row *message) {
+    *out = *chat;
+    out->top_message = message->top_message;
+    out->date = message->date;
+    out->preview = message->preview;
+    out->thumb = message->thumb;
+    out->service = message->service;
+    out->service_value = message->service_value;
+    out->service_actor_is_target = message->service_actor_is_target;
+    memcpy(out->service_target, message->service_target, sizeof(out->service_target));
+    out->outgoing = message->outgoing;
+    out->forwarded = message->forwarded;
+    out->read = 0;
+    out->sender_is_self = message->sender_is_self;
+    out->sender_id = message->sender_id;
+    out->sender_photo = message->sender_photo;
+    memcpy(out->sender, message->sender, sizeof(out->sender));
+    memcpy(out->text, message->text, sizeof(out->text));
+    out->emoji_count = message->emoji_count;
+    memcpy(out->emoji, message->emoji, sizeof(out->emoji));
+    if (!message->outgoing) {
+        if (out->unread_count < INT32_MAX) ++out->unread_count;
+    } else {
+        out->unread_count = 0;
+        out->read_inbox_max_id = message->top_message;
+    }
+}
+
+noshi_status noshi_notify_live(noshi_notify_state *state, const noshi_notify_settings *settings, const noshi_dialog_row *chat, const noshi_dialog_row *message,
+                                   int32_t now, noshi_dialog_row *merged, noshi_notify_event *event, int *announce) {
+    noshi_notify_decision decision;
+    int at;
+    if (!state || !settings || !chat || !message || !merged || !event || !announce) return NOSHI_E_ARG;
+    *announce = 0;
+    if (chat->folder || chat->peer_kind != message->peer_kind || chat->peer_id != message->peer_id || message->top_message <= 0) return NOSHI_E_ARG;
+    merge_message(merged, chat, message);
+    if (!state->baselined) return NOSHI_OK;
+    at = find_seen(state, chat->peer_kind, chat->peer_id);
+    /* the look got there first, or the update came twice */
+    if (at >= 0 && state->seen[at].top_message >= message->top_message) return NOSHI_OK;
+    if (at >= 0) state->seen[at].top_message = message->top_message;
+    else remember(state, chat->peer_kind, chat->peer_id, message->top_message, merged->unread_count);
+    if (!settings->enabled || chat->saved || chat->deleted || message->outgoing || message->sender_is_self) return NOSHI_OK;
+    if (now > message->date && now - message->date > NOSHI_NOTIFY_CATCHUP_SECONDS) return NOSHI_OK;
+    if (!wanted(merged, settings, now, &decision)) return NOSHI_OK;
+    write_event(event, merged, settings, &decision, 1);
+    *announce = 1;
+    return NOSHI_OK;
+}
+
 void noshi_notify_more_text(const noshi_notify_settings *settings, size_t more, char *out, size_t cap) {
     if (!out || cap == 0) return;
     if (settings && settings->russian) {

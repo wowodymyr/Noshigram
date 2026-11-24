@@ -36,6 +36,9 @@ typedef struct NoshiNotifyScanOptions {
     long long activePeer;
 } NoshiNotifyScanOptions;
 
+/* a message worth a banner the moment it came, on the main thread */
+typedef void (^NoshiNotifyLiveHandler)(NoshiNotifyEvent *event);
+
 typedef void (^NoshiNotifyScanCompletion)(NSArray *events, NSUInteger more, NSString *moreText, NSInteger badge, NSInteger unreadChats, NSString *errorName);
 
 /* the chat list read for notifications; implemented in noshi_session_notify.m */
@@ -44,5 +47,13 @@ typedef void (^NoshiNotifyScanCompletion)(NSArray *events, NSUInteger more, NSSt
 /* asks the server for the newest chats and compares them with the last look, which the session keeps in a file
    beside its others; with announce off the look is only taken (the baseline), and the events come back empty */
 - (void)scanNotificationsAnnouncing:(BOOL)announce options:(NoshiNotifyScanOptions)options completion:(NoshiNotifyScanCompletion)completion;
+/* the messages that come live go to the handler at once, for the chats the last look saw; the rest wait for the next look. nil stops it */
+- (void)setLiveNotifyHandler:(NoshiNotifyLiveHandler)handler;
+
+@end
+
+/* the session hands each live message here, on the worker thread */
+@interface NoshiSession (NotifyLive)
+- (void)noteLiveMessage:(const noshi_tl_value *)message users:(const noshi_tl_value *)users chats:(const noshi_tl_value *)chats;
 
 @end

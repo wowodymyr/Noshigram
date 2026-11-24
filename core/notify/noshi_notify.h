@@ -60,6 +60,13 @@ noshi_status noshi_notify_diff(noshi_notify_state *state, const noshi_notify_set
                                    int32_t now, int32_t active_peer_kind, int64_t active_peer_id, noshi_notify_event *events, size_t cap,
                                    size_t *count, size_t *more_suppressed);
 
+/* a message that came live, before any look at the chat list: chat is the row of its chat from the last look (its kind, title and settings),
+   message the row noshi_dialog_message_row made of the message with the group kind, so that it names the sender. merged gets the chat with the
+   last message put in, as the list would draw it. the chat is remembered as seen up to the message, so the next look does not announce it again,
+   and announce says whether it is worth a banner; nothing is announced before the first look took its baseline */
+noshi_status noshi_notify_live(noshi_notify_state *state, const noshi_notify_settings *settings, const noshi_dialog_row *chat, const noshi_dialog_row *message,
+                                   int32_t now, noshi_dialog_row *merged, noshi_notify_event *event, int *announce);
+
 /* the summary line for what did not fit: "and N more messages" in the language of the settings */
 void noshi_notify_more_text(const noshi_notify_settings *settings, size_t more, char *out, size_t cap);
 

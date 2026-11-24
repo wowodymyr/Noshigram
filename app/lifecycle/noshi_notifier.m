@@ -25,11 +25,11 @@ static NSString *const NoshiNotifyAskedKey = @"noshigram.notify.asked";
 #define DEBOUNCE_SECONDS 0.4
 /* the system wakes a keep-alive app this often at best */
 #define KEEP_ALIVE_SECONDS 600.0
-/* on screen the chat list is read at most this often for the notices of other chats, since every look is a request */
-#define FOREGROUND_LOOK_SECONDS 15.0
-/* the chat list is read at most this often from the background, so a chat that writes all day is not a request for
-   each message; with the list of the screen the server allows only a few of them a minute before it answers with a flood wait */
-#define BACKGROUND_LOOK_SECONDS 10.0
+/* the messages that come live are told at once without a look; the chat list is read at most this often on screen and from the background for the
+   badge, for chats the last look did not see and for what came while the link was down. the server allows only a few such reads a minute,
+   together with those of the list on screen, before it answers with a flood wait */
+#define FOREGROUND_LOOK_SECONDS 30.0
+#define BACKGROUND_LOOK_SECONDS 30.0
 #define FLOOD_WAIT_DEFAULT_SECONDS 30.0
 #define FLOOD_WAIT_MAX_SECONDS 900.0
 /* a quiet link in the background pings this rarely, since every ping wakes the radio; the disconnect delay sent with it follows the interval */
@@ -214,6 +214,7 @@ static id user_notification_center(void) {
             dispatch_async(dispatch_get_main_queue(), ^{ [(NoshiNotifier *)weak.target storeChanged]; });
         }];
     }];
+    [_session setLiveNotifyHandler:^(NoshiNotifyEvent *event) { [(NoshiNotifier *)weak.target postLiveEvent:event]; }];
     if (NoshiNotifyEnabled()) [self registerForNotificationsInApplication:[UIApplication sharedApplication] askAgain:NO];
 }
 
@@ -227,6 +228,7 @@ static id user_notification_center(void) {
     _rescan = NO;
     _rescanForBadge = NO;
     [_session post:^{ [_session setChangeHook:nil]; }];
+    [_session setLiveNotifyHandler:nil];
     [_debounce invalidate];
     _debounce = nil;
     [self endWakeTask];
@@ -560,6 +562,22 @@ static void present_notice(NSString *title, NSString *body, NSDictionary *info, 
     if (!NoshiNotifyInAppPreview()) return;
     NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:event.peerKind], @"kind", [NSNumber numberWithLongLong:event.peerId], @"peer", nil];
     [NoshiInAppBanner showTitle:event.title body:event.body dialog:event.dialog avatars:[self bannerAvatars] tap:^{ [self openChatWithInfo:info]; }];
+}
+
+/* a message that came live, told at once; the looks at the chat list still follow for the badge and for what came while the link was down */
+- (void)postLiveEvent:(NoshiNotifyEvent *)event {
+    if (!_started || !NoshiNotifyEnabled()) return;
+    UIApplication *application = [UIApplication sharedApplication];
+    if (application.applicationState == UIApplicationStateActive) {
+        if (!NoshiNotifyInAppSounds() && !NoshiNotifyInAppVibrate() && !NoshiNotifyInAppPreview()) return;
+        if (event.peerKind == NoshiOpenChatKind && event.peerId == NoshiOpenChatPeer) return;
+        [self announceInApp:[NSArray arrayWithObject:event]];
+        return;
+    }
+    NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:event.peerKind], @"kind",
+                          [NSNumber numberWithLongLong:event.peerId], @"peer", [NSNumber numberWithInt:event.messageId], @"mid", nil];
+    noshi_notify_sound tone = event.sound;
+    [self present:event.title body:event.body userInfo:info sound:NoshiBannerSoundFile(&tone) application:application];
 }
 
 - (void)postEvents:(NSArray *)events more:(NSUInteger)more moreText:(NSString *)moreText badge:(NSInteger)badge unreadChats:(NSInteger)unreadChats application:(UIApplication *)application {

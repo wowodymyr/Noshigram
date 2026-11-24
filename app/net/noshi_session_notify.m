@@ -45,6 +45,30 @@
 /* the look the session took last; worker thread only, and one session lives at a time */
 static noshi_notify_state sNotifyState;
 static int64_t sNotifyStateAccount;
+/* the chats of the last look as rows, keyed "kind:id", for the title, kind and settings of a chat whose message comes live; the rules and the
+   language of that look; and who takes the live banners. worker thread only */
+static NSMutableDictionary *sNotifyChats;
+static int64_t sNotifyChatsAccount;
+static NoshiNotifyScanOptions sLiveOptions;
+static BOOL sLiveRussian;
+static BOOL sLiveOptionsKnown;
+static NoshiNotifyLiveHandler sLiveHandler;
+
+static NSString *NoshiNotifyChatKey(int32_t kind, int64_t peer) {
+    return [NSString stringWithFormat:@"%d:%lld", (int)kind, (long long)peer];
+}
+
+static void NoshiNotifyKeepChats(int64_t account, const noshi_dialog_row *rows, size_t count) {
+    if (!sNotifyChats || sNotifyChatsAccount != account) {
+        [sNotifyChats release];
+        sNotifyChats = [[NSMutableDictionary alloc] init];
+        sNotifyChatsAccount = account;
+    }
+    for (size_t i = 0; i < count; ++i) {
+        if (rows[i].folder || rows[i].peer_id == 0) continue;
+        [sNotifyChats setObject:[NSData dataWithBytes:&rows[i] length:sizeof(rows[i])] forKey:NoshiNotifyChatKey(rows[i].peer_kind, rows[i].peer_id)];
+    }
+}
 
 static NSString *NoshiNotifyStatePath(NSString *directory, int64_t account) {
     return NoshiFilePath(directory, [NSString stringWithFormat:@"notify-state-%lld", (long long)account]);
@@ -82,6 +106,9 @@ static void NoshiNotifySaveState(NSString *directory, int64_t account) {
             [self deliverMain:^{ done(nil, 0, nil, 0, 0, @"NO_ACCOUNT"); [done release]; }];
             return;
         }
+        sLiveOptions = options;
+        sLiveRussian = russian;
+        sLiveOptionsKnown = YES;
         [self submitBuilt:^noshi_status(noshi_arena *arena, noshi_tl_value **request) {
             noshi_tl_value *call = noshi_tl_new_obj(arena, "messages.getDialogs");
             noshi_tl_value *empty = noshi_tl_new_obj(arena, "inputPeerEmpty");
@@ -120,6 +147,7 @@ static void NoshiNotifySaveState(NSString *directory, int64_t account) {
                 [self deliverMain:^{ done(nil, 0, nil, 0, 0, @"INTERNAL"); [done release]; }];
                 return;
             }
+            NoshiNotifyKeepChats([self workerAccount], rows, count);
             noshi_notify_settings settings;
             noshi_notify_event events[NOSHI_NOTIFY_EVENTS_MAX];
             size_t found = 0, more = 0, i;
@@ -161,6 +189,69 @@ static void NoshiNotifySaveState(NSString *directory, int64_t account) {
             NSString *moreString = more ? [NSString stringWithUTF8String:moreText] : nil;
             [self deliverMain:^{ done(list, more, moreString, badge, unreadChats, nil); [done release]; }];
         }];
+    }];
+}
+
+- (void)setLiveNotifyHandler:(NoshiNotifyLiveHandler)handler {
+    NoshiNotifyLiveHandler copied = [handler copy];
+    [self post:^{
+        [sLiveHandler release];
+        sLiveHandler = [copied retain];
+    }];
+    [copied release];
+}
+
+@end
+
+@implementation NoshiSession (NotifyLive)
+
+- (void)noteLiveMessage:(const noshi_tl_value *)message users:(const noshi_tl_value *)users chats:(const noshi_tl_value *)chats {
+    int64_t account = [self workerAccount];
+    if (!sLiveHandler || !sLiveOptionsKnown || account <= 0 || sNotifyChatsAccount != account) return;
+    noshi_dialog_row live;
+    if (noshi_dialog_message_row(message, users, chats, account, NOSHI_DIALOG_GROUP, &live) != NOSHI_OK) return;
+    /* a chat the last look did not see waits for the next look, which tells it as new */
+    NSData *chat = [sNotifyChats objectForKey:NoshiNotifyChatKey(live.peer_kind, live.peer_id)];
+    if (chat.length != sizeof(noshi_dialog_row)) return;
+    /* a short update carries no users, so the name of who wrote in a group comes from the store */
+    noshi_peer from;
+    if (!live.sender[0] && !live.outgoing && noshi_peer_from_tl(noshi_tl_get(message, "from_id"), &from) == NOSHI_OK && from.kind == 1 && from.id != account) {
+        NSString *name = [[self storedPersonWithKey:from.id] name];
+        if (name.length) {
+            snprintf(live.sender, sizeof(live.sender), "%s", name.UTF8String);
+            live.sender_id = from.id;
+        }
+    }
+    noshi_notify_settings settings;
+    memset(&settings, 0, sizeof(settings));
+    settings.enabled = 1;
+    settings.rules = sLiveOptions.rules;
+    settings.russian = sLiveRussian ? 1 : 0;
+    noshi_dialog_row *merged = malloc(sizeof(*merged));
+    noshi_notify_event event;
+    int announce = 0;
+    if (!merged) return;
+    NoshiNotifyLoadState([self workerDirectory], account);
+    noshi_status status = noshi_notify_live(&sNotifyState, &settings, chat.bytes, &live, (int32_t)[[NSDate date] timeIntervalSince1970], merged, &event, &announce);
+    if (status != NOSHI_OK) {
+        free(merged);
+        return;
+    }
+    NoshiNotifySaveState([self workerDirectory], account);
+    /* the chat keeps its newest message, so a second message before the next look is judged against it */
+    [sNotifyChats setObject:[NSData dataWithBytes:merged length:sizeof(*merged)] forKey:NoshiNotifyChatKey(live.peer_kind, live.peer_id)];
+    if (!announce) {
+        free(merged);
+        return;
+    }
+    NoshiNotifyEvent *notice = [[NoshiNotifyEvent alloc] initWithEvent:&event];
+    notice.dialog = [[[NoshiDialog alloc] initWithRow:merged] autorelease];
+    free(merged);
+    NoshiNotifyLiveHandler handler = [sLiveHandler retain];
+    [self deliverMain:^{
+        handler(notice);
+        [handler release];
+        [notice release];
     }];
 }
 

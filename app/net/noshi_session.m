@@ -12,6 +12,7 @@
 #import "noshi_notifier.h"
 #import "noshi_voip_socket.h"
 #import "noshi_session_internal.h"
+#import "noshi_session_notify.h"
 #import "noshi_session_drafts.h"
 #import "noshi_rpc.h"
 #import "noshi_call_engine.h"
@@ -1483,6 +1484,7 @@ NSString *const NoshiDialogReadNotification = @"NoshiDialogRead";
 
 static void NoshiClientNewMessage(void *ctx, const noshi_tl_value *message, const noshi_tl_value *users, const noshi_tl_value *chats) {
     NoshiSession *session = (NoshiSession *)ctx;
+    [session noteLiveMessage:message users:users chats:chats];
     noshi_dialog_row row;
     if (noshi_dialog_message_row(message, users, chats, session->_account, NOSHI_DIALOG_USER, &row) != NOSHI_OK) return;
     NoshiDialog *asUser = [[NoshiDialog alloc] initWithRow:&row];

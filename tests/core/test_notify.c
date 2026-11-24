@@ -431,7 +431,90 @@ static void test_rules(void) {
     CHECK_EQ_INT(run(&state, &s, &r, 1, events, 4, &more), 1);
 }
 
+/* the live message of a chat: only the last-message part of the row, as noshi_dialog_message_row makes it */
+static noshi_dialog_row live_message(int32_t kind, int64_t peer, int32_t id, const char *sender, const char *text) {
+    noshi_dialog_row r;
+    memset(&r, 0, sizeof(r));
+    r.peer_kind = kind;
+    r.peer_id = peer;
+    r.kind = NOSHI_DIALOG_GROUP;
+    r.top_message = id;
+    r.date = NOW - 2;
+    r.preview = NOSHI_PREVIEW_TEXT;
+    snprintf(r.sender, sizeof(r.sender), "%s", sender);
+    snprintf(r.text, sizeof(r.text), "%s", text);
+    return r;
+}
+
+static void test_live(void) {
+    noshi_notify_state state;
+    noshi_notify_settings s = settings();
+    noshi_dialog_row chats[2], message, merged;
+    noshi_notify_event events[4], event;
+    size_t more;
+    int announce = 7;
+    noshi_notify_state_init(&state);
+    chats[0] = row(10, 100, "Ann", "old");
+    chats[0].unread_count = 0;
+    chats[1] = row(30, 500, "Team", "old");
+    chats[1].peer_kind = 2;
+    chats[1].kind = NOSHI_DIALOG_GROUP;
+    chats[1].unread_count = 0;
+    /* before the first look nothing is announced, but the row is still merged */
+    message = live_message(1, 10, 101, "", "hi");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+    CHECK_EQ_INT(merged.top_message, 101);
+    CHECK(!strcmp(merged.title, "Ann"));
+    CHECK_EQ_INT(merged.unread_count, 1);
+    run(&state, &s, chats, 2, events, 4, &more);
+    /* a private chat: the title of the chat, the text alone */
+    message = live_message(1, 10, 102, "Ann", "hello");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 1);
+    CHECK_EQ_INT(event.peer_id, 10);
+    CHECK_EQ_INT(event.message_id, 102);
+    CHECK(!strcmp(event.title, "Ann"));
+    CHECK(!strcmp(event.body, "hello"));
+    /* the same update again, and then the look that brings the same message: nothing twice */
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+    chats[0] = row(10, 102, "Ann", "hello");
+    CHECK_EQ_INT(run(&state, &s, chats, 2, events, 4, &more), 0);
+    /* a group names who wrote */
+    message = live_message(2, 30, 501, "Bob", "news");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[1], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 1);
+    CHECK(!strcmp(event.title, "Team"));
+    CHECK(!strcmp(event.body, "Bob: news"));
+    /* a muted chat, our own message from another device and the saved messages stay quiet, but are seen */
+    chats[1].notify.has_mute = 1;
+    chats[1].notify.mute_until = NOW + 3600;
+    message = live_message(2, 30, 502, "Bob", "quiet");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[1], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+    message = live_message(1, 10, 103, "", "mine");
+    message.outgoing = 1;
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+    CHECK_EQ_INT(merged.unread_count, 0);
+    chats[0].saved = 1;
+    message = live_message(1, 10, 104, "", "note");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+    chats[0].saved = 0;
+    /* a message of another chat than the row says is refused */
+    message = live_message(1, 11, 5, "", "x");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_E_ARG);
+    /* the master switch */
+    s.enabled = 0;
+    message = live_message(1, 10, 105, "", "off");
+    CHECK_EQ_INT(noshi_notify_live(&state, &s, &chats[0], &message, NOW, &merged, &event, &announce), NOSHI_OK);
+    CHECK_EQ_INT(announce, 0);
+}
+
 int main(void) {
+    test_live();
     test_baseline_and_new();
     test_long_body();
     test_filters();
