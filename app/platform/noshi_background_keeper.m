@@ -54,6 +54,9 @@ static BOOL NoshiKeeperTakeSession(void) {
     return NoshiRemoteControlsActive() ? NoshiAudioSessionBeginPlayback() : NoshiAudioSessionBeginMixedPlayback();
 }
 
+/* the keeper that plays the silence now; the notifier owns it */
+static NoshiBackgroundKeeper *NoshiPlayingKeeper;
+
 @implementation NoshiBackgroundKeeper
 
 + (BOOL)needed {
@@ -61,10 +64,20 @@ static BOOL NoshiKeeperTakeSession(void) {
 }
 
 - (void)dealloc {
+    if (NoshiPlayingKeeper == self) NoshiPlayingKeeper = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [_player stop];
     [_player release];
     [super dealloc];
+}
+
++ (BOOL)takeSessionFromSong {
+    NoshiBackgroundKeeper *keeper = NoshiPlayingKeeper;
+    if (!keeper.running) return NO;
+    if (!NoshiKeeperTakeSession()) return NO;
+    /* a change of the category may pause the silence */
+    if (![keeper->_player isPlaying] && !NoshiPlayerPlay(keeper->_player)) NSLog(@"noshigram: the background sound would not go on after the song");
+    return YES;
 }
 
 - (BOOL)running {
@@ -116,11 +129,13 @@ static BOOL NoshiKeeperTakeSession(void) {
         NSLog(@"noshigram: the background sound would not start");
         return NO;
     }
+    NoshiPlayingKeeper = self;
     NSLog(@"noshigram: the background sound plays");
     return YES;
 }
 
 - (void)stop {
+    if (NoshiPlayingKeeper == self) NoshiPlayingKeeper = nil;
     if (!_player) return;
     [_player stop];
     NSLog(@"noshigram: the background sound stopped");

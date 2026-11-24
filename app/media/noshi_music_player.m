@@ -9,6 +9,7 @@
 #import <CoreMedia/CoreMedia.h>
 
 #import "noshi_audio_session.h"
+#import "noshi_background_keeper.h"
 #import "noshi_now_playing.h"
 
 #include <stdio.h>
@@ -1034,7 +1035,7 @@ static NSString *NoshiFullErrorText(NSError *error) {
     [[NSFileManager defaultManager] removeItemAtPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"noshigram-music"] error:NULL];
     [[NSFileManager defaultManager] removeItemAtPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"noshigram-music-b"] error:NULL];
     [[NSFileManager defaultManager] removeItemAtPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"noshigram-voice"] error:NULL];
-    [NoshiAudioSession() setActive:NO error:NULL];
+    if (![NoshiBackgroundKeeper takeSessionFromSong]) [NoshiAudioSession() setActive:NO error:NULL];
     [self setState:NoshiMusicStateIdle];
 }
 
