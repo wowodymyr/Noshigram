@@ -1,6 +1,6 @@
 # Noshigram
 
-Telegram client for jailbroken iPhones and iPads on iOS 7 and newer (armv7 and arm64 in one binary), in the spirit of Telegram for iOS of the 2014 to 2018 years.
+No shit Telegram client for jailbroken iPhones and iPads on iOS 7 and newer (armv7 and arm64 in one binary), in the spirit of Telegram for iOS of the 2014 to 2018 years.
 
 The look follows Telegram 4.x on iOS 7: flat light bars, the Contacts / Calls / Chats / Settings tab bar, grouped white lists on grey, the user and group info
 screens with the photo at the left and actions as blue rows, the system action sheets, and a flat story viewer. No gloss, no Material Design.
