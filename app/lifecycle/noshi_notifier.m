@@ -26,10 +26,10 @@ static NSString *const NoshiNotifyAskedKey = @"noshigram.notify.asked";
 /* the system wakes a keep-alive app this often at best */
 #define KEEP_ALIVE_SECONDS 600.0
 /* on screen the chat list is read at most this often for the notices of other chats, since every look is a request */
-#define FOREGROUND_LOOK_SECONDS 6.0
+#define FOREGROUND_LOOK_SECONDS 15.0
 /* the chat list is read at most this often from the background, so a chat that writes all day is not a request for
-   each message */
-#define BACKGROUND_LOOK_SECONDS 3.0
+   each message; with the list of the screen the server allows only a few of them a minute before it answers with a flood wait */
+#define BACKGROUND_LOOK_SECONDS 10.0
 #define FLOOD_WAIT_DEFAULT_SECONDS 30.0
 #define FLOOD_WAIT_MAX_SECONDS 900.0
 /* a quiet link in the background pings this rarely, since every ping wakes the radio; the disconnect delay sent with it follows the interval */

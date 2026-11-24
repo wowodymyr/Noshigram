@@ -38,6 +38,7 @@
 
 /* a list older than this is fetched again when its screen comes back */
 #define STALE_SECONDS 60.0
+#define LIVE_REFRESH_MS 15000
 #define CLASSIC_READ_FOLDER_SHEET 7101
 
 
@@ -300,6 +301,7 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dialogRead:) name:NoshiDialogReadNotification object:_session];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(outboxRead:) name:NoshiReadOutboxDidChangeNotification object:_session];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(liveDialogsChanged:) name:NoshiSessionDialogsUpdatedNotification object:_session];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(applicationBecameActive:) name:UIApplicationDidBecomeActiveNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(newMessageArrived:) name:NoshiNewMessageDidArriveNotification object:_session];
     [self refreshConnectionTitle];
     UILongPressGestureRecognizer *press = [[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(rowPressed:)] autorelease];
@@ -326,18 +328,33 @@
     if (self.isViewLoaded) [self reloadList:NO];
 }
 
+/* the app is on screen; the control center or a call over it count as away */
+- (BOOL)listLooked {
+    return [UIApplication sharedApplication].applicationState == UIApplicationStateActive;
+}
+
+/* what changed while the app was away is loaded once it is back */
+- (void)applicationBecameActive:(NSNotification *)note {
+    (void)note;
+    if (self.isViewLoaded && self.view.window && _loadedAt && -[_loadedAt timeIntervalSinceNow] > STALE_SECONDS) [self reload];
+}
+
 - (void)liveDialogsChanged:(NSNotification *)note {
     (void)note;
     if (!self.isViewLoaded) return;
-    /* a list under a chat drops the event, and its next appearance reloads only after 60 seconds: a chat read on another client kept its unread badge */
-    if (!self.view.window) {
+    /* a list under a chat drops the event, and its next appearance reloads only after 60 seconds: a chat read on another client kept its unread badge.
+       the list of an app in the background stays in its window, but nobody looks at it, and its reloads took the requests of the chat list that the
+       notifier needs: the server answered both with flood waits and no notification came. it loads again when the app comes back */
+    if (!self.view.window || ![self listLooked]) {
         [self dialogsChanged];
         return;
     }
     if (_liveRefreshScheduled) return;
     _liveRefreshScheduled = YES;
     uint64_t now = noshi_system_clock.monotonic_ms(noshi_system_clock.ctx);
-    uint64_t delay = noshi_list_refresh_delay(now, _lastLiveRefreshMs, 750, 100);
+    /* new messages and reads come to their rows at once without a request, so the whole list is only checked against the server now and then: a busy account
+       changes about every second, and a reload each time got flood waits for this list and for the notifier alike */
+    uint64_t delay = noshi_list_refresh_delay(now, _lastLiveRefreshMs, LIVE_REFRESH_MS, 100);
     [self performSelector:@selector(refreshLiveDialogs) withObject:nil afterDelay:(NSTimeInterval)delay / 1000.0];
 }
 
@@ -356,7 +373,7 @@
 
 - (void)refreshLiveDialogs {
     _liveRefreshScheduled = NO;
-    if (!self.view.window) { [self dialogsChanged]; return; }
+    if (!self.view.window || ![self listLooked]) { [self dialogsChanged]; return; }
     _lastLiveRefreshMs = noshi_system_clock.monotonic_ms(noshi_system_clock.ctx);
     if (_loading) _liveRefreshPending = YES;
     else [self reload];
