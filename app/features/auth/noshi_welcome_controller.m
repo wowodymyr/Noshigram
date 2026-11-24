@@ -8,7 +8,7 @@
 #import "noshi_platform.h"
 #import "noshi_theme.h"
 #import "noshi_wave_background_view.h"
-#import "noshi_wave_button.h"
+#import "noshi_flat_button.h"
 #import "noshi_weak_reference.h"
 #import "noshi_welcome_toast.h"
 #import "noshi_welcome.h"
@@ -87,7 +87,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     UIScrollView *_scroll;
     NSMutableArray *_pages;
     NoshiPageDotsView *_dots;
-    NoshiWaveButton *_button;
+    NoshiFlatButton *_button;
     UIButton *_qr;
     UIButton *_proxy;
     NSInteger _page;
@@ -144,7 +144,7 @@ static UILabel *NoshiWelcomeLabel(UIColor *color, NSInteger lines) {
     _dots.pages = NOSHI_WELCOME_PAGES;
     [root addSubview:_dots];
 
-    _button = [[NoshiWaveButton alloc] init];
+    _button = [[NoshiFlatButton alloc] init];
     _button.title = NSLocalizedString(@"welcome.start", nil);
     [_button addTarget:self action:@selector(startTapped) forControlEvents:UIControlEventTouchUpInside];
     [root addSubview:_button];
