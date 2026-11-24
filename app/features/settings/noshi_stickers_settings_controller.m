@@ -10,6 +10,7 @@
 #import "noshi_sticker_maker.h"
 #import "noshi_symbol.h"
 #import "noshi_weak_reference.h"
+#import "noshi_settings_extras.h"
 #include "noshi_reactions.h"
 
 @interface NoshiStickersSettingsController () {
@@ -145,8 +146,11 @@
                                                                     on:NoshiChatLargeEmoji() toggle:^(BOOL on) { NoshiChatSetLargeEmoji(on); }];
     NoshiSettingsRow *order = [NoshiSettingsRow switchRowWithTitle:NSLocalizedString(@"chatset.dynamicorder", nil) subtitle:nil
                                                                     on:NoshiChatDynamicPackOrder() toggle:^(BOOL on) { NoshiChatSetDynamicPackOrder(on); }];
+    NSMutableArray *settings = [NSMutableArray arrayWithArray:NoshiStickerLookRows(weak)];
+    [settings addObject:large];
+    [settings addObject:order];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.stickers.settings", nil) footer:NSLocalizedString(@"chatset.dynamicorder.info", nil)
-                                                             rows:[NSArray arrayWithObjects:large, order, nil]]];
+                                                             rows:settings]];
 
     NoshiSettingsRow *make = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPlusCircle tone:NoshiSettingsToneGreen title:NSLocalizedString(@"sticker.make.row", nil)
                                                         subtitle:NSLocalizedString(@"sticker.make.row.info", nil) value:nil tap:^{

@@ -17,6 +17,8 @@
 #import "noshi_theme.h"
 #import "noshi_time.h"
 #import "noshi_weak_reference.h"
+#import "noshi_settings_extras.h"
+#import "noshi_session_data.h"
 
 /* the seconds of the default auto-delete the server offers: off, a day, a week, a month */
 #define TTL_DAY 86400
@@ -89,6 +91,7 @@ static void NoshiPrivacyFail(NSString *errorName) {
     NoshiSession *_session;
     NoshiAvatarCache *_avatars;
     NoshiMediaCache *_media;
+    BOOL _deleting;
     NoshiWeakReference *_weak;
     NoshiPrivacyRules *_rules[NOSHI_PRIVACY_KEY_COUNT];
     int32_t _blocked;
@@ -302,6 +305,49 @@ static void NoshiPrivacyFail(NSString *errorName) {
     });
 }
 
+#pragma mark deleting the account
+
+/* two questions, the second asking for the word, since nothing brings the account back */
+- (void)askDeleteAccount {
+    if (_deleting) return;
+    NoshiWeakReference *weak = _weak;
+    NoshiConfirmAction(self, NSLocalizedString(@"more.delete.confirm", nil), NSLocalizedString(@"more.delete.action", nil), ^{
+        NoshiPromptText(NSLocalizedString(@"more.delete.title", nil), [NSString stringWithFormat:NSLocalizedString(@"more.delete.type", nil), NSLocalizedString(@"more.delete.word", nil)], nil, nil, ^(NSString *text) {
+            NoshiPrivacyController *me = weak.target;
+            if (!me) return;
+            NSString *typed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if ([typed caseInsensitiveCompare:NSLocalizedString(@"more.delete.word", nil)] != NSOrderedSame) {
+                NoshiGiftAlert(nil, NSLocalizedString(@"more.delete.mismatch", nil));
+                return;
+            }
+            [me deleteAccountNow];
+        });
+    });
+}
+
+static NSString *NoshiDeleteErrorText(NSString *errorName) {
+    /* an account with a cloud password has to wait for the deletion; the wait starts with the first try */
+    if ([errorName hasPrefix:@"2FA_CONFIRM_WAIT"]) return NSLocalizedString(@"more.delete.wait", nil);
+    if ([errorName hasPrefix:@"2FA_RECENT_CONFIRM"]) return NSLocalizedString(@"more.delete.recent", nil);
+    return NoshiGiftErrorText(errorName);
+}
+
+- (void)deleteAccountNow {
+    _deleting = YES;
+    NoshiWeakReference *weak = _weak;
+    [_session deleteAccountWithReason:@"Deleted from Noshigram" completion:^(NSString *errorName) {
+        NoshiPrivacyController *me = weak.target;
+        if (!me) return;
+        me->_deleting = NO;
+        if (errorName) {
+            NoshiGiftAlert(nil, NoshiDeleteErrorText(errorName));
+            return;
+        }
+        /* the server dropped the account, and the connection tells the app, which goes to the next account or to the welcome screen */
+        NoshiGiftAlert(nil, NSLocalizedString(@"more.delete.done", nil));
+    }];
+}
+
 - (void)rebuild {
     NoshiWeakReference *weak = _weak;
     NSMutableArray *sections = [NSMutableArray array];
@@ -325,12 +371,17 @@ static void NoshiPrivacyFail(NSString *errorName) {
                                                  subtitle:nil value:rules ? NoshiPrivacyValue(rules) : nil tap:^{ [(NoshiPrivacyController *)weak.target openRule:key]; }]];
     }
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"privacy.header", nil) footer:nil rows:rows]];
+    [sections addObject:NoshiProfileDisplaySection()];
+    [sections addObject:NoshiConfirmSettingsSection(weak)];
 
     NoshiSettingsRow *away = [NoshiSettingsRow rowWithSymbol:NoshiSymbolTrash tone:NoshiSettingsToneRed title:NSLocalizedString(@"privacy.away", nil)
                                                         subtitle:nil value:_accountKnown ? NoshiAccountTTLText(_accountTTL) : nil
                                                              tap:^{ [(NoshiPrivacyController *)weak.target chooseAccountTTL]; }];
+    NoshiSettingsRow *deleteNow = [NoshiSettingsRow actionRowWithSymbol:NoshiSymbolTrash title:NSLocalizedString(@"more.delete", nil) destructive:YES tap:^{
+        [(NoshiPrivacyController *)weak.target askDeleteAccount];
+    }];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"privacy.delete.header", nil) footer:NSLocalizedString(@"privacy.away.info", nil)
-                                                             rows:[NSArray arrayWithObject:away]]];
+                                                             rows:[NSArray arrayWithObjects:away, deleteNow, nil]]];
 
     NoshiSettingsRow *contacts = [NoshiSettingsRow rowWithSymbol:NoshiSymbolMember tone:NoshiSettingsToneBlueDeep title:NSLocalizedString(@"privacy.contacts.delete", nil)
                                                             subtitle:nil value:nil tap:^{ [(NoshiPrivacyController *)weak.target confirmResetContacts]; }];

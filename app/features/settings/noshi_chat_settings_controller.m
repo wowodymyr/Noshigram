@@ -8,12 +8,13 @@
 #import "noshi_audio_session.h"
 #import "noshi_chat_settings.h"
 #import "noshi_wallpaper.h"
+#import "noshi_settings_extras.h"
+#import "noshi_browser_settings.h"
 #import "noshi_lite_mode_controller.h"
 #import "noshi_night_mode.h"
 #import "noshi_night_mode_controller.h"
 #import "noshi_popup_menu.h"
 #import "noshi_session_content.h"
-#import "noshi_settings_pages.h"
 #import "noshi_symbol.h"
 #import "noshi_theme_list_view.h"
 #import "noshi_wallpaper_controller.h"
@@ -258,7 +259,9 @@ static NSString *NoshiNightStateText(void) {
         NoshiSettingsRow *three = [NoshiSettingsRow checkRowWithTitle:NSLocalizedString(@"chatset.list.three", nil) subtitle:nil checked:style == NoshiChatListThreeLines tap:^{
             [(NoshiChatSettingsController *)weak.target chooseListStyle:NoshiChatListThreeLines];
         }];
-        [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.list.header", nil) footer:nil rows:[NSArray arrayWithObjects:two, three, nil]]];
+        NSMutableArray *listRows = [NSMutableArray arrayWithObjects:two, three, nil];
+        [listRows addObjectsFromArray:NoshiChatListExtraRows(weak)];
+        [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.list.header", nil) footer:nil rows:listRows]];
     }
 
     [sections addObject:[self swipeSection]];
@@ -273,8 +276,13 @@ static NSString *NoshiNightStateText(void) {
         [[(NoshiChatSettingsController *)weak.target navigationController] pushViewController:[[[NoshiLiteModeSettingsController alloc] init] autorelease] animated:YES];
     }];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObjects:night, animations, nil]]];
+    [sections addObject:NoshiMessagesSettingsSection(weak)];
+    [sections addObject:NoshiPremiumElementsSection()];
+    [sections addObject:NoshiMessageMenuSection()];
     [sections addObject:[self mediaSection]];
+    [sections addObject:NoshiBrowserChoiceSection(^{ [(NoshiChatSettingsController *)weak.target rebuild]; })];
     [sections addObject:[self otherSection]];
+    [sections addObject:NoshiResetSettingsSection(weak)];
 
     self.sections = sections;
     [self reloadSettings];
@@ -368,6 +376,7 @@ static NSString *NoshiNightStateText(void) {
             });
         }]];
     }
+    [rows addObjectsFromArray:NoshiPlaybackExtraRows(_weak)];
     return [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.media.header", nil) footer:nil rows:rows];
 }
 

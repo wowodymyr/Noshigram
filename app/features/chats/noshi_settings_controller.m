@@ -39,7 +39,6 @@
 #import "noshi_platform.h"
 #import "noshi_profile_photo_picker.h"
 #import "noshi_session_profile.h"
-#import "noshi_settings_pages.h"
 #import "noshi_sheet.h"
 #import "noshi_theme.h"
 #import "noshi_translator_controller.h"
@@ -418,7 +417,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 - (void)rebuildRows {
     NoshiWeakReference *weak = _weak;
     UIImage *logo = NoshiSettingsMarkTile(29);
-    NoshiSettingsRow *look = [NoshiSettingsRow rowWithIconImage:logo title:NSLocalizedString(@"settings.noshigram", nil)
+    NoshiSettingsRow *look = [NoshiSettingsRow rowWithIconImage:logo title:NSLocalizedString(@"settings.about", nil)
                                                                 tap:^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; }];
     NoshiSettingsRow *profile = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPerson tone:NoshiSettingsToneRed title:NSLocalizedString(@"settings.myprofile", nil)
                                                            subtitle:nil value:nil tap:^{ [(NoshiSettingsController *)weak.target openProfile]; }];
@@ -555,7 +554,11 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
 
 - (NSArray *)searchEntries {
     NoshiWeakReference *weak = _weak;
-    void (^openLook)(void) = ^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAppearanceSettingsController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session] autorelease]]; };
+    void (^openAbout)(void) = ^{ [(NoshiSettingsController *)weak.target push:[[[NoshiAboutController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars] autorelease]]; };
+    void (^openFolders)(void) = ^{
+        NoshiSettingsController *me = weak.target;
+        if (me) [me push:[[[NoshiFoldersController alloc] initWithSession:me->_session] autorelease]];
+    };
     void (^openNotifications)(void) = ^{ [(NoshiSettingsController *)weak.target push:[[[NoshiNotificationsSettingsController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session avatars:((NoshiSettingsController *)weak.target)->_avatars media:((NoshiSettingsController *)weak.target)->_media] autorelease]]; };
     void (^openChats)(void) = ^{ [(NoshiSettingsController *)weak.target push:[[[NoshiChatSettingsController alloc] initWithSession:((NoshiSettingsController *)weak.target)->_session] autorelease]]; };
     void (^openStickers)(void) = ^{
@@ -574,22 +577,25 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
         [me.navigationController pushViewController:[[[NoshiLanguageSettingsController alloc] init] autorelease] animated:NO];
         [me push:[[[NoshiTranslatorSettingsController alloc] init] autorelease]];
     };
-    NSString *look = NSLocalizedString(@"settings.noshigram", nil), *notify = NSLocalizedString(@"settings.notifications", nil);
+    NSString *about = NSLocalizedString(@"settings.about", nil), *notify = NSLocalizedString(@"settings.notifications", nil);
     NSString *data = NSLocalizedString(@"settings.data", nil), *language = NSLocalizedString(@"language.title", nil), *translator = NSLocalizedString(@"tr.title", nil);
     NSMutableArray *entries = [NSMutableArray array];
     NoshiSettingsTone blue = NoshiSettingsToneBlue;
 #define ENTRY(t_, p_, s_, k_, a_) [entries addObject:[self resultWithTitle:t_ path:p_ symbol:s_ tone:k_ tap:a_]]
-    ENTRY(look, nil, NoshiSymbolGear, blue, openLook);
-    NSString *lookKeys[] = {@"look.stories", @"look.hidesearch", @"look.title", @"look.senderavatars", @"look.folders.header"};
-    for (size_t i = 0; i < sizeof(lookKeys) / sizeof(lookKeys[0]); ++i) ENTRY(NSLocalizedString(lookKeys[i], nil), [NSArray arrayWithObject:look], NoshiSymbolGear, blue, openLook);
+    ENTRY(about, nil, NoshiSymbolGear, blue, openAbout);
+    NSString *folders = NSLocalizedString(@"folders.title", nil);
+    ENTRY(folders, nil, NoshiSymbolSettingsFolders, blue, openFolders);
+    ENTRY(NSLocalizedString(@"look.folders.header", nil), [NSArray arrayWithObject:folders], NoshiSymbolSettingsFolders, blue, openFolders);
     NSString *chats = NSLocalizedString(@"settings.chats", nil);
     ENTRY(chats, nil, NoshiSymbolSettingsChat, NoshiSettingsToneOrange, openChats);
     NSString *chatKeys[] = {@"chatset.textsize.header", @"chatset.colortheme.header", @"chatset.corners.header", @"chatset.list.header", @"chatset.night", @"chatset.animations",
-                            @"chatset.sendenter"};
+                            @"chatset.sendenter", @"look.stories", @"look.hidesearch", @"look.title", @"look.senderavatars", @"general.hidearchive",
+                            @"chatset.messages.header", @"chatset.menu.header", @"chatset.premium.header", @"chatset.media.header", @"more.reset"};
     for (size_t i = 0; i < sizeof(chatKeys) / sizeof(chatKeys[0]); ++i) ENTRY(NSLocalizedString(chatKeys[i], nil), [NSArray arrayWithObject:chats], NoshiSymbolSettingsChat, NoshiSettingsToneOrange, openChats);
     NSString *stickers = NSLocalizedString(@"chatset.stickers", nil);
     ENTRY(stickers, nil, NoshiSymbolSticker, NoshiSettingsToneOrangeBright, openStickers);
-    NSString *stickerKeys[] = {@"stickers.featured", @"stickers.archived", @"stickers.emoji", @"chatset.largeemoji", @"chatset.dynamicorder"};
+    NSString *stickerKeys[] = {@"stickers.featured", @"stickers.archived", @"stickers.emoji", @"chatset.largeemoji", @"chatset.dynamicorder", @"chatset.stickersize",
+                               @"chatset.stickershape", @"chatset.quickreaction"};
     for (size_t i = 0; i < sizeof(stickerKeys) / sizeof(stickerKeys[0]); ++i) ENTRY(NSLocalizedString(stickerKeys[i], nil), [NSArray arrayWithObject:stickers], NoshiSymbolSticker, NoshiSettingsToneOrangeBright, openStickers);
     ENTRY(notify, nil, NoshiSymbolSettingsSounds, NoshiSettingsToneRed, openNotifications);
     NSString *notifyKeys[] = {@"notif.private", @"notif.groups", @"notif.channels", @"notif.stories", @"notif.reactions", @"notif.vibrate", @"notif.badge.header", @"notif.inapp.sounds",
@@ -599,7 +605,7 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
         ENTRY(NSLocalizedString(notifyKeys[i], nil), [NSArray arrayWithObject:notify], NoshiSymbolSettingsSounds, NoshiSettingsToneRed, openNotifications);
     }
     ENTRY(data, nil, NoshiSymbolSettingsData, NoshiSettingsToneBlueDeep, openData);
-    NSString *dataKeys[] = {@"memory.title", @"netusage.title", @"data.drafts", @"memory.keep"};
+    NSString *dataKeys[] = {@"memory.title", @"netusage.title", @"data.drafts", @"memory.keep", @"proxy.title"};
     for (size_t i = 0; i < sizeof(dataKeys) / sizeof(dataKeys[0]); ++i) ENTRY(NSLocalizedString(dataKeys[i], nil), [NSArray arrayWithObject:data], NoshiSymbolSettingsData, NoshiSettingsToneBlueDeep, openData);
     ENTRY(NSLocalizedString(@"settings.devices", nil), nil, NoshiSymbolSettingsDevices, NoshiSettingsToneCyan, openDevices);
     NSString *power = NSLocalizedString(@"lite.title", nil);
@@ -609,6 +615,8 @@ static NSString *const NoshiDevicesCountKey = @"noshigram.devices.count";
     ENTRY(NSLocalizedString(@"update.page.title", nil), nil, NoshiSymbolDocument, blue, ^{ [(NoshiSettingsController *)weak.target push:[[[NoshiUpdateController alloc] init] autorelease]]; });
     ENTRY(language, nil, NoshiSymbolSettingsLanguage, NoshiSettingsTonePurple, openLanguage);
     ENTRY(translator, [NSArray arrayWithObject:language], NoshiSymbolTranslate, NoshiSettingsTonePurple, openTranslator);
+    NSString *languageKeys[] = {@"general.translate.button", @"general.exactnumbers", @"general.seconds", @"time.zone.title"};
+    for (size_t i = 0; i < sizeof(languageKeys) / sizeof(languageKeys[0]); ++i) ENTRY(NSLocalizedString(languageKeys[i], nil), [NSArray arrayWithObject:language], NoshiSymbolSettingsLanguage, NoshiSettingsTonePurple, openLanguage);
     NSArray *translatorPath = [NSArray arrayWithObjects:language, translator, nil];
     NSString *keys[] = {@"tr.show", @"tr.provider", @"tr.original", @"tr.target", @"tr.skip", @"tr.preferred", @"tr.google.key", @"tr.deepl.key", @"tr.ai", @"tr.llm.preset",
                         @"tr.llm.model", @"tr.llm.key", @"tr.llm.url", @"tr.llm.system", @"tr.llm.user", @"tr.llm.context", @"tr.llm.temperature", @"tr.google.new", @"tr.keep"};
