@@ -9,6 +9,7 @@
 #import "noshi_translate_config.h"
 #import "noshi_translator_controller.h"
 #import "noshi_weak_reference.h"
+#import "noshi_settings_extras.h"
 
 @interface NoshiLanguageSettingsController () {
     NoshiWeakReference *_weak;
@@ -79,11 +80,6 @@
 
 - (void)rebuild {
     NoshiWeakReference *weak = _weak;
-    NoshiSettingsRow *translator = [NoshiSettingsRow rowWithSymbol:NoshiSymbolTranslate tone:NoshiSettingsTonePurple title:NSLocalizedString(@"tr.title", nil) subtitle:nil
-                                                                 value:NoshiTranslateProviderName(NoshiTranslateProviderChoice()) tap:^{
-        NoshiLanguageSettingsController *screen = weak.target;
-        [screen.navigationController pushViewController:[[[NoshiTranslatorSettingsController alloc] init] autorelease] animated:YES];
-    }];
     NSMutableArray *languages = [NSMutableArray array];
     for (NSString *code in NoshiInterfaceLanguageCodes()) [languages addObject:[self rowForCode:code]];
     NoshiSettingsRow *import = [NoshiSettingsRow rowWithSymbol:NoshiSymbolDocument tone:NoshiSettingsToneBlue title:NSLocalizedString(@"language.custom.import", nil)
@@ -103,8 +99,9 @@
         }]];
     }
     self.sections = [NSArray arrayWithObjects:
-        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"tr.messages", nil) footer:nil rows:[NSArray arrayWithObject:translator]],
         [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"language.title", nil) footer:nil rows:languages],
+        NoshiTranslateSettingsSection(weak),
+        NoshiFormatSettingsSection(weak),
         [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"language.custom.header", nil) footer:nil rows:templates], nil];
     [self reloadSearchResults];
 }

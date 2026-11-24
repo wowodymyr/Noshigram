@@ -1,11 +1,7 @@
 #import "noshi_about_controller.h"
-#import "noshi_general_settings_controller.h"
-#import "noshi_more_settings_controller.h"
 #import "noshi_link_router.h"
 
-#import "noshi_chat_extras_controller.h"
 #import "noshi_platform.h"
-#import "noshi_settings_pages.h"
 #import "noshi_string_drawing.h"
 #import "noshi_theme.h"
 #import "noshi_weak_reference.h"
@@ -66,7 +62,7 @@ static UIImage *NoshiAppIcon(CGFloat side) {
     _session = [session retain];
     _avatars = [avatars retain];
     _weak = [[NoshiWeakReference referenceTo:self] retain];
-    self.pageTitle = NSLocalizedString(@"settings.noshigram", nil);
+    self.pageTitle = NSLocalizedString(@"settings.about", nil);
     return self;
 }
 
@@ -133,14 +129,6 @@ static UIImage *NoshiAppIcon(CGFloat side) {
     if (url && ![[UIApplication sharedApplication] openURL:url]) NSLog(@"noshigram: the system did not open %@", address);
 }
 
-- (NoshiSettingsRow *)categoryRow:(NoshiSymbol)symbol tone:(NoshiSettingsTone)tone key:(NSString *)key page:(UIViewController *(^)(void))page {
-    NoshiWeakReference *weak = _weak;
-    return [NoshiSettingsRow rowWithSymbol:symbol tone:tone title:NSLocalizedString(key, nil) subtitle:nil value:nil tap:^{
-        NoshiAboutController *me = weak.target;
-        if (me) [me.navigationController pushViewController:page() animated:YES];
-    }];
-}
-
 /* a person of the credits by the @name, which opens their profile in the app */
 - (NoshiSettingsRow *)personRow:(NSString *)username {
     NoshiWeakReference *weak = _weak;
@@ -155,22 +143,6 @@ static UIImage *NoshiAppIcon(CGFloat side) {
 
 - (void)rebuildSections {
     NoshiWeakReference *weak = _weak;
-    NoshiSession *session = _session;
-
-    NSArray *categories = [NSArray arrayWithObjects:
-        [self categoryRow:NoshiSymbolGear tone:NoshiSettingsToneBlue key:@"about.main" page:^UIViewController *{
-            return [[[NoshiGeneralSettingsController alloc] init] autorelease];
-        }],
-        [self categoryRow:NoshiSymbolBackground tone:NoshiSettingsToneOrange key:@"about.look" page:^UIViewController *{
-            return [[[NoshiAppearanceSettingsController alloc] initWithSession:session] autorelease];
-        }],
-        [self categoryRow:NoshiSymbolSettingsChat tone:NoshiSettingsToneGreen key:@"about.chats" page:^UIViewController *{
-            return [[[NoshiChatExtrasController alloc] initWithSession:session] autorelease];
-        }],
-        [self categoryRow:NoshiSymbolEllipsis tone:NoshiSettingsToneGray key:@"about.more" page:^UIViewController *{
-            return [[[NoshiMoreSettingsController alloc] initWithSession:session] autorelease];
-        }], nil];
-
     NoshiSettingsRow *source = [NoshiSettingsRow rowWithTitle:NSLocalizedString(@"about.source", nil) value:nil
                                                           tap:^{ [(NoshiAboutController *)weak.target open:NoshiSourceAddress]; }];
     NoshiSettingsRow *upstream = [NoshiSettingsRow rowWithTitle:NSLocalizedString(@"about.upstream", nil) value:nil
@@ -187,7 +159,6 @@ static UIImage *NoshiAppIcon(CGFloat side) {
     for (size_t i = 0; i < sizeof(NoshiUpstreamDevelopers) / sizeof(NoshiUpstreamDevelopers[0]); ++i) [credits addObject:[self personRow:NoshiUpstreamDevelopers[i]]];
 
     self.sections = [NSArray arrayWithObjects:
-        [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.categories", nil) footer:nil rows:categories],
         /* the addresses stand under the links in plain words, so the rows stay one line high */
         [NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"about.links", nil)
                                          footer:[NSString stringWithFormat:@"%@\n%@", [NoshiSourceAddress substringFromIndex:[@"https://" length]], [NoshiUpstreamAddress substringFromIndex:[@"https://" length]]]

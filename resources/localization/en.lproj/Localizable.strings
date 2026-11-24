@@ -851,16 +851,8 @@
 "plural.months.other" = "%d months";
 "plural.years.one" = "%d year";
 "plural.years.other" = "%d years";
-"settings.noshigram" = "Noshigram settings";
-"settings.noshigram.info" = "Make the client your own";
-"settings.noshigram.chats" = "Chats";
-"settings.noshigram.chats.info" = "Messages, menus and confirmations";
+"settings.about" = "About";
 "about.name" = "Noshigram";
-"about.categories" = "Categories";
-"about.main" = "General";
-"about.look" = "Appearance";
-"about.chats" = "Chats";
-"about.more" = "More";
 "language.link.title" = "Change language?";
 "language.link.change" = "Change";
 "language.link.alert" = "You are about to apply a language pack (%1$@) that is %2$d%% complete.\n\nThis will translate the entire interface.\n\nYou can change your language back at any time in Settings.";
@@ -1780,7 +1772,7 @@
 "general.translate.header" = "Translate Messages";
 "general.translate.button" = "Translate Button";
 "general.translate.info" = "The 'Translate' button will appear in the message context menu.";
-"general.header" = "General";
+"language.format.header" = "Dates and Numbers";
 "general.exactnumbers" = "Disable Number Rounding";
 "general.exactnumbers.value" = "1.23K → 1,234";
 "general.seconds" = "Format Time with Seconds";
@@ -1796,7 +1788,6 @@
 "general.hidephone" = "Hide Phone Number";
 "general.showids" = "Show ID and DC";
 "general.showids.info" = "Shows the user or chat ID and the data center number on the profile page.";
-"general.archive.header" = "Chat List and Archive";
 "general.hidearchive" = "Hide Archive Folder";
 "general.nounarchive" = "Disable \"Unarchive\" Swipe";
 "general.nounarchive.info" = "Swiping left will not remove a chat from the archive.";
@@ -1809,7 +1800,6 @@
 "calls.video" = "%@ (video)";
 "calls.callback" = "Call back";
 "calls.openchat" = "Open chat";
-"settings.noshigram.look" = "Appearance";
 "look.chatlist.header" = "Chat list";
 "look.stories" = "Stories";
 "look.hidesearch" = "Hide search bar";

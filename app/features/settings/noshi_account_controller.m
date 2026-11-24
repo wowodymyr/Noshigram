@@ -11,6 +11,7 @@
 #import "noshi_symbol.h"
 #import "noshi_theme.h"
 #import "noshi_weak_reference.h"
+#import "noshi_name_color_controller.h"
 
 /* the account page asks for the person and the full profile one after the other, and the privacy rule of the bio on its own */
 @interface NoshiAccountController () {
@@ -332,6 +333,15 @@ static NSString *NoshiAccountErrorText(NSString *errorName) {
     NoshiSettingsRow *channel = [NoshiSettingsRow rowWithSymbol:NoshiSymbolMegaphone tone:NoshiSettingsToneOrange title:NSLocalizedString(@"profile.channel", nil)
                                                            subtitle:nil value:_full ? (_full.channel ? _full.channel.dialog.title : NSLocalizedString(@"profile.channel.add", nil)) : nil
                                                                 tap:^{ [(NoshiAccountController *)weak.target chooseChannel]; }];
+    /* the color of the name and of the replies, which needs the account loaded */
+    NoshiSettingsRow *color = [NoshiSettingsRow rowWithSymbol:NoshiSymbolPerson tone:NoshiSettingsTonePurple title:NSLocalizedString(@"chatset.namecolor", nil)
+                                                         subtitle:nil value:_person.name tap:^{
+        NoshiAccountController *me = weak.target;
+        if (!me || !me->_person) return;
+        NoshiNameColorController *colors = [[[NoshiNameColorController alloc] initWithSession:me->_session person:me->_person] autorelease];
+        colors.changedHandler = ^(NSInteger colorId) { (void)colorId; [(NoshiAccountController *)weak.target load]; };
+        [me.navigationController pushViewController:colors animated:YES];
+    }];
     NoshiSettingsRow *add = [NoshiSettingsRow actionRowWithSymbol:NoshiSymbolPlusCircle title:NSLocalizedString(@"account.add", nil) destructive:NO
                                                                   tap:^{ [[NSNotificationCenter defaultCenter] postNotificationName:NoshiAccountAddNotification object:nil]; }];
     NSMutableArray *accounts = [NSMutableArray arrayWithObject:add];
@@ -346,6 +356,7 @@ static NSString *NoshiAccountErrorText(NSString *errorName) {
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"profile.edit.info", nil) footer:NSLocalizedString(@"profile.edit.hint", nil)
                                                              rows:[NSArray arrayWithObjects:phone, username, birthday, nil]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:NSLocalizedString(@"account.channel.info", nil) rows:[NSArray arrayWithObject:channel]]];
+    if (_person) [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:color]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"account.accounts", nil) footer:NSLocalizedString(@"account.accounts.info", nil) rows:accounts]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:logout]]];
     self.sections = sections;

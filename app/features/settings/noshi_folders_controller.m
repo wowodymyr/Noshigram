@@ -1,5 +1,6 @@
 #import "noshi_folders_controller.h"
 #import <QuartzCore/QuartzCore.h>
+#import "noshi_settings_extras.h"
 
 #import "noshi_alert.h"
 #import "noshi_custom_emoji_loader.h"
@@ -768,6 +769,7 @@ static NSString *NoshiFolderSummary(NoshiChatFolder *folder) {
                                                             }]];
     NSString *footer = _busy ? NSLocalizedString(@"folders.loading", nil) : NSLocalizedString(@"folders.sync.info", nil);
     [sections addObject:[NoshiSettingsSection sectionWithHeader:mine.count ? NSLocalizedString(@"folders.list", nil) : nil footer:footer rows:rows]];
+    [sections addObject:NoshiFolderTabsSection(weak)];
     self.sections = sections;
     [self reloadSettings];
 }

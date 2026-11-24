@@ -9,6 +9,7 @@
 #import "noshi_symbol.h"
 #import "noshi_traffic_store.h"
 #import "noshi_weak_reference.h"
+#import "noshi_proxy_controller.h"
 
 static NSString *NoshiDataSize(unsigned long long bytes) {
     if (!bytes) return nil;
@@ -96,8 +97,13 @@ static NSString *NoshiDataSize(unsigned long long bytes) {
         if (!me) return;
         NoshiConfirmAction(me, NSLocalizedString(@"data.drafts.confirm", nil), NSLocalizedString(@"data.drafts.action", nil), ^{ [(NoshiDataSettingsController *)weak.target clearDrafts]; });
     }];
+    /* the proxy row of telegram 4.x */
+    NoshiSettingsRow *proxyRow = [NoshiSettingsRow rowWithIconImage:[UIImage imageNamed:@"SettingsProxyIcon"] title:NSLocalizedString(@"proxy.title", nil) tap:^{
+        [[(NoshiDataSettingsController *)weak.target navigationController] pushViewController:[[[NoshiProxyController alloc] init] autorelease] animated:YES];
+    }];
     NSMutableArray *sections = [NSMutableArray array];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"data.usage", nil) footer:nil rows:[NSArray arrayWithObjects:memory, usage, nil]]];
+    [sections addObject:[NoshiSettingsSection sectionWithHeader:nil footer:nil rows:[NSArray arrayWithObject:proxyRow]]];
     [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"data.drafts.header", nil) footer:NSLocalizedString(@"data.drafts.info", nil) rows:[NSArray arrayWithObject:drafts]]];
     self.sections = sections;
     [self reloadSettings];

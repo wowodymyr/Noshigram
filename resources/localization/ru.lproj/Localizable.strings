@@ -855,16 +855,8 @@
 "plural.years.one" = "%d год";
 "plural.years.few" = "%d года";
 "plural.years.other" = "%d лет";
-"settings.noshigram" = "Настройки Noshigram";
-"settings.noshigram.info" = "Настройте клиент под себя";
-"settings.noshigram.chats" = "Чаты";
-"settings.noshigram.chats.info" = "Сообщения, меню и подтверждения";
+"settings.about" = "О приложении";
 "about.name" = "Noshigram";
-"about.categories" = "Категории";
-"about.main" = "Основные";
-"about.look" = "Внешний вид";
-"about.chats" = "Чаты";
-"about.more" = "Ещё";
 "language.link.title" = "Изменить язык?";
 "language.link.change" = "Изменить";
 "language.link.alert" = "Вы собираетесь применить языковой пакет (%1$@), переведённый на %2$d%%.\n\nЭто переведёт весь интерфейс.\n\nВы можете вернуть прежний язык в любой момент в Настройках.";
@@ -1785,7 +1777,7 @@
 "general.translate.header" = "Перевод сообщений";
 "general.translate.button" = "Кнопка перевода";
 "general.translate.info" = "Кнопка «Перевести» появится в контекстном меню сообщения.";
-"general.header" = "Основные";
+"language.format.header" = "Даты и числа";
 "general.exactnumbers" = "Не округлять числа";
 "general.exactnumbers.value" = "1,23 тыс. → 1 234";
 "general.seconds" = "Показывать секунды";
@@ -1801,7 +1793,6 @@
 "general.hidephone" = "Скрыть номер телефона";
 "general.showids" = "Показывать ID и DC";
 "general.showids.info" = "Показывает ID пользователя или чата и номер дата-центра в профиле.";
-"general.archive.header" = "Список чатов и архив";
 "general.hidearchive" = "Скрыть папку «Архив»";
 "general.nounarchive" = "Отключить свайп «Из архива»";
 "general.nounarchive.info" = "Свайп влево не будет убирать чат из архива.";
@@ -1814,7 +1805,6 @@
 "calls.video" = "%@ (видео)";
 "calls.callback" = "Позвонить";
 "calls.openchat" = "Открыть чат";
-"settings.noshigram.look" = "Внешний вид";
 "look.chatlist.header" = "Список чатов";
 "look.stories" = "Истории";
 "look.hidesearch" = "Скрыть строку поиска";
