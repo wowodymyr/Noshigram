@@ -1355,11 +1355,6 @@
 "chatset.namecolor.header" = "Цвет имени";
 "chatset.namecolor.info" = "Остальные видят этот цвет у вашего имени в группах. Цвета со значком замка доступны с Telegram Premium.";
 "chatset.namecolor.premium" = "Этот цвет доступен с Telegram Premium.";
-"chatset.appicon" = "Иконка приложения";
-"chatset.appicon.failed" = "Не удалось сменить иконку.";
-"chatset.appicon.jailbreak" = "Доступно только с jailbreak";
-"chatset.appicon.restart.message" = "Чтобы сменить иконку, приложение закроется, а SpringBoard перезапустится. Продолжить?";
-"chatset.appicon.restart.action" = "Сменить";
 "chatset.stickers" = "Стикеры и эмодзи";
 "chatset.stickers.info2" = "Настройки стикеров и больших эмодзи";
 "chatset.stickers.header" = "Наборы стикеров";
@@ -1726,7 +1721,6 @@
 "account.empty" = "Не указано";
 "account.about.info" = "Расскажите о себе в нескольких словах.";
 "account.channel.info" = "Канал показывается в вашем профиле под описанием.";
-"icon.applying" = "Рисуем новую иконку…";
 "account.phone.info" = "Номер телефона можно сменить в официальном приложении Telegram.";
 "account.add" = "Добавить аккаунт";
 "account.accounts" = "Аккаунты";

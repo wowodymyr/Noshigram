@@ -1350,11 +1350,6 @@
 "chatset.namecolor.header" = "Name color";
 "chatset.namecolor.info" = "Other people see this color on your name in groups. Colors with a padlock need Telegram Premium.";
 "chatset.namecolor.premium" = "This color needs Telegram Premium.";
-"chatset.appicon" = "App Icon";
-"chatset.appicon.failed" = "The icon could not be changed.";
-"chatset.appicon.jailbreak" = "Available only with a jailbreak";
-"chatset.appicon.restart.message" = "To change the icon the app closes and SpringBoard restarts. Continue?";
-"chatset.appicon.restart.action" = "Change";
 "chatset.stickers" = "Stickers and Emoji";
 "chatset.stickers.info2" = "Manage stickers and large emoji";
 "chatset.stickers.header" = "Sticker sets";
@@ -1721,7 +1716,6 @@
 "account.empty" = "Not set";
 "account.about.info" = "Tell about yourself in a few words.";
 "account.channel.info" = "The channel is shown in your profile under the bio.";
-"icon.applying" = "Painting the new icon…";
 "account.phone.info" = "The phone number can be changed in the official Telegram app.";
 "account.add" = "Add account";
 "account.accounts" = "Accounts";

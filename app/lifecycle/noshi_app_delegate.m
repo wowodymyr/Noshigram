@@ -124,7 +124,7 @@
     _passcodeLock = [[NoshiPasscodeLock alloc] init];
     [_passcodeLock lockAtLaunch];
     [self showSplashSignedIn:signedIn];
-    NoshiAppIconRestore();
+    NoshiAppIconRefreshLaunchImages();
     NoshiCrashLogStart();
     NoshiCrashLogWatchMemory();
     NoshiWallpaperWarm();
@@ -210,7 +210,7 @@ static NSURL *NoshiKeepOpenedFile(NSURL *url, NSString **directory) {
                                                       userInfo:[NSDictionary dictionaryWithObject:address forKey:@"url"]];
 }
 
-/* the icon the person chose on the color of the screen under it, light or dark; the launch image of a jailbroken phone is drawn with the same icon and color (see
+/* the icon on the color of the screen under it, light or dark; the launch image of a jailbroken phone is drawn with the same icon and color (see
    NoshiAppIconRefreshLaunchImages), so the start is one splash and not a swap */
 - (void)showSplashSignedIn:(BOOL)signedIn {
     /* before ios 8 a window subview does not rotate with the root controller */

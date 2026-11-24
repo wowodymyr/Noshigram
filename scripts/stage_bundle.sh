@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 shopt -s nullglob
 
 rm -rf "${dest}"
-mkdir -p "${dest}/noshigram-original-icons"
+mkdir -p "${dest}"
 files=(resources/icons/*.png resources/launch/*.png resources/animations/*.tgs
     resources/phone/*.png resources/phone/*.txt
     resources/fonts/*.ttf resources/fonts/*.otf resources/fonts/*.txt
@@ -15,7 +15,6 @@ files=(resources/icons/*.png resources/launch/*.png resources/animations/*.tgs
     resources/licenses/*.txt resources/maps/*.pem resources/web/*.pem
     resources/sounds/*.caf resources/sounds/*.mp3)
 cp "${files[@]}" "${dest}/"
-cp resources/icons/Icon*.png "${dest}/noshigram-original-icons/"
 # a language folder holds one Localizable.strings
 for strings in resources/localization/*.lproj/Localizable.strings; do
     lproj="$(basename "$(dirname "${strings}")")"

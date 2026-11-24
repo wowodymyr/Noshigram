@@ -2,12 +2,9 @@
 
 #import "noshi_chat_preview_view.h"
 #import "noshi_platform.h"
-#import "noshi_theme_busy_view.h"
 #import "noshi_proximity.h"
 #import "noshi_gift_screen.h"
-#import "noshi_app_icon.h"
 #import "noshi_alert.h"
-#import "noshi_app_icon_list_view.h"
 #import "noshi_audio_session.h"
 #import "noshi_chat_settings.h"
 #import "noshi_wallpaper.h"
@@ -46,41 +43,6 @@
 - (void)interfaceScaleLetGo;
 - (void)chooseThemeFile;
 @end
-
-/* the duck of the theme change covers the window while the icon is written, which takes a moment and ends the app
-   on the systems that restart SpringBoard; the view is kept, so its parsed animation is ready for the next change */
-static NoshiThemeBusyView *NoshiIconBusy;
-static NSTimeInterval NoshiIconBusyShownAt;
-
-static NoshiThemeBusyView *NoshiIconBusyShow(void) {
-    UIView *window = NoshiOverlayHost();
-    if (!window) return nil;
-    if (!NoshiIconBusy) NoshiIconBusy = [[NoshiThemeBusyView alloc] initWithFrame:window.bounds];
-    NoshiIconBusy.text = NSLocalizedString(@"icon.applying", nil);
-    NoshiIconBusy.frame = window.bounds;
-    NoshiIconBusy.alpha = NoshiReduceMotionEnabled() ? 1 : 0;
-    [window addSubview:NoshiIconBusy];
-    [NoshiIconBusy startAnimating];
-    NoshiIconBusyShownAt = [NSDate timeIntervalSinceReferenceDate];
-    [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.22 animations:^{ NoshiIconBusy.alpha = 1; }];
-    return NoshiIconBusy;
-}
-
-/* a change that returns at once still shows the duck for a moment, or it would flash */
-static void NoshiIconBusyHide(NoshiThemeBusyView *busy) {
-    if (!busy) return;
-    NSTimeInterval left = 1.2 - ([NSDate timeIntervalSinceReferenceDate] - NoshiIconBusyShownAt);
-    [busy retain];
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(MAX(left, 0) * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [UIView animateWithDuration:NoshiReduceMotionEnabled() ? 0 : 0.3 animations:^{ busy.alpha = 0; } completion:^(BOOL finished) {
-            (void)finished;
-            if (busy.alpha > 0) return;
-            [busy stopAnimating];
-            [busy removeFromSuperview];
-        }];
-        [busy release];
-    });
-}
 
 @implementation NoshiChatSettingsController
 
@@ -302,59 +264,6 @@ static NSString *NoshiNightStateText(void) {
     [sections addObject:[self swipeSection]];
     [sections addObject:[self recordLockSection]];
     [sections addObject:[self lastSeenSection]];
-    /* ios 10.3 has the call; older systems change the icon only through a bundle the app can write, which a jailbreak install gives, and the row says so
-       where it does not */
-    if (NoshiAlternateIconNames().count > 0) {
-        NoshiAppIconListView *icons = [[[NoshiAppIconListView alloc] init] autorelease];
-        NoshiAppIconMode mode = NoshiAppIconCurrentMode();
-        icons.enabled = mode != NoshiAppIconUnavailable;
-        /* the list holds the handler, so the handler holds the list only through a reference that does not keep it alive */
-        NoshiWeakReference *shown = [NoshiWeakReference referenceTo:icons];
-        icons.chooseHandler = ^(NSString *name) {
-            /* before ios 10.3 the change ends with SpringBoard starting again, which takes the app with it */
-            void (^change)(void) = ^{
-                /* a rebuild of the page lets the list go while the change is running, so the change keeps the list until it ends */
-                NoshiAppIconListView *list = [(NoshiAppIconListView *)shown.target retain];
-                list.enabled = NO;
-                NoshiThemeBusyView *busy = NoshiIconBusyShow();
-                NoshiSetAlternateIcon(name, ^(NSError *error) {
-                    NoshiIconBusyHide(busy);
-                    list.enabled = YES;
-                    [list refreshSelection];
-                    if (!error) { [list release]; return; }
-                    NSLog(@"noshigram: the app icon was not changed: %@", error);
-                    NSString *detail = [NSString stringWithFormat:@"%@\n\n%@ (%@ %ld)", NSLocalizedString(@"chatset.appicon.failed", nil), error.localizedDescription, error.domain, (long)error.code];
-                    if (mode == NoshiAppIconNative && NoshiAppIconCanRewrite()) {
-                        NSString *question = [detail stringByAppendingFormat:@"\n\n%@", NSLocalizedString(@"chatset.appicon.restart.message", nil)];
-                        NoshiConfirm(nil, question, NSLocalizedString(@"chatset.appicon.restart.action", nil), ^{
-                            NoshiAppIconListView *fallbackList = [list retain];
-                            fallbackList.enabled = NO;
-                            NoshiThemeBusyView *fallbackBusy = NoshiIconBusyShow();
-                            NoshiRewriteAppIcon(name, ^(NSError *rewriteError) {
-                                NoshiIconBusyHide(fallbackBusy);
-                                fallbackList.enabled = YES;
-                                [fallbackList refreshSelection];
-                                [fallbackList release];
-                                if (rewriteError) NoshiGiftAlert(nil, rewriteError.localizedDescription);
-                            });
-                        });
-                    } else {
-                        NoshiGiftAlert(nil, detail);
-                    }
-                    [list release];
-                });
-            };
-            if (NoshiAppIconCurrentMode() == NoshiAppIconRewrite) {
-                NoshiConfirm(nil, NSLocalizedString(@"chatset.appicon.restart.message", nil), NSLocalizedString(@"chatset.appicon.restart.action", nil), change);
-            } else {
-                change();
-            }
-        };
-        NSString *footer = mode == NoshiAppIconUnavailable ? NSLocalizedString(@"chatset.appicon.jailbreak", nil) : nil;
-        [sections addObject:[NoshiSettingsSection sectionWithHeader:NSLocalizedString(@"chatset.appicon", nil) footer:footer rows:[NSArray arrayWithObject:
-            [NoshiSettingsRow viewRowWithView:icons height:^CGFloat(CGFloat width) { (void)width; return [NoshiAppIconListView height]; }]]]];
-    }
-
     NoshiSettingsRow *night = [NoshiSettingsRow rowWithSymbol:NoshiSymbolMoon tone:NoshiSettingsTonePurple title:NSLocalizedString(@"chatset.night", nil)
                                                          subtitle:NoshiNightStateText() value:nil tap:^{
         [[(NoshiChatSettingsController *)weak.target navigationController] pushViewController:[[[NoshiNightModeController alloc] init] autorelease] animated:YES];
